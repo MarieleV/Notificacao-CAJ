@@ -2,7 +2,7 @@
 Gestão de Notificações Judiciais e Multas de Consumo de Água
 
 ## Para rodar:
-´´´bash
+```bash
 npm i -- instalações
 npm run dev
-´´´
+```
