@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Loader2, Info
+  ChevronDown, X, FileText, Loader2, Info, Key
 } from "lucide-react";
 
 const INFRACTION_CODES = [
@@ -225,6 +225,7 @@ Companhia Águas de Joinville`;
 }
 
 export function NotificationDrafter() {
+  const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [generatedText, setGeneratedText] = useState("");
@@ -243,17 +244,43 @@ export function NotificationDrafter() {
   const selectedItems = INFRACTION_CODES.filter((c) =>
     selectedCodes.includes(c.code)
   );
-
+// VERSÃO CRIADA DA FUNÇÃO hendleGenerate, QUE FAZ A REQUISIÇÃO PARA O BACK-END PYTHON E RECEBE O TEXTO GERADO
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
+    if (!apiKey) {
+      alert("Por favor, insira sua Chave de API do Gemini no topo da tela.");
+      return;
+    }
+
     setLoading(true);
     setStep("idle");
-    await new Promise((r) => setTimeout(r, 2200));
-    const text = generateNotificationText(selectedItems, penaltyVariant);
-    setGeneratedText(text);
-    setStep("generated");
-    setLoading(false);
-  };
+
+    const textosBase = selectedItems.map(item => 
+      penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta
+    );
+
+    try {
+      const response = await fetch("http://localhost:8001/api/gerar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: apiKey,
+          textos_base: textosBase
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erro na comunicação com o servidor Python");
+      
+      const data = await response.json();
+      setGeneratedText(data.texto_gerado);
+      setStep("generated");
+    } catch (error) {
+      console.error(error);
+      alert("Falha ao gerar o documento. Verifique se o servidor Python está rodando na porta 8000.");
+    } finally {
+      setLoading(false);
+    }
+  };// FINAL DA VERSÃO CRIADA DA FUNÇÃO hendleGenerate 
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(generatedText);
@@ -261,43 +288,29 @@ export function NotificationDrafter() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-    line-height: 1.5;
-    margin: 3cm 2cm 2cm 3cm;
-    text-align: justify;
-    color: #000;
-  }
-  pre {
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    margin: 0;
-    line-height: 1.5;
-  }
-</style>
-</head>
-<body>
-<pre>${generatedText}</pre>
-</body>
-</html>`;
+  const handleDownload = async () => {
+    try {
+      const response = await fetch("http://localhost:8001/api/exportar_word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto_final: generatedText }),
+      });
 
-    const blob = new Blob([htmlContent], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Notificacao_Extrajudicial_${new Date().toISOString().split("T")[0]}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
+      if (!response.ok) throw new Error("Erro ao gerar Word.");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Notificacao_Extrajudicial_${new Date().toISOString().split("T")[0]}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao baixar o arquivo Word pelo servidor.");
+    }
   };
 
   return (
@@ -311,9 +324,21 @@ export function NotificationDrafter() {
           </div>
           <p className="text-gray-500 text-sm mt-0.5">Assistente de redação jurídica com Inteligência Artificial</p>
         </div>
-        <div className="flex items-center gap-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-1.5">
-          <Sparkles size={13} className="text-[#1a5fa8]" />
-          <span className="text-[#1a5fa8] text-xs font-medium">Powered by Google Gemini</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:border-[#1a5fa8] transition-colors">
+            <Key size={14} className="text-gray-400 mr-2" />
+            <input 
+              type="password" 
+              placeholder="Gemini API Key..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-1.5">
+            <Sparkles size={13} className="text-[#1a5fa8]" />
+            <span className="text-[#1a5fa8] text-xs font-medium">Powered by Python & Gemini</span>
+          </div>
         </div>
       </div>
 

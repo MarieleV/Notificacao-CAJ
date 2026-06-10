@@ -1,0 +1,35 @@
+# === FRONT-END ===
+# Ignora a pasta node_modules dentro de front-end
+front-end/node_modules/
+
+# Ignora os arquivos de log do pnpm
+front-end/.pnpm-debug.log*
+front-end/.modules.yaml
+
+# Ignora as pastas de build do Vite
+front-end/dist/
+front-end/build/
+
+# Ignora chaves secretas e configurações locais do front-end
+front-end/.env
+front-end/.env.local
+
+
+# === BACK-END ===
+# Ignora todas as pastas de cache do Python (o ** busca em qualquer nível)
+**/__pycache__/
+back-end/__pycache__/
+
+# Ignora arquivos de ambiente virtual do Python (caso use)
+back-end/venv/
+back-end/.venv/
+back-end/env/
+
+# Ignora chaves secretas do back-end
+back-end/.env
+
+
+# === GLOBAL / SISTEMA ===
+# Ignora arquivos temporários do sistema operacional
+.DS_Store
+Thumbs.db
