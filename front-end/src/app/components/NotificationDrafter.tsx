@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Loader2, Info, Key
+  ChevronDown, X, FileText, Loader2, Info, Key, Search,
 } from "lucide-react";
 
 const INFRACTION_CODES = [
@@ -171,63 +171,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type PenaltyVariant = "multa" | "multaCP";
 
-function generateNotificationText(codes: typeof INFRACTION_CODES, variant: PenaltyVariant): string {
-  const today = new Date();
-  const dateStr = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-
-  const isFraud = codes.some((c) => c.category === "fraude");
-  const hasCP = variant === "multaCP";
-
-  const clausesBlock = codes
-    .map(
-      (c) =>
-        `\n   • ${c.code} — ${c.title}:\n     "${variant === "multaCP" ? c.clauseMultaCP : c.clauseMulta}"`
-    )
-    .join("\n\n");
-
-  const severity = isFraud ? "gravíssima" : "grave";
-
-  return `NOTIFICAÇÃO EXTRAJUDICIAL
-
-Companhia Águas de Joinville, pessoa jurídica de direito público, vem, por meio deste instrumento, NOTIFICAR EXTRAJUDICIALMENTE o usuário nos seguintes termos:
-
-I — DOS FATOS
-
-Verificou-se, no âmbito da relação contratual de prestação de serviços de saneamento básico, a ocorrência de infração(ões) de natureza ${severity}, conforme apurado em fiscalização técnica realizada em ${dateStr}, a seguir especificadas:
-${clausesBlock}
-
-II — DO FUNDAMENTO LEGAL
-
-As infrações acima elencadas violam, de forma expressa, as disposições da Resolução 019/2019 da ARIS — Agência de Regulação de Serviços Públicos de Santa Catarina, bem como da Lei nº 11.445/2007 (Marco Legal do Saneamento Básico) e demais normas regulatórias aplicáveis ao serviço público de abastecimento de água e esgotamento sanitário.
-
-III — DAS PENALIDADES APLICÁVEIS
-
-Em decorrência das irregularidades constatadas, o NOTIFICADO fica ciente de que estará sujeito às penalidades previstas na Resolução 019/2019 - ARIS, conforme especificado em cada código de infração acima, sem prejuízo das responsabilidades civis e criminais cabíveis.${hasCP ? "\n\nAtenção: além da multa prevista, o NOTIFICADO está sujeito ao cumprimento de obrigação específica de padronização dentro dos prazos indicados, sob pena de aplicação de multa adicional por não padronização." : ""}
-
-IV — DA INTERPELAÇÃO
-
-Pelo presente instrumento, INTIMA-SE o NOTIFICADO a, no prazo estabelecido para cada infração:
-
-   1. Regularizar a situação descrita, cessando imediatamente a conduta irregular;
-   2. Apresentar formalmente defesa escrita perante o Departamento competente, caso haja fatos impeditivos ou modificativos a alegar;
-   3. Cumprir as obrigações de padronização e/ou quitar os débitos pendentes e multas aplicadas, conforme demonstrativo a ser encaminhado em apartado.
-
-O não atendimento às determinações acima autoriza a Companhia Águas de Joinville a adotar todas as medidas administrativas e judiciais cabíveis para a tutela de seus direitos.
-
-Por fim, serve a presente notificação como prova inequívoca de que o NOTIFICADO foi devidamente cientificado, para todos os efeitos legais.
-
-[Cidade], ${dateStr}.
-
-_________________________________________
-[Nome do Responsável]
-[Cargo]
-Companhia Águas de Joinville`;
-}
-
 export function NotificationDrafter() {
   const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState(""); // <-- ADICIONE ESTA LINHA
   const [generatedText, setGeneratedText] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -244,7 +192,18 @@ export function NotificationDrafter() {
   const selectedItems = INFRACTION_CODES.filter((c) =>
     selectedCodes.includes(c.code)
   );
-// VERSÃO CRIADA DA FUNÇÃO hendleGenerate, QUE FAZ A REQUISIÇÃO PARA O BACK-END PYTHON E RECEBE O TEXTO GERADO
+
+  // <-- BLOCO INTEIRO ADICIONADO PARA FILTRAGEM
+  const filteredCodes = INFRACTION_CODES.filter((item) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      item.code.toLowerCase().includes(searchLower) ||
+      item.title.toLowerCase().includes(searchLower) ||
+      item.category.toLowerCase().includes(searchLower)
+    );
+  });
+  // ------------------------------------
+
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
     if (!apiKey) {
@@ -276,11 +235,11 @@ export function NotificationDrafter() {
       setStep("generated");
     } catch (error) {
       console.error(error);
-      alert("Falha ao gerar o documento. Verifique se o servidor Python está rodando na porta 8000.");
+      alert("Falha ao gerar o documento. Verifique se o servidor Python está rodando na porta 8001.");
     } finally {
       setLoading(false);
     }
-  };// FINAL DA VERSÃO CRIADA DA FUNÇÃO hendleGenerate 
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(generatedText);
@@ -371,34 +330,55 @@ export function NotificationDrafter() {
 
                 {dropdownOpen && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    {/* <-- ADICIONE O BLOCO DA BARRA DE PESQUISA AQUI --> */}
+                    <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Pesquisar por código, título ou categoria..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all"
+                        />
+                      </div>
+                    </div>
+                    {/* <------------------------------------------------> */}
                     <div className="p-2 border-b border-gray-100 bg-gray-50">
                       <p className="text-xs text-gray-500 px-2">Clique para selecionar/desmarcar</p>
                     </div>
                     <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
-                      {INFRACTION_CODES.map((item) => {
-                        const selected = selectedCodes.includes(item.code);
-                        return (
-                          <button
-                            key={item.code}
-                            onClick={() => toggleCode(item.code)}
-                            className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#f0f7ff] transition-colors ${selected ? "bg-[#f0f7ff]" : ""}`}
-                          >
-                            <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected ? "bg-[#1a5fa8] border-[#1a5fa8]" : "border-gray-300"}`}>
-                              {selected && <CheckCircle2 size={10} className="text-white" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
-                                <span className="text-sm font-medium text-gray-800">{item.title}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${CATEGORY_COLORS[item.category]}`}>
-                                  {item.category}
-                                </span>
+                      {filteredCodes.length > 0 ? (
+                        filteredCodes.map((item) => {
+                          const selected = selectedCodes.includes(item.code);
+                          return (
+                            <button
+                              key={item.code}
+                              onClick={() => toggleCode(item.code)}
+                              className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#f0f7ff] transition-colors ${selected ? "bg-[#f0f7ff]" : ""}`}
+                            >
+                              <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected ? "bg-[#1a5fa8] border-[#1a5fa8]" : "border-gray-300"}`}>
+                                {selected && <CheckCircle2 size={10} className="text-white" />}
                               </div>
-                              <p className="text-xs text-gray-500 mt-1 truncate">{item.clauseMulta.substring(0, 90)}…</p>
-                            </div>
-                          </button>
-                        );
-                      })}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
+                                  <span className="text-sm font-medium text-gray-800">{item.title}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${CATEGORY_COLORS[item.category]}`}>
+                                    {item.category}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1 truncate">{item.clauseMulta.substring(0, 90)}…</p>
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-6 text-center text-sm text-gray-500">
+                          Nenhum código encontrado para "{searchTerm}".
+                        </div>
+                      )}
                     </div>
                     <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-end">
                       <button
@@ -489,7 +469,7 @@ export function NotificationDrafter() {
               <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Geração com Inteligência Artificial</h2>
-                <p className="text-gray-500 text-xs">O motor de IA redige a notificação formal em um clique</p>
+                <p className="text-gray-500 text-xs">Redige a notificação formal em um clique</p>
               </div>
             </div>
             <div className="p-6">
@@ -546,7 +526,7 @@ export function NotificationDrafter() {
                 />
                 <div className="mt-2 flex items-center gap-1.5 text-gray-400">
                   <Info size={11} />
-                  <p className="text-[11px]">Substitua os campos entre colchetes [     ] com os dados reais do caso</p>
+                  <p className="text-[11px]">Substitua os campos vazios com os dados reais do caso</p>
                 </div>
               </div>
             </div>

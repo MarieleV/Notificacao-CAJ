@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings2, ChevronDown, ChevronUp, Plus, Trash2,
   Calculator, ClipboardList, Info, AlertCircle, Droplets, Wrench,
@@ -92,6 +92,7 @@ function RateTable({
   placeholder: string;
 }) {
   return (
+    // corpo 
     <div className="flex-1 min-w-0">
       <div className={`flex items-center gap-2 mb-3`}>
         <span className={`${color}`}>{icon}</span>
@@ -148,7 +149,7 @@ function RateTable({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function FineCalculator() {
-  const [configOpen, setConfigOpen] = useState(true);
+  const [configOpen, setConfigOpen] = useState(false);
   const [serviceRates, setServiceRates] = useState<RateEntry[]>([
     { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: "31,96" },
   ]);
@@ -211,101 +212,68 @@ export function FineCalculator() {
     );
   }
 
-  // ─── Computed results ─────────────────────────────────────────────────────
+// ─── Integração com Back-end (API Python) ─────────────────────────────────
+  const [apiData, setApiData] = useState<any>(null);
 
-  type CalcRow = {
-    row: IrregularRow;
-    targetDate: Date | null;
-    serviceRate: number | null;
-    m3Rate: number | null;
-    consumption: number;
-    correctWater: number | null;
-    correctService: number | null;
-    totalCorrect: number | null;
-    chargedWater: number;
-    chargedService: number;
-    totalCharged: number;
-    diff: number | null;
-    hasError: boolean;
-  };
+  // Debounce: Chama a API silenciosamente 600ms após o usuário parar de digitar
+  useEffect(() => {
+    const delay = setTimeout(() => fetchCalculations(), 600);
+    return () => clearTimeout(delay);
+  }, [serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
 
-  const calcRows: CalcRow[] = rows.map((row) => {
-    const targetDate = parseMonthYear(row.monthYear);
-    const consumption = parseBRL(row.consumption);
-    const chargedWater = parseBRL(row.chargedWater);
-    const chargedService = parseBRL(row.chargedService);
-    const totalCharged = chargedWater + chargedService;
-
-    let serviceRate: number | null = null;
-    let m3Rate: number | null = null;
-
-    if (targetDate) {
-      const sRate = serviceRates.find((r) => {
-        const d = parseMonthYear(r.startMonth);
-        return d && monthInRange(targetDate, r.startMonth, r.endMonth) && parseBRL(r.value) > 0;
+  async function fetchCalculations() {
+    try {
+      const response = await fetch("http://localhost:8001/api/calcular_multa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })
       });
-      const mRate = m3Rates.find((r) => {
-        const d = parseMonthYear(r.startMonth);
-        return d && monthInRange(targetDate, r.startMonth, r.endMonth) && parseBRL(r.value) > 0;
-      });
-      if (sRate) serviceRate = parseBRL(sRate.value);
-      if (mRate) m3Rate = parseBRL(mRate.value);
+      const data = await response.json();
+      setApiData(data);
+    } catch (error) {
+      console.error("Erro na API:", error);
     }
+  }
 
-    const correctWater = m3Rate !== null && consumption > 0 ? consumption * m3Rate : null;
-    const correctService = serviceRate;
-    const totalCorrect =
-      correctWater !== null && correctService !== null ? correctWater + correctService : null;
-    const diff = totalCorrect !== null ? totalCorrect - totalCharged : null;
-
-    const hasError = !targetDate || serviceRate === null || m3Rate === null;
-
+  // ─── Ponte Segura (Mata o erro de 'undefined' pela raiz) ──────────────────
+  // Mapeamos a partir do "rows" local para garantir que calcRows[idx] SEMPRE exista
+  const calcRows = rows.map((row) => {
+    const apiCalc = apiData?.rows?.find((r: any) => r.id === row.id);
+    
+    if (apiCalc) {
+      return { ...apiCalc, row: row }; // Junta os dados calculados com o identificador local
+    }
+    
+    // Formato de segurança que mantém a tela em pé enquanto a API pensa
     return {
-      row, targetDate, serviceRate, m3Rate, consumption,
-      correctWater, correctService, totalCorrect,
-      chargedWater, chargedService, totalCharged, diff, hasError,
+      row: row,
+      hasError: false,
+      consumption: 0,
+      correctWater: null,
+      correctService: null,
+      totalCorrect: null,
+      chargedWater: 0,
+      chargedService: 0,
+      totalCharged: 0,
+      diff: null,
+      m3Rate: null
     };
   });
 
-  const validRows = calcRows.filter((r) => !r.hasError && r.totalCorrect !== null);
+  const validRows = calcRows.filter((r: any) => !r.hasError && r.totalCorrect !== null);
 
-  const totalM3 = validRows.reduce((a, r) => a + r.consumption, 0);
-  const grandCorrect = validRows.reduce((a, r) => a + (r.totalCorrect ?? 0), 0);
-  const grandCharged = validRows.reduce((a, r) => a + r.totalCharged, 0);
-  const grandDiff = grandCorrect - grandCharged;
+  const totalM3 = apiData?.totals?.totalM3 || 0;
+  const grandCorrect = apiData?.totals?.grandCorrect || 0;
+  const grandCharged = apiData?.totals?.grandCharged || 0;
+  const grandDiff = apiData?.totals?.grandDiff || 0;
 
   // ─── Text generation ─────────────────────────────────────────────────────
-
-  function buildReportText(): string {
-    const sorted = sortedValidMonths(rows);
-    const numMonths = validRows.length;
-    const firstMonth = sorted.length > 0
-      ? sorted[0].toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" }).replace("/", "/")
-      : "—";
-    const lastMonth = sorted.length > 0
-      ? sorted[sorted.length - 1].toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" }).replace("/", "/")
-      : "—";
-
-    const aiRef = aiNumber.trim() ? `AI ${aiNumber.trim()}` : "[Nº do AI]";
-    const dateLine = removalDate.trim() || "[data]";
-    const postM3 = postRegM3.trim() || "[m³]";
-    const postRef = postRegRef.trim() ? postRegRef.trim().toUpperCase() : "[MM/AAAA]";
-    const billedVol = billedM3.trim() || "[m³]";
-
-    return `Cálculo do consumo estimado de água ref. ${aiRef}.
-Data da retirada da irregularidade: ${dateLine}.
-${numMonths} ${numMonths === 1 ? "mês" : "meses"}, com consumo impactado pela violação: ${firstMonth} até ${lastMonth}.
-Maior consumo mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
-Valor total do consumo estimado no período: ${fmtBRL(grandCorrect)}.
-Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandCharged)}.
-Valor a ser lançado ${fmtBRL(grandDiff)}.
-Volume faturado no mês impactado pela violação: ${billedVol} m³.
-Volume total recuperado: ${totalM3} m³.`;
-  }
-
   function handleGenerateText() {
-    setReportText(buildReportText());
+    if (apiData?.reportText) {
+      setReportText(apiData.reportText);
+    }
   }
+
 
   function handleCopy() {
     if (!reportText) return;
@@ -327,8 +295,8 @@ Volume total recuperado: ${totalM3} m³.`;
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
+      {/* Top bar (COM MENU DE PARÂMETROS EMBUTIDO) */}
+      <div className="relative bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm z-50">
         <div>
           <div className="flex items-center gap-2">
             <Calculator size={18} className="text-[#1a5fa8]" />
@@ -338,94 +306,90 @@ Volume total recuperado: ${totalM3} m³.`;
             Apuração do valor correto vs. cobrado antes da regularização — base para notificação e lançamento
           </p>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-auto p-8 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Botão que abre as Configurações */}
+        <button
+          onClick={() => setConfigOpen((v) => !v)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
+            configOpen 
+              ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" 
+              : "bg-white border-gray-200 text-gray-600 hover:border-[#1a5fa8] hover:text-[#1a5fa8]"
+          }`}
+        >
+          <Settings2 size={16} />
+          Parametrização de Preços
+          {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
 
-        {/* ── Bloco 1: Configurações ────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setConfigOpen((v) => !v)}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Settings2 size={16} className="text-[#1a5fa8]" />
-              <div className="text-left">
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Bloco 1 — Parametrização de Preços</h2>
+        {/* Painel Suspenso (Dropdown) de Configurações */}
+        {configOpen && (
+          <div className="absolute top-full right-8 mt-3 w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right">
+            <div className="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-[#0b1e35] font-semibold text-base">Parâmetros Ativos do Sistema</h2>
                 <p className="text-gray-400 text-xs mt-0.5">
-                  Cadastre os valores de serviço e de m³ por período de vigência
+                  Edite os valores de referência. O sistema usará esses dados para calcular os meses irregulares.
                 </p>
               </div>
             </div>
-            {configOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-          </button>
-
-          {configOpen && (
-            <div className="px-6 pb-6 border-t border-gray-100">
-              <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Tabela A — Serviço */}
-                <div>
-                  <RateTable
-                    title="Tabela A — Valor do Serviço (R$/mês)"
-                    icon={<Wrench size={14} />}
-                    color="text-[#1a5fa8]"
-                    rows={serviceRates}
-                    onAdd={addServiceRate}
-                    onRemove={removeServiceRate}
-                    onChange={changeServiceRate}
-                    placeholder="Ex: 31,96"
-                  />
-                  <div className="mt-2 flex items-start gap-1.5">
-                    <Info size={11} className="text-gray-300 mt-0.5 flex-shrink-0" />
-                    <p className="text-[10px] text-gray-400">
-                      Se o período não tiver data fim, o sistema assume que está em vigor até hoje.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tabela B — m³ */}
-                <div>
-                  <RateTable
-                    title="Tabela B — Valor do Metro Cúbico (R$/m³)"
-                    icon={<Droplets size={14} />}
-                    color="text-[#1a5fa8]"
-                    rows={m3Rates}
-                    onAdd={addM3Rate}
-                    onRemove={removeM3Rate}
-                    onChange={changeM3Rate}
-                    placeholder="Ex: 5,22"
-                  />
-                  <div className="mt-2 flex items-start gap-1.5">
-                    <Info size={11} className="text-gray-300 mt-0.5 flex-shrink-0" />
-                    <p className="text-[10px] text-gray-400">
-                      O sistema buscará automaticamente o valor do m³ correspondente ao mês informado na planilha.
-                    </p>
-                  </div>
-                </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {/* Tabela A — Serviço */}
+              <div>
+                <RateTable
+                  title="Valor do Serviço (R$/mês)"
+                  icon={<Wrench size={14} />}
+                  color="text-[#1a5fa8]"
+                  rows={serviceRates}
+                  onAdd={addServiceRate}
+                  onRemove={removeServiceRate}
+                  onChange={changeServiceRate}
+                  placeholder="Ex: 31,96"
+                />
               </div>
 
-              {/* Legenda colunas */}
-              <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {[0, 1].map((i) => (
-                  <div key={i} className="flex gap-2 text-[10px] text-gray-400">
-                    <span className="flex-1 bg-gray-50 rounded px-2 py-1 text-center border border-gray-100">Início MM/AAAA</span>
-                    <span className="flex-1 bg-gray-50 rounded px-2 py-1 text-center border border-gray-100">Fim MM/AAAA</span>
-                    <span className="flex-1 bg-gray-50 rounded px-2 py-1 text-center border border-gray-100">Valor (R$)</span>
-                    <span className="w-5" />
-                  </div>
-                ))}
+              {/* Tabela B — m³ */}
+              <div>
+                <RateTable
+                  title="Valor do Metro Cúbico (R$/m³)"
+                  icon={<Droplets size={14} />}
+                  color="text-[#1a5fa8]"
+                  rows={m3Rates}
+                  onAdd={addM3Rate}
+                  onRemove={removeM3Rate}
+                  onChange={changeM3Rate}
+                  placeholder="Ex: 5,22"
+                />
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Legenda colunas */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
+              {[0, 1].map((i) => (
+                <div key={i} className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Início</span>
+                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Fim</span>
+                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
+                  <span className="w-5" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* A rolagem ocupa 100% da tela e cola na direita */}
+      <div className="flex-1 overflow-auto">
+        {/* O conteúdo fica centralizado e mais largo (1400px) com mais espaço entre os blocos (space-y-8) */}
+        <div className="p-8 max-w-[1400px] mx-auto space-y-8 w-full">
 
         {/* ── Bloco 2: Lançamento ───────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Plus size={16} className="text-[#1a5fa8]" />
+              <Plus size={18} className="text-[#1a5fa8]" />
               <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Bloco 2 — Lançamento dos Meses Irregulares</h2>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares</h2>
                 <p className="text-gray-400 text-xs mt-0.5">Insira os dados de cada mês com consumo irregular</p>
               </div>
             </div>
@@ -439,7 +403,7 @@ Volume total recuperado: ${totalM3} m³.`;
 
           <div className="p-4">
             {/* Header */}
-            <div className="grid grid-cols-[120px_1fr_1fr_1fr_32px] gap-2 mb-2 px-1">
+            <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 mb-2 px-1">
               {["Mês/Ano", "Consumo Regular (m³)", "Água Cobrada Errada (R$)", "Serviço Cobrado Errado (R$)", ""].map((h, i) => (
                 <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
               ))}
@@ -453,7 +417,7 @@ Volume total recuperado: ${totalM3} m³.`;
 
                 return (
                   <div key={row.id}>
-                    <div className="grid grid-cols-[120px_1fr_1fr_1fr_32px] gap-2 items-center">
+                    <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 items-center">
                       <div>
                         <input
                           value={row.monthYear}
@@ -501,7 +465,7 @@ Volume total recuperado: ${totalM3} m³.`;
                     {noRate && (
                       <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
                         <AlertCircle size={10} />
-                        Nenhum preço cadastrado no Bloco 1 para este período.
+                        Nenhum preço cadastrado para este período.
                       </div>
                     )}
                     {dateError && (
@@ -526,9 +490,9 @@ Volume total recuperado: ${totalM3} m³.`;
         {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <Calculator size={16} className="text-[#1a5fa8]" />
+            <Calculator size={18} className="text-[#1a5fa8]" />
             <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Bloco 3 — Resultado Detalhado por Mês</h2>
+              <h2 className="text-[#0b1e35] font-semibold text-sm">Resultado Detalhado por Mês</h2>
               <p className="text-gray-400 text-xs mt-0.5">Gerado automaticamente pelo motor de cálculo</p>
             </div>
           </div>
@@ -536,30 +500,30 @@ Volume total recuperado: ${totalM3} m³.`;
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#f8fafe] border-b border-gray-100">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Mês Irregular</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Consumo (m³)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-[#1a5fa8] uppercase tracking-wider whitespace-nowrap bg-[#eef6ff]">Valor Água (Correto)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-[#1a5fa8] uppercase tracking-wider whitespace-nowrap bg-[#eef6ff]">Serviço (Correto)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-[#1a5fa8] uppercase tracking-wider whitespace-nowrap bg-[#eef6ff]">Total Correto</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-500 uppercase tracking-wider whitespace-nowrap bg-red-50">Água Cobrada (Errado)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-500 uppercase tracking-wider whitespace-nowrap bg-red-50">Serviço Cobrado (Errado)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-500 uppercase tracking-wider whitespace-nowrap bg-red-50">Total Errado</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Diferença</th>
-                </tr>
-              </thead>
+                  <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-50">
                 {calcRows.map((c) => {
                   if (c.hasError) {
                     return (
                       <tr key={c.row.id} className="bg-amber-50/40">
-                        <td className="px-4 py-3 text-gray-500 text-xs italic">
+                        <td className="px-3 py-3 text-gray-500 text-xs italic">
                           {c.row.monthYear || "—"}
                         </td>
-                        <td colSpan={8} className="px-4 py-3 text-xs text-amber-600 italic">
+                        <td colSpan={8} className="px-3 py-3 text-xs text-amber-600 italic">
                           <div className="flex items-center gap-1.5">
                             <AlertCircle size={11} />
-                            Aguardando dados completos ou período não encontrado no Bloco 1
+                            Aguardando dados completos ou período não encontrado na Parametrização de Preços.
                           </div>
                         </td>
                       </tr>
@@ -568,34 +532,34 @@ Volume total recuperado: ${totalM3} m³.`;
                   const positive = (c.diff ?? 0) >= 0;
                   return (
                     <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
+                      <td className="px-3 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
                         {labelMonth(c.row.monthYear)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
                         {c.consumption} m³
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
+                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
                         {c.correctWater !== null ? fmtBRL(c.correctWater) : "—"}
                         {c.m3Rate !== null && (
                           <div className="text-[10px] text-gray-400 font-normal">{c.consumption}m³ × {fmtBRL(c.m3Rate)}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
+                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
                         {c.correctService !== null ? fmtBRL(c.correctService) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-3 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
                         {c.totalCorrect !== null ? fmtBRL(c.totalCorrect) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
                         {fmtBRL(c.chargedWater)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
                         {fmtBRL(c.chargedService)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
+                      <td className="px-3 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
                         {fmtBRL(c.totalCharged)}
                       </td>
-                      <td className={`px-4 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                      <td className={`px-3 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
                         {c.diff !== null ? fmtBRL(c.diff) : "—"}
                       </td>
                     </tr>
@@ -604,7 +568,7 @@ Volume total recuperado: ${totalM3} m³.`;
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={9} className="px-4 py-10 text-center text-gray-300 text-sm">
-                      Nenhum dado para exibir. Adicione meses no Bloco 2.
+                      Nenhum dado para exibir.
                     </td>
                   </tr>
                 )}
@@ -612,13 +576,13 @@ Volume total recuperado: ${totalM3} m³.`;
               {validRows.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-gray-200 bg-[#f8fafe]">
-                    <td className="px-4 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{totalM3} m³</td>
+                    <td className="px-3 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{totalM3} m³</td>
                     <td colSpan={2} className="bg-[#eef6ff]/60"></td>
-                    <td className="px-4 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(grandCorrect)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(grandCorrect)}</td>
                     <td colSpan={2} className="bg-red-50/40"></td>
-                    <td className="px-4 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(grandCharged)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(grandCharged)}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                       {fmtBRL(grandDiff)}
                     </td>
                   </tr>
@@ -631,9 +595,9 @@ Volume total recuperado: ${totalM3} m³.`;
         {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <ClipboardList size={16} className="text-[#1a5fa8]" />
+            <ClipboardList size={18} className="text-[#1a5fa8]" />
             <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Bloco 4 — Painel de Resumo (Correspondente aos Meses de Irregularidade)</h2>
+              <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo (Correspondente aos Meses de Irregularidade)</h2>
               <p className="text-gray-400 text-xs mt-0.5">Base para lançamento financeiro ou notificação extrajudicial</p>
             </div>
           </div>
@@ -705,9 +669,9 @@ Volume total recuperado: ${totalM3} m³.`;
         {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <FileText size={16} className="text-[#1a5fa8]" />
+            <FileText size={18} className="text-[#1a5fa8]" />
             <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Bloco 5 — Texto de Apuração</h2>
+              <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
               <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos — editável e copiável</p>
             </div>
           </div>
@@ -782,7 +746,7 @@ Volume total recuperado: ${totalM3} m³.`;
                     <p className="text-[11px] text-[#4a7fa5]">
                       Os valores de <strong>período</strong>, <strong>valor correto</strong>, <strong>valor cobrado</strong>,
                       <strong> diferença</strong> e <strong>volume total recuperado</strong> são preenchidos automaticamente
-                      a partir dos cálculos do Bloco 3.
+                      a partir dos cálculos.
                     </p>
                   </div>
                 </div>
@@ -828,7 +792,7 @@ Volume total recuperado: ${totalM3} m³.`;
                 onChange={(e) => setReportText(e.target.value)}
                 placeholder={
                   validRows.length === 0
-                    ? "Adicione meses no Bloco 2 e clique em [Gerar / Atualizar Texto]..."
+                    ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
                     : "Preencha os dados complementares acima e clique em [Gerar / Atualizar Texto]."
                 }
                 rows={10}
@@ -844,6 +808,7 @@ Volume total recuperado: ${totalM3} m³.`;
         </div>
 
       </div>
+    </div>
     </div>
   );
 }
