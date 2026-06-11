@@ -3,7 +3,7 @@ from google import genai
 print("--- INICIANDO O TESTE DA API KEY ---")
 
 # Substitua pela sua chave nova (do Gmail pessoal)
-SUA_API_KEY = "AQ.Ab8RN6Ko97WL2XgJsRhGMhBphieSqKQ0PlOp8-9Wis1h96jRSg" 
+SUA_API_KEY = "CHAVE AQUI" 
 
 try:
     client = genai.Client(api_key=SUA_API_KEY)
