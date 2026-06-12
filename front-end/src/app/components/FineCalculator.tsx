@@ -223,7 +223,7 @@ export function FineCalculator() {
 
   async function fetchCalculations() {
     try {
-      const response = await fetch("https://notificacao-caj-5jfs-ofaqozlvg-marieles-projects-ec100d86.vercel.app/api/calcular_multa", {
+      const response = await fetch("https://notificacao-632lv697w-marieles-projects-ec100d86.vercel.app/api/calcular_multa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })

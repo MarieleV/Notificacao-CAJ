@@ -219,7 +219,7 @@ export function NotificationDrafter() {
     );
 
     try {
-      const response = await fetch("https://notificacao-caj-5jfs-ofaqozlvg-marieles-projects-ec100d86.vercel.app/api/gerar", {
+      const response = await fetch("https://notificacao-632lv697w-marieles-projects-ec100d86.vercel.app/api/gerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -249,7 +249,7 @@ export function NotificationDrafter() {
 
   const handleDownload = async () => {
     try {
-      const response = await fetch("https://notificacao-caj-5jfs-ofaqozlvg-marieles-projects-ec100d86.vercel.app/api/exportar_word", {
+      const response = await fetch("https://notificacao-632lv697w-marieles-projects-ec100d86.vercel.app/api/exportar_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto_final: generatedText }),
