@@ -139,7 +139,8 @@ const fmtBRL = (val) => {
 };
 
 app.post("/api/calcular_multa", (req, res) => {
-  const { serviceRates = [], m3Rates = [], rows = [], aiNumber, removalDate, postRegM3, postRegRef, billedM3 } = req.body;
+  // ATENÇÃO: Agora recebemos m3Tiers no lugar de m3Rates
+  const { serviceRates = [], m3Tiers = [], rows = [], aiNumber, removalDate, postRegM3, postRegRef, billedM3 } = req.body;
 
   const calcRows = [];
   const validDates = [];
@@ -153,29 +154,46 @@ app.post("/api/calcular_multa", (req, res) => {
     const tCharged = cWater + cService;
 
     let sRateVal = null;
-    let mRateVal = null;
+    let correctWater = null; 
 
     if (targetDtNum) {
+      // Busca taxa de serviço normalmente
       for (const s of serviceRates) {
         if (inRange(r.monthYear, s.startMonth, s.endMonth) && parseBRL(s.value) > 0) {
           sRateVal = parseBRL(s.value);
           break;
         }
       }
-      for (const m of m3Rates) {
-        if (inRange(r.monthYear, m.startMonth, m.endMonth) && parseBRL(m.value) > 0) {
-          mRateVal = parseBRL(m.value);
-          break;
+
+      // CÁLCULO DA ÁGUA EM CASCATA (FAIXAS DE CONSUMO)
+      if (m3Tiers.length > 0 && consumption > 0) {
+        correctWater = 0;
+        let remainingConsumption = consumption;
+        
+        // Garante que as faixas estão na ordem certa (0 a 10, 11 a 15...)
+        const sortedTiers = [...m3Tiers].sort((a, b) => a.min - b.min);
+
+        for (const tier of sortedTiers) {
+          if (remainingConsumption <= 0) break;
+
+          // Descobre quantos m³ cabem nesta faixa específica
+          const capacity = tier.max === "Infinity" ? Infinity : (tier.max - tier.min + 1);
+          
+          // O volume faturado nesta faixa é o que sobrou do consumo OU o limite da faixa
+          const volumeInTier = Math.min(remainingConsumption, capacity);
+          
+          correctWater += volumeInTier * parseBRL(tier.value);
+          remainingConsumption -= volumeInTier;
         }
       }
     }
 
-    const correctWater = (mRateVal !== null && consumption > 0) ? consumption * mRateVal : null;
     const correctService = sRateVal;
     const totalCorrect = (correctWater !== null && correctService !== null) ? correctWater + correctService : null;
     const diff = totalCorrect !== null ? totalCorrect - tCharged : null;
 
-    const hasError = !targetDtNum || sRateVal === null || mRateVal === null;
+    // Erro se não achou data, taxa de serviço, ou se as faixas vieram vazias
+    const hasError = !targetDtNum || sRateVal === null || m3Tiers.length === 0;
 
     if (!hasError) validDates.push(r.monthYear);
 
@@ -191,7 +209,7 @@ app.post("/api/calcular_multa", (req, res) => {
       chargedService: cService,
       totalCharged: tCharged,
       diff,
-      m3Rate: mRateVal,
+      m3Rate: "Faixas" // Retorna texto genérico pois são vários valores
     });
   }
 

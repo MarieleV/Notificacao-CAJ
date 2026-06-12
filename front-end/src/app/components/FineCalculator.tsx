@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Settings2, ChevronDown, ChevronUp, Plus, Trash2,
   Calculator, ClipboardList, Info, AlertCircle, Droplets, Wrench,
@@ -150,11 +150,38 @@ function RateTable({
 
 export function FineCalculator() {
   const [configOpen, setConfigOpen] = useState(false);
+  
+  // 1. Criamos a referência
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // 2. Criamos o "ouvinte" que detecta cliques fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      // Se o clique foi validado e NÃO aconteceu dentro do elemento referenciado, fechamos o painel
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setConfigOpen(false);
+      }
+    }
+
+    // Só adiciona o ouvinte se o painel estiver aberto (para economizar memória)
+    if (configOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    
+    // Limpeza de segurança quando o componente desmontar ou o painel fechar
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [configOpen]);
   const [serviceRates, setServiceRates] = useState<RateEntry[]>([
     { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: "31,96" },
   ]);
-  const [m3Rates, setM3Rates] = useState<RateEntry[]>([
-    { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: "5,22" },
+  const [m3Tiers, setM3Tiers] = useState([
+    { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
+    { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
+    { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+    { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+    { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
   ]);
   const [rows, setRows] = useState<IrregularRow[]>([
     { id: newId(), monthYear: "01/2025", consumption: "20", chargedWater: "13,60", chargedService: "31,96" },
@@ -181,14 +208,10 @@ export function FineCalculator() {
     setServiceRates((p) => p.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
   }
 
-  function addM3Rate() {
-    setM3Rates((p) => [...p, { id: newId(), startMonth: "", endMonth: "", value: "" }]);
-  }
-  function removeM3Rate(id: number) {
-    setM3Rates((p) => p.filter((r) => r.id !== id));
-  }
-  function changeM3Rate(id: number, field: keyof RateEntry, val: string) {
-    setM3Rates((p) => p.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
+  function changeM3Tier(id: number, val: string) {
+    setM3Tiers((p) =>
+      p.map((tier) => (tier.id === id ? { ...tier, value: maskBRL(val) } : tier))
+    );
   }
 
   // ─── Irregular rows handlers ──────────────────────────────────────────────
@@ -219,14 +242,15 @@ export function FineCalculator() {
   useEffect(() => {
     const delay = setTimeout(() => fetchCalculations(), 600);
     return () => clearTimeout(delay);
-  }, [serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
+  }, [serviceRates, m3Tiers, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
 
   async function fetchCalculations() {
     try {
       const response = await fetch("https://notificacao-caj.vercel.app/api/calcular_multa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })
+        // Aqui enviamos m3Tiers ao invés de m3Rates
+        body: JSON.stringify({ serviceRates, m3Tiers, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })
       });
       const data = await response.json();
       setApiData(data);
@@ -306,76 +330,102 @@ export function FineCalculator() {
             Apuração do valor correto vs. cobrado antes da regularização — base para notificação e lançamento
           </p>
         </div>
+        
+        {/* WRAPPER DO CLICK OUTSIDE: Envolve o botão e o painel */}
+        <div ref={panelRef} className="relative">
+          
+          {/* Botão que abre as Configurações */}
+          <button
+            onClick={() => setConfigOpen((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
+              configOpen 
+                ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" 
+                : "bg-white border-gray-200 text-gray-600 hover:border-[#1a5fa8] hover:text-[#1a5fa8]"
+            }`}
+          >
+            <Settings2 size={16} />
+            Parametrização de Preços
+            {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
 
-        {/* Botão que abre as Configurações */}
-        <button
-          onClick={() => setConfigOpen((v) => !v)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
-            configOpen 
-              ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" 
-              : "bg-white border-gray-200 text-gray-600 hover:border-[#1a5fa8] hover:text-[#1a5fa8]"
-          }`}
-        >
-          <Settings2 size={16} />
-          Parametrização de Preços
-          {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-
-        {/* Painel Suspenso (Dropdown) de Configurações */}
-        {configOpen && (
-          <div className="absolute top-full right-8 mt-3 w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right">
-            <div className="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-base">Parâmetros Ativos do Sistema</h2>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  Edite os valores de referência. O sistema usará esses dados para calcular os meses irregulares.
-                </p>
+          {/* Painel Suspenso (Dropdown) de Configurações */}
+          {configOpen && (
+            <div className="absolute top-full right-0 mt-3 w-full min-w-[700px] max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right z-50">
+              <div className="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
+                <div>
+                  <h2 className="text-[#0b1e35] font-semibold text-base">Parâmetros Ativos do Sistema</h2>
+                  <p className="text-gray-400 text-xs mt-0.5">
+                    Edite os valores de referência. O sistema usará esses dados para calcular os meses irregulares.
+                  </p>
+                </div>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {/* Tabela A — Serviço */}
-              <div>
-                <RateTable
-                  title="Valor do Serviço (R$/mês)"
-                  icon={<Wrench size={14} />}
-                  color="text-[#1a5fa8]"
-                  rows={serviceRates}
-                  onAdd={addServiceRate}
-                  onRemove={removeServiceRate}
-                  onChange={changeServiceRate}
-                  placeholder="Ex: 31,96"
-                />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                {/* Tabela A — Serviço */}
+                <div>
+                  <RateTable
+                    title="Valor do Serviço (R$/mês)"
+                    icon={<Wrench size={14} />}
+                    color="text-[#1a5fa8]"
+                    rows={serviceRates}
+                    onAdd={addServiceRate}
+                    onRemove={removeServiceRate}
+                    onChange={changeServiceRate}
+                    placeholder="Ex: 31,96"
+                  />
+                </div>
+
+                {/* Tabela B — m³ (Faixas de Consumo Progressivas) */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Droplets size={14} className="text-[#1a5fa8]" />
+                    <h3 className="text-sm font-semibold text-[#0b1e35]">Valor do Metro Cúbico (R$/m³)</h3>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {m3Tiers.map((tier) => (
+                      <div key={tier.id} className="flex gap-2 items-center">
+                        <div className="flex-1 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-xs font-semibold text-gray-600 flex items-center">
+                          {tier.label}
+                        </div>
+                        <div className="flex-1 relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">R$</span>
+                          <input
+                            value={tier.value}
+                            onChange={(e) => changeM3Tier(tier.id, e.target.value)}
+                            placeholder="0,00"
+                            className="w-full pl-8 pr-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Tabela B — m³ */}
-              <div>
-                <RateTable
-                  title="Valor do Metro Cúbico (R$/m³)"
-                  icon={<Droplets size={14} />}
-                  color="text-[#1a5fa8]"
-                  rows={m3Rates}
-                  onAdd={addM3Rate}
-                  onRemove={removeM3Rate}
-                  onChange={changeM3Rate}
-                  placeholder="Ex: 5,22"
-                />
-              </div>
-            </div>
-
-            {/* Legenda colunas */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
-              {[0, 1].map((i) => (
-                <div key={i} className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+              {/* Legenda colunas */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
+                
+                {/* Legenda da Tabela A - Serviço (Mantém Início e Fim) */}
+                <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Início</span>
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Fim</span>
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
                   <span className="w-5" />
                 </div>
-              ))}
+
+                {/* Legenda da Tabela B - m³ (Nova legenda específica para as faixas) */}
+                <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Faixa de Consumo</span>
+                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
+                </div>
+                
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        
       </div>
 
       {/* A rolagem ocupa 100% da tela e cola na direita */}
