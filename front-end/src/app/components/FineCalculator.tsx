@@ -223,7 +223,7 @@ export function FineCalculator() {
 
   async function fetchCalculations() {
     try {
-      const response = await fetch("http://localhost:8001/api/calcular_multa", {
+      const response = await fetch("http://localhost:3000/api/calcular_multa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serviceRates, m3Rates, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })

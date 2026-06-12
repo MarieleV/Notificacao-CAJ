@@ -219,7 +219,7 @@ export function NotificationDrafter() {
     );
 
     try {
-      const response = await fetch("http://localhost:8001/api/gerar", {
+      const response = await fetch("http://localhost:3000/api/gerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -235,7 +235,7 @@ export function NotificationDrafter() {
       setStep("generated");
     } catch (error) {
       console.error(error);
-      alert("Falha ao gerar o documento. Verifique se o servidor Python está rodando na porta 8001.");
+      alert("Falha ao gerar o documento. Verifique se o servidor Python está rodando na porta 3000.");
     } finally {
       setLoading(false);
     }
@@ -249,7 +249,7 @@ export function NotificationDrafter() {
 
   const handleDownload = async () => {
     try {
-      const response = await fetch("http://localhost:8001/api/exportar_word", {
+      const response = await fetch("http://localhost:3000/api/exportar_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto_final: generatedText }),
