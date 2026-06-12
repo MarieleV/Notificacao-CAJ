@@ -4,13 +4,17 @@ import { FileText, Calculator, Droplets, ChevronRight, Building2 } from "lucide-
 export function Layout() {
   return (
     <div className="flex h-screen bg-[#0b1e35] overflow-hidden">
-      {/* Sidebar */}
+      {/* Sidebar #005197 cor do sidebar, trocar em bg-[#071527] */}
       <aside className="w-64 flex-shrink-0 bg-[#071527] border-r border-[#1a3a5c] flex flex-col">
         {/* Logo / Header */}
         <div className="p-6 border-b border-[#1a3a5c]">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 rounded-lg bg-[#1a5fa8] flex items-center justify-center">
-              <Droplets size={20} className="text-[#7ec8e3]" />
+              <img 
+              src="/logo.resolucao.boa.jpg" 
+              alt="Logo CAJ" 
+              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5"
+            />
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-tight">CAJ</p>
