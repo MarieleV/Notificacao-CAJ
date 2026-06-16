@@ -139,13 +139,18 @@ const fmtBRL = (val) => {
 };
 
 app.post("/api/calcular_multa", (req, res) => {
-  // ATENÇÃO: Agora recebemos m3Tiers no lugar de m3Rates
-  const { serviceRates = [], m3Tiers = [], rows = [], aiNumber, removalDate, postRegM3, postRegRef, billedM3 } = req.body;
+  const { 
+    serviceRates = [], m3Tiers = [], rows = [], sewageRows = [], k1Factor = "1,00",
+    aiNumber, removalDate, postRegM3, postRegRef, billedM3 
+  } = req.body;
 
+  const k1 = parseBRL(k1Factor) || 1.0;
   const calcRows = [];
   const validDates = [];
 
-  // 1. Processamento linha a linha
+  // ==========================================
+  // 1. Processamento da ÁGUA
+  // ==========================================
   for (const r of rows) {
     const targetDtNum = parseMY(r.monthYear);
     const consumption = parseBRL(r.consumption);
@@ -157,7 +162,6 @@ app.post("/api/calcular_multa", (req, res) => {
     let correctWater = null; 
 
     if (targetDtNum) {
-      // Busca taxa de serviço normalmente
       for (const s of serviceRates) {
         if (inRange(r.monthYear, s.startMonth, s.endMonth) && parseBRL(s.value) > 0) {
           sRateVal = parseBRL(s.value);
@@ -165,23 +169,15 @@ app.post("/api/calcular_multa", (req, res) => {
         }
       }
 
-      // CÁLCULO DA ÁGUA EM CASCATA (FAIXAS DE CONSUMO)
       if (m3Tiers.length > 0 && consumption > 0) {
         correctWater = 0;
         let remainingConsumption = consumption;
-        
-        // Garante que as faixas estão na ordem certa (0 a 10, 11 a 15...)
         const sortedTiers = [...m3Tiers].sort((a, b) => a.min - b.min);
 
         for (const tier of sortedTiers) {
           if (remainingConsumption <= 0) break;
-
-          // Descobre quantos m³ cabem nesta faixa específica
           const capacity = tier.max === "Infinity" ? Infinity : (tier.max - tier.min + 1);
-          
-          // O volume faturado nesta faixa é o que sobrou do consumo OU o limite da faixa
           const volumeInTier = Math.min(remainingConsumption, capacity);
-          
           correctWater += volumeInTier * parseBRL(tier.value);
           remainingConsumption -= volumeInTier;
         }
@@ -191,36 +187,64 @@ app.post("/api/calcular_multa", (req, res) => {
     const correctService = sRateVal;
     const totalCorrect = (correctWater !== null && correctService !== null) ? correctWater + correctService : null;
     const diff = totalCorrect !== null ? totalCorrect - tCharged : null;
-
-    // Erro se não achou data, taxa de serviço, ou se as faixas vieram vazias
     const hasError = !targetDtNum || sRateVal === null || m3Tiers.length === 0;
 
     if (!hasError) validDates.push(r.monthYear);
 
     calcRows.push({
-      id: r.id,
-      monthYear: r.monthYear,
-      hasError,
-      consumption,
-      correctWater,
-      correctService,
-      totalCorrect,
-      chargedWater: cWater,
-      chargedService: cService,
-      totalCharged: tCharged,
-      diff,
-      m3Rate: "Faixas" // Retorna texto genérico pois são vários valores
+      id: r.id, monthYear: r.monthYear, hasError, consumption, correctWater, correctService,
+      totalCorrect, chargedWater: cWater, chargedService: cService, totalCharged: tCharged, diff
     });
   }
 
-  // 2. Totalizadores (KPIs)
+  // ==========================================
+  // 2. Processamento do ESGOTO (80% da Água * K1)
+  // ==========================================
+  const calcSewageRows = [];
+  for (const sr of sewageRows) {
+    // Procura o mês correspondente nos resultados da água
+    const waterMatch = calcRows.find(wr => wr.monthYear === sr.monthYear && !wr.hasError);
+    
+    const cSewage = parseBRL(sr.chargedSewage);
+    const cService = parseBRL(sr.chargedService);
+    const tCharged = cSewage + cService;
+
+    let totalCorrect = null;
+    let hasError = true;
+
+    // Se achou a água calculada perfeitamente, o esgoto é 80% do valor total correto da água * K1
+    if (waterMatch && waterMatch.totalCorrect !== null) {
+      totalCorrect = waterMatch.totalCorrect * 0.8 * k1;
+      hasError = false;
+    }
+
+    const diff = totalCorrect !== null ? totalCorrect - tCharged : null;
+
+    calcSewageRows.push({
+      id: sr.id, monthYear: sr.monthYear, hasError,
+      chargedSewage: cSewage, chargedService: cService,
+      totalCharged: tCharged, totalCorrect, diff
+    });
+  }
+
+  // ==========================================
+  // 3. Totalizadores (KPIs)
+  // ==========================================
   const validRows = calcRows.filter((cr) => !cr.hasError && cr.totalCorrect !== null);
   const totalM3 = validRows.reduce((acc, cr) => acc + cr.consumption, 0);
   const grandCorrect = validRows.reduce((acc, cr) => acc + cr.totalCorrect, 0);
   const grandCharged = validRows.reduce((acc, cr) => acc + cr.totalCharged, 0);
   const grandDiff = grandCorrect - grandCharged;
 
-  // 3. Geração do Texto de Relatório
+  // Totais de Esgoto
+  const validSewageRows = calcSewageRows.filter((sr) => !sr.hasError && sr.totalCorrect !== null);
+  const grandSewageCorrect = validSewageRows.reduce((acc, sr) => acc + sr.totalCorrect, 0);
+  const grandSewageCharged = validSewageRows.reduce((acc, sr) => acc + sr.totalCharged, 0);
+  const grandSewageDiff = grandSewageCorrect - grandSewageCharged;
+
+  // ==========================================
+  // 4. Geração do Texto de Relatório
+  // ==========================================
   validDates.sort((a, b) => parseMY(a) - parseMY(b));
   const numMonths = validRows.length;
   const firstMonth = validDates[0] || "—";
@@ -233,7 +257,10 @@ app.post("/api/calcular_multa", (req, res) => {
   const billedVol = (billedM3 || "").trim() ? billedM3.trim() : "[m³]";
   const mesStr = numMonths === 1 ? "mês" : "meses";
 
-  const reportText = `Cálculo do consumo estimado de água ref. ${aiRef}.
+  const absoluteTotalDiff = grandDiff + grandSewageDiff;
+
+  // TEXTO 1: LAUDO DE ÁGUA
+  const waterReportText = `Cálculo do consumo estimado de água ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
 ${numMonths} ${mesStr}, com consumo impactado pela violação: ${firstMonth} até ${lastMonth}.
 Maior consumo mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
@@ -243,10 +270,29 @@ Valor a ser lançado ${fmtBRL(grandDiff)}.
 Volume faturado no mês impactado pela violação: ${billedVol} m³.
 Volume total recuperado: ${totalM3} m³.`;
 
+  // TEXTO 2: LAUDO DE ESGOTO (Molde exato solicitado)
+  let sewageReportText = "";
+  if (validSewageRows.length > 0) {
+    sewageReportText = `Cálculo do consumo estimado de esgoto ref. ${aiRef}.
+Data da retirada da irregularidade: ${dateLine}.
+${numMonths} ${mesStr}, anterior à retirada, com consumo irregular ${firstMonth} até ${lastMonth}.
+Maior consumo mês cheio sem cortes de água da unidade antes da regularização: ${postM3} m³ REF. ${postRef}.
+Valor total do consumo estimado no período: ${fmtBRL(grandSewageCorrect)}.
+Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandSewageCharged)}.
+Valor a ser lançado ${fmtBRL(grandSewageDiff)}.
+Volume total recuperado: ${totalM3} m³.`;
+  }
+
+  // ENVIO DA RESPOSTA ATUALIZADA
   res.json({
     rows: calcRows,
-    totals: { totalM3, grandCorrect, grandCharged, grandDiff, validCount: numMonths },
-    reportText,
+    sewageRows: calcSewageRows,
+    totals: { 
+      totalM3, grandCorrect, grandCharged, grandDiff, validCount: numMonths,
+      grandSewageCorrect, grandSewageCharged, grandSewageDiff, absoluteTotalDiff
+    },
+    waterReportText,     // Envia o texto da Água
+    sewageReportText     // Envia o texto do Esgoto
   });
 });
 

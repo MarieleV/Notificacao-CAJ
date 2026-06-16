@@ -14,6 +14,7 @@ type IrregularRow = {
   consumption: string;
   chargedWater: string;
   chargedService: string;
+  chargedSewage: string;         
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -36,14 +37,6 @@ function parseMonthYear(s: string): Date | null {
   const year = parseInt(m[2], 10);
   if (month < 1 || month > 12) return null;
   return new Date(year, month - 1, 1);
-}
-
-function monthInRange(target: Date, start: string, end: string): boolean {
-  const s = parseMonthYear(start);
-  const e = parseMonthYear(end);
-  if (!s) return false;
-  if (e) return target >= s && target <= e;
-  return target >= s;
 }
 
 function labelMonth(mmyyyy: string): string {
@@ -70,12 +63,94 @@ function maskDate(raw: string): string {
   return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
 }
 
-function sortedValidMonths(rows: IrregularRow[]): Date[] {
-  return rows
-    .map((r) => parseMonthYear(r.monthYear))
-    .filter((d): d is Date => d !== null)
-    .sort((a, b) => a.getTime() - b.getTime());
-}
+// ─── Predefinições Tarifárias ────────────────────────────────────────────────
+
+const TARIFF_STRUCTURES: Record<string, { serviceRate: string, tiers: any[] }> = {
+  "Residencial": {
+    serviceRate: "34,93",
+    tiers: [
+      { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
+      { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
+      { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+      { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+      { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+    ]
+  },
+  "Pública": {
+    serviceRate: "58,20",
+    tiers: [
+      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+    ]
+  },
+  "Residencial Tarifa Social": {
+    serviceRate: "10,48",
+    tiers: [
+      { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,45" },
+      { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "4,95" },
+      { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+      { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+      { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+    ]
+  },
+  "Residencial Social Especial": {
+    serviceRate: "10,48",
+    tiers: [
+      { id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,30" },
+      { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+      { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+      { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+    ]
+  },
+  "Comercial": {
+    serviceRate: "58,20",
+    tiers: [
+      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+    ]
+  },
+  "Comercial Entidade Beneficiente": {
+    serviceRate: "29,11",
+    tiers: [
+      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,00" },
+      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,03" },
+      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "6,23" },
+      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "6,36" },
+      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,44" },
+      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,50" }
+    ]
+  },
+  "Industrial": {
+    serviceRate: "58,20",
+    tiers: [
+      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+    ]
+  },
+  "Industrial Especial": {
+    serviceRate: "43,72",
+    tiers: [
+      { id: 1, min: 0, max: 5000, label: "Até 5.000 m³", value: "13,00" },
+      { id: 2, min: 5001, max: 10000, label: "5.001 a 10.000 m³", value: "10,45" },
+      { id: 3, min: 10001, max: 30000, label: "10.001 a 30.000 m³", value: "9,45" },
+      { id: 4, min: 30001, max: 60000, label: "30.001 a 60.000 m³", value: "8,35" },
+      { id: 5, min: 60001, max: 120000, label: "60.001 a 120.000 m³", value: "7,91" },
+      { id: 6, min: 120001, max: "Infinity", label: "Acima de 120.000 m³", value: "7,10" }
+    ]
+  }
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -92,7 +167,6 @@ function RateTable({
   placeholder: string;
 }) {
   return (
-    // corpo 
     <div className="flex-1 min-w-0">
       <div className={`flex items-center gap-2 mb-3`}>
         <span className={`${color}`}>{icon}</span>
@@ -151,52 +225,63 @@ function RateTable({
 export function FineCalculator() {
   const [configOpen, setConfigOpen] = useState(false);
   
-  // 1. Criamos a referência
+  // 1. Click Outside Ref
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // 2. Criamos o "ouvinte" que detecta cliques fora
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      // Se o clique foi validado e NÃO aconteceu dentro do elemento referenciado, fechamos o painel
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         setConfigOpen(false);
       }
     }
-
-    // Só adiciona o ouvinte se o painel estiver aberto (para economizar memória)
     if (configOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    
-    // Limpeza de segurança quando o componente desmontar ou o painel fechar
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [configOpen]);
+
+  // Estados de Configuração e Tarifas
+  const [selectedTariff, setSelectedTariff] = useState("Residencial");
   const [serviceRates, setServiceRates] = useState<RateEntry[]>([
-    { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: "31,96" },
+    { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: TARIFF_STRUCTURES["Residencial"].serviceRate },
   ]);
-  const [m3Tiers, setM3Tiers] = useState([
-    { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
-    { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
-    { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-    { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-    { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-  ]);
+  const [m3Tiers, setM3Tiers] = useState(TARIFF_STRUCTURES["Residencial"].tiers);
+  const [k1Factor, setK1Factor] = useState("1,00");
+
+  // Estado das Linhas (Água + Esgoto integrados)
   const [rows, setRows] = useState<IrregularRow[]>([
-    { id: newId(), monthYear: "01/2025", consumption: "20", chargedWater: "13,60", chargedService: "31,96" },
+    { 
+      id: newId(), monthYear: "01/2025", consumption: "20", 
+      chargedWater: "13,60", chargedService: "31,96", 
+      chargedSewage: ""
+    },
   ]);
 
-  // Bloco 5 — campos complementares do texto
+  // Campos complementares do texto
   const [aiNumber, setAiNumber] = useState("");
   const [removalDate, setRemovalDate] = useState("");
   const [postRegM3, setPostRegM3] = useState("");
   const [postRegRef, setPostRegRef] = useState("");
   const [billedM3, setBilledM3] = useState("");
-  const [reportText, setReportText] = useState("");
-  const [copied, setCopied] = useState(false);
+  
+  const [waterReportText, setWaterReportText] = useState("");
+  const [sewageReportText, setSewageReportText] = useState("");
+  const [copiedWater, setCopiedWater] = useState(false);
+  const [copiedSewage, setCopiedSewage] = useState(false);
 
-  // ─── Rate table handlers ──────────────────────────────────────────────────
+  // ─── Handlers de Configuração ─────────────────────────────────────────────
+
+  function handleTariffChange(tariffName: string) {
+    setSelectedTariff(tariffName);
+    const preset = TARIFF_STRUCTURES[tariffName];
+    
+    if (preset) {
+      setServiceRates(prev => prev.map(r => ({ ...r, value: preset.serviceRate })));
+      setM3Tiers(preset.tiers);
+    }
+  }
 
   function addServiceRate() {
     setServiceRates((p) => [...p, { id: newId(), startMonth: "", endMonth: "", value: "" }]);
@@ -207,50 +292,66 @@ export function FineCalculator() {
   function changeServiceRate(id: number, field: keyof RateEntry, val: string) {
     setServiceRates((p) => p.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
   }
-
   function changeM3Tier(id: number, val: string) {
     setM3Tiers((p) =>
       p.map((tier) => (tier.id === id ? { ...tier, value: maskBRL(val) } : tier))
     );
   }
 
-  // ─── Irregular rows handlers ──────────────────────────────────────────────
+  // ─── Handlers de Linhas Irregulares ───────────────────────────────────────
 
   function addRow() {
-    setRows((p) => [...p, { id: newId(), monthYear: "", consumption: "", chargedWater: "", chargedService: "" }]);
+    setRows((p) => [...p, { 
+      id: newId(), monthYear: "", consumption: "", 
+      chargedWater: "", chargedService: "",
+      chargedSewage: ""
+    }]);
   }
+
   function removeRow(id: number) {
     setRows((p) => p.filter((r) => r.id !== id));
   }
+
   function changeRow(id: number, field: keyof IrregularRow, val: string) {
     setRows((p) =>
       p.map((r) => {
         if (r.id !== id) return r;
         if (field === "monthYear") return { ...r, monthYear: maskMonthYear(val) };
         if (field === "consumption") return { ...r, consumption: val.replace(/[^0-9,]/g, "") };
-        if (field === "chargedWater") return { ...r, chargedWater: maskBRL(val) };
-        if (field === "chargedService") return { ...r, chargedService: maskBRL(val) };
+        
+        if (["chargedWater", "chargedService", "chargedSewage"].includes(field)) {
+          return { ...r, [field]: maskBRL(val) };
+        }
         return r;
       })
     );
   }
 
-// ─── Integração com Back-end (API Python) ─────────────────────────────────
+  // ─── Integração com Back-end (API Python/Node) ────────────────────────────
   const [apiData, setApiData] = useState<any>(null);
 
-  // Debounce: Chama a API silenciosamente 600ms após o usuário parar de digitar
   useEffect(() => {
     const delay = setTimeout(() => fetchCalculations(), 600);
     return () => clearTimeout(delay);
-  }, [serviceRates, m3Tiers, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
+  }, [serviceRates, m3Tiers, rows, k1Factor, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
 
   async function fetchCalculations() {
     try {
+      const formattedSewageRows = rows.map(r => ({
+        id: r.id,
+        monthYear: r.monthYear,
+        chargedSewage: r.chargedSewage,
+        chargedService: "0" 
+      }));
+
       const response = await fetch("https://notificacao-caj.vercel.app/api/calcular_multa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Aqui enviamos m3Tiers ao invés de m3Rates
-        body: JSON.stringify({ serviceRates, m3Tiers, rows, aiNumber, removalDate, postRegM3, postRegRef, billedM3 })
+        body: JSON.stringify({ 
+          serviceRates, m3Tiers, rows, 
+          sewageRows: formattedSewageRows, 
+          k1Factor, aiNumber, removalDate, postRegM3, postRegRef, billedM3 
+        })
       });
       const data = await response.json();
       setApiData(data);
@@ -259,51 +360,51 @@ export function FineCalculator() {
     }
   }
 
-  // ─── Ponte Segura (Mata o erro de 'undefined' pela raiz) ──────────────────
-  // Mapeamos a partir do "rows" local para garantir que calcRows[idx] SEMPRE exista
+  // ─── Pontes Seguras (Mata o erro de 'undefined') ──────────────────────────
+  
   const calcRows = rows.map((row) => {
     const apiCalc = apiData?.rows?.find((r: any) => r.id === row.id);
+    if (apiCalc) return { ...apiCalc, row };
     
-    if (apiCalc) {
-      return { ...apiCalc, row: row }; // Junta os dados calculados com o identificador local
-    }
-    
-    // Formato de segurança que mantém a tela em pé enquanto a API pensa
     return {
-      row: row,
-      hasError: false,
-      consumption: 0,
-      correctWater: null,
-      correctService: null,
-      totalCorrect: null,
-      chargedWater: 0,
-      chargedService: 0,
-      totalCharged: 0,
-      diff: null,
-      m3Rate: null
+      row, hasError: false, consumption: 0, correctWater: null, correctService: null,
+      totalCorrect: null, chargedWater: 0, chargedService: 0, totalCharged: 0, diff: null, m3Rate: null
     };
   });
 
-  const validRows = calcRows.filter((r: any) => !r.hasError && r.totalCorrect !== null);
+  const calcSewageRows = rows.map((row) => {
+    const apiCalc = apiData?.sewageRows?.find((r: any) => r.id === row.id);
+    if (apiCalc) return { ...apiCalc, row };
+    
+    return {
+      row, hasError: false, totalCorrect: null,
+      chargedSewage: 0, chargedService: 0, totalCharged: 0, diff: null
+    };
+  });
 
+  // ─── KPIs e Totais ────────────────────────────────────────────────────────
+  const validRows = calcRows.filter((r: any) => !r.hasError && r.totalCorrect !== null);
   const totalM3 = apiData?.totals?.totalM3 || 0;
   const grandCorrect = apiData?.totals?.grandCorrect || 0;
   const grandCharged = apiData?.totals?.grandCharged || 0;
   const grandDiff = apiData?.totals?.grandDiff || 0;
 
-  // ─── Text generation ─────────────────────────────────────────────────────
+  // ─── Geração de Texto ─────────────────────────────────────────────────────
   function handleGenerateText() {
-    if (apiData?.reportText) {
-      setReportText(apiData.reportText);
+    if (apiData?.waterReportText) setWaterReportText(apiData.waterReportText);
+    
+    if (apiData?.sewageReportText) {
+      setSewageReportText(apiData.sewageReportText);
+    } else {
+      setSewageReportText(""); 
     }
   }
 
-
-  function handleCopy() {
-    if (!reportText) return;
+  function handleCopy(text: string, setCopiedState: React.Dispatch<React.SetStateAction<boolean>>) {
+    if (!text) return;
     try {
       const el = document.createElement("textarea");
-      el.value = reportText;
+      el.value = text;
       el.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
       document.body.appendChild(el);
       el.focus();
@@ -311,8 +412,8 @@ export function FineCalculator() {
       document.execCommand("copy");
       document.body.removeChild(el);
     } catch {}
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedState(true);
+    setTimeout(() => setCopiedState(false), 2000);
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -331,10 +432,8 @@ export function FineCalculator() {
           </p>
         </div>
         
-        {/* WRAPPER DO CLICK OUTSIDE: Envolve o botão e o painel */}
+        {/* WRAPPER DO CLICK OUTSIDE */}
         <div ref={panelRef} className="relative">
-          
-          {/* Botão que abre as Configurações */}
           <button
             onClick={() => setConfigOpen((v) => !v)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
@@ -351,6 +450,7 @@ export function FineCalculator() {
           {/* Painel Suspenso (Dropdown) de Configurações */}
           {configOpen && (
             <div className="absolute top-full right-0 mt-3 w-full min-w-[700px] max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right z-50">
+              
               <div className="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-base">Parâmetros Ativos do Sistema</h2>
@@ -360,6 +460,35 @@ export function FineCalculator() {
                 </div>
               </div>
               
+              {/* SELETOR DE ESTRUTURA TARIFÁRIA E FATOR K1 */}
+              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7] grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
+                    Categoria Tarifária
+                  </label>
+                  <select
+                    value={selectedTariff}
+                    onChange={(e) => handleTariffChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer shadow-sm transition-all"
+                  >
+                    {Object.keys(TARIFF_STRUCTURES).map((key) => (
+                      <option key={key} value={key}>{key}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
+                    Fator K1 (Esgoto)
+                  </label>
+                  <input
+                    value={k1Factor}
+                    onChange={(e) => setK1Factor(maskBRL(e.target.value))}
+                    placeholder="Ex: 1,00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white transition-all"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Tabela A — Serviço */}
                 <div>
@@ -375,7 +504,7 @@ export function FineCalculator() {
                   />
                 </div>
 
-                {/* Tabela B — m³ (Faixas de Consumo Progressivas) */}
+                {/* Tabela B — m³ (Faixas de Consumo) */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Droplets size={14} className="text-[#1a5fa8]" />
@@ -405,8 +534,6 @@ export function FineCalculator() {
 
               {/* Legenda colunas */}
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
-                
-                {/* Legenda da Tabela A - Serviço (Mantém Início e Fim) */}
                 <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Início</span>
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Fim</span>
@@ -414,451 +541,523 @@ export function FineCalculator() {
                   <span className="w-5" />
                 </div>
 
-                {/* Legenda da Tabela B - m³ (Nova legenda específica para as faixas) */}
                 <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Faixa de Consumo</span>
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
                 </div>
-                
               </div>
             </div>
           )}
         </div>
-
-        
       </div>
 
-      {/* A rolagem ocupa 100% da tela e cola na direita */}
+      {/* A rolagem ocupa 100% da tela */}
       <div className="flex-1 overflow-auto">
-        {/* O conteúdo fica centralizado e mais largo (1400px) com mais espaço entre os blocos (space-y-8) */}
         <div className="p-8 max-w-[1400px] mx-auto space-y-8 w-full">
 
-        {/* ── Bloco 2: Lançamento ───────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Plus size={18} className="text-[#1a5fa8]" />
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Insira os dados de cada mês com consumo irregular</p>
+          {/* ── Bloco 2A: Lançamento Água ───────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Plus size={18} className="text-[#1a5fa8]" />
+                <div>
+                  <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Água</h2>
+                  <p className="text-gray-400 text-xs mt-0.5">Insira os dados de cada mês com consumo irregular</p>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={addRow}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] text-white rounded-lg text-xs font-medium transition-all shadow"
-            >
-              <Plus size={12} /> Adicionar mês
-            </button>
-          </div>
-
-          <div className="p-4">
-            {/* Header */}
-            <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 mb-2 px-1">
-              {["Mês/Ano", "Consumo Regular (m³)", "Água Cobrada Errada (R$)", "Serviço Cobrado Errado (R$)", ""].map((h, i) => (
-                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
-              ))}
+              <button
+                onClick={addRow}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] text-white rounded-lg text-xs font-medium transition-all shadow"
+              >
+                <Plus size={12} /> Adicionar mês
+              </button>
             </div>
 
-            <div className="space-y-2">
-              {rows.map((row, idx) => {
-                const calc = calcRows[idx];
-                const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
-                const noRate = row.monthYear.length === 7 && parseMonthYear(row.monthYear) && calc.hasError;
+            <div className="p-4">
+              <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 mb-2 px-1">
+                {["Mês/Ano", "Consumo Regular (m³)", "Água Cobrada Errada (R$)", "Serviço Cobrado Errado (R$)", ""].map((h, i) => (
+                  <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
+                ))}
+              </div>
 
-                return (
-                  <div key={row.id}>
-                    <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 items-center">
-                      <div>
+              <div className="space-y-2">
+                {rows.map((row, idx) => {
+                  const calc = calcRows[idx];
+                  const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
+                  const noRate = row.monthYear.length === 7 && parseMonthYear(row.monthYear) && calc.hasError;
+
+                  return (
+                    <div key={row.id}>
+                      <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 items-center">
                         <input
                           value={row.monthYear}
                           onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
                           placeholder="MM/AAAA"
                           maxLength={7}
                           className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all ${
-                            dateError
-                              ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
-                              : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
+                            dateError ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
                           }`}
                         />
-                      </div>
-                      <div>
                         <input
                           value={row.consumption}
                           onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
                           placeholder="Ex: 20"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-                      </div>
-                      <div>
                         <input
                           value={row.chargedWater}
                           onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
                           placeholder="Ex: 13,60"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-                      </div>
-                      <div>
                         <input
                           value={row.chargedService}
                           onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
                           placeholder="Ex: 31,96"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
+                        <button onClick={() => removeRow(row.id)} className="text-gray-300 hover:text-red-400 transition-colors justify-self-center">
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => removeRow(row.id)}
-                        className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {noRate && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
+                          <AlertCircle size={10} /> Nenhum preço cadastrado para este período.
+                        </div>
+                      )}
+                      {dateError && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
+                          <AlertCircle size={10} /> Formato inválido. Use MM/AAAA (ex: 01/2025).
+                        </div>
+                      )}
                     </div>
-                    {noRate && (
-                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
-                        <AlertCircle size={10} />
-                        Nenhum preço cadastrado para este período.
-                      </div>
-                    )}
-                    {dateError && (
-                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
-                        <AlertCircle size={10} />
-                        Formato inválido. Use MM/AAAA (ex: 01/2025).
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {rows.length === 0 && (
+                <div className="py-8 text-center text-gray-300 text-sm">
+                  Nenhum mês adicionado. Clique em "Adicionar mês" para começar.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Bloco 2B: Lançamento Esgoto ───────────────────────────────────── */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <Plus size={18} className="text-[#4a7fa5]" />
+              <div>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
+                <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="grid grid-cols-[140px_200px] gap-4 mb-2 px-1">
+              {["Mês/Ano (Automático)", "Esgoto Cobrado Errado (R$)"].map((h, i) => (
+                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
+              ))}
             </div>
 
+            <div className="space-y-2">
+              {rows.map((row) => (
+                <div key={row.id}>
+                  <div className="grid grid-cols-[140px_200px] gap-4 items-center">
+                    <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
+                      {row.monthYear || "Mês não preenchido"}
+                    </div>
+                    
+                    <input
+                      value={row.chargedSewage}
+                      onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
+                      placeholder="Ex: 10,88"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            
             {rows.length === 0 && (
-              <div className="py-8 text-center text-gray-300 text-sm">
-                Nenhum mês adicionado. Clique em "Adicionar mês" para começar.
+              <div className="py-6 text-center text-gray-300 text-sm">
+                Adicione meses na tabela de Água primeiro.
               </div>
             )}
+
+            {/* === NOVO: Mensagem informativa do Esgoto === */}
+            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#4a7fa5]">
+                A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong> (Fator de Carga Poluidora para lançamentos na rede pública de esgotos).
+              </p>
+            </div>
+            {/* ============================================ */}
+            
           </div>
         </div>
 
-        {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <Calculator size={18} className="text-[#1a5fa8]" />
-            <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Resultado Detalhado por Mês</h2>
-              <p className="text-gray-400 text-xs mt-0.5">Gerado automaticamente pelo motor de cálculo</p>
-            </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                  <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
-                  </tr>
-                </thead>
-              <tbody className="divide-y divide-gray-50">
-                {calcRows.map((c) => {
-                  if (c.hasError) {
+          {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+              <Calculator size={18} className="text-[#1a5fa8]" />
+              <div>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Resultado Detalhado por Mês</h2>
+                <p className="text-gray-400 text-xs mt-0.5">Gerado automaticamente pelo motor de cálculo</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                    <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
+                      <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
+                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
+                    </tr>
+                  </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {calcRows.map((c) => {
+                    if (c.hasError) {
+                      return (
+                        <tr key={c.row.id} className="bg-amber-50/40">
+                          <td className="px-3 py-3 text-gray-500 text-xs italic">
+                            {c.row.monthYear || "—"}
+                          </td>
+                          <td colSpan={8} className="px-3 py-3 text-xs text-amber-600 italic">
+                            <div className="flex items-center gap-1.5">
+                              <AlertCircle size={11} />
+                              Aguardando dados completos ou período não encontrado na Parametrização de Preços.
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const positive = (c.diff ?? 0) >= 0;
                     return (
-                      <tr key={c.row.id} className="bg-amber-50/40">
-                        <td className="px-3 py-3 text-gray-500 text-xs italic">
-                          {c.row.monthYear || "—"}
+                      <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
+                          {labelMonth(c.row.monthYear)}
                         </td>
-                        <td colSpan={8} className="px-3 py-3 text-xs text-amber-600 italic">
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle size={11} />
-                            Aguardando dados completos ou período não encontrado na Parametrização de Preços.
-                          </div>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                          {c.consumption} m³
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
+                          {c.correctWater !== null ? fmtBRL(c.correctWater) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
+                          {c.correctService !== null ? fmtBRL(c.correctService) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
+                          {c.totalCorrect !== null ? fmtBRL(c.totalCorrect) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                          {fmtBRL(c.chargedWater)}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                          {fmtBRL(c.chargedService)}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
+                          {fmtBRL(c.totalCharged)}
+                        </td>
+                        <td className={`px-3 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                          {c.diff !== null ? fmtBRL(c.diff) : "—"}
                         </td>
                       </tr>
                     );
-                  }
-                  const positive = (c.diff ?? 0) >= 0;
-                  return (
-                    <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
-                        {labelMonth(c.row.monthYear)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
-                        {c.consumption} m³
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
-                        {c.correctWater !== null ? fmtBRL(c.correctWater) : "—"}
-                        {c.m3Rate !== null && (
-                          <div className="text-[10px] text-gray-400 font-normal">{c.consumption}m³ × {fmtBRL(c.m3Rate)}</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] font-medium bg-[#eef6ff]/40">
-                        {c.correctService !== null ? fmtBRL(c.correctService) : "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
-                        {c.totalCorrect !== null ? fmtBRL(c.totalCorrect) : "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
-                        {fmtBRL(c.chargedWater)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
-                        {fmtBRL(c.chargedService)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
-                        {fmtBRL(c.totalCharged)}
-                      </td>
-                      <td className={`px-3 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
-                        {c.diff !== null ? fmtBRL(c.diff) : "—"}
+                  })}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-10 text-center text-gray-300 text-sm">
+                        Nenhum dado para exibir.
                       </td>
                     </tr>
-                  );
-                })}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-gray-300 text-sm">
-                      Nenhum dado para exibir.
-                    </td>
-                  </tr>
+                  )}
+                </tbody>
+                {validRows.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-200 bg-[#f8fafe]">
+                      <td className="px-3 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{totalM3} m³</td>
+                      <td colSpan={2} className="bg-[#eef6ff]/60"></td>
+                      <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(grandCorrect)}</td>
+                      <td colSpan={2} className="bg-red-50/40"></td>
+                      <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(grandCharged)}</td>
+                      <td className={`px-3 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                        {fmtBRL(grandDiff)}
+                      </td>
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-              {validRows.length > 0 && (
-                <tfoot>
-                  <tr className="border-t-2 border-gray-200 bg-[#f8fafe]">
-                    <td className="px-3 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{totalM3} m³</td>
-                    <td colSpan={2} className="bg-[#eef6ff]/60"></td>
-                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(grandCorrect)}</td>
-                    <td colSpan={2} className="bg-red-50/40"></td>
-                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(grandCharged)}</td>
-                    <td className={`px-3 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                      {fmtBRL(grandDiff)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </div>
-
-        {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <ClipboardList size={18} className="text-[#1a5fa8]" />
-            <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo (Correspondente aos Meses de Irregularidade)</h2>
-              <p className="text-gray-400 text-xs mt-0.5">Base para lançamento financeiro ou notificação extrajudicial</p>
+              </table>
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total m³ */}
-              <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Droplets size={14} className="text-[#1a5fa8]" />
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de m³</p>
-                </div>
-                <p className="text-2xl font-bold text-[#0b1e35] tabular-nums">{totalM3}</p>
-                <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
+          {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+              <ClipboardList size={18} className="text-[#1a5fa8]" />
+              <div>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo (Correspondente aos Meses de Irregularidade)</h2>
+                <p className="text-gray-400 text-xs mt-0.5">Base para lançamento financeiro ou notificação extrajudicial</p>
               </div>
+            </div>
 
-              {/* Valor correto */}
-              <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calculator size={14} className="text-[#1a5fa8]" />
-                  <p className="text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider">Valor Correto</p>
+            <div className="p-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total m³ */}
+                <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Droplets size={14} className="text-[#1a5fa8]" />
+                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de m³</p>
+                  </div>
+                  <p className="text-2xl font-bold text-[#0b1e35] tabular-nums">{totalM3}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
                 </div>
-                <p className="text-2xl font-bold text-[#1a5fa8] tabular-nums">{fmtBRL(grandCorrect)}</p>
-                <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
-              </div>
 
-              {/* Valor cobrado errado */}
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle size={14} className="text-red-500" />
-                  <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Cobrado (Errado)</p>
+                {/* Valor correto */}
+                <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calculator size={14} className="text-[#1a5fa8]" />
+                    <p className="text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider">Valor Correto</p>
+                  </div>
+                  <p className="text-2xl font-bold text-[#1a5fa8] tabular-nums">{fmtBRL(grandCorrect)}</p>
+                  <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
                 </div>
-                <p className="text-2xl font-bold text-red-600 tabular-nums">{fmtBRL(grandCharged)}</p>
-                <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
-              </div>
 
-              {/* Diferença */}
-              <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${grandDiff >= 0 ? "text-emerald-700" : "text-red-500"}`}>
-                    Diferença a Lançar
+                {/* Valor cobrado errado */}
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle size={14} className="text-red-500" />
+                    <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Cobrado (Errado)</p>
+                  </div>
+                  <p className="text-2xl font-bold text-red-600 tabular-nums">{fmtBRL(grandCharged)}</p>
+                  <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
+                </div>
+
+                {/* Diferença */}
+                <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${grandDiff >= 0 ? "text-emerald-700" : "text-red-500"}`}>
+                      Diferença a Lançar
+                    </p>
+                  </div>
+                  <p className={`text-2xl font-bold tabular-nums ${grandDiff >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                    {fmtBRL(Math.abs(grandDiff))}
+                  </p>
+                  <p className={`text-[10px] mt-1 ${grandDiff >= 0 ? "text-emerald-600" : "text-red-400"}`}>
+                    {grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"}
                   </p>
                 </div>
-                <p className={`text-2xl font-bold tabular-nums ${grandDiff >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                  {fmtBRL(Math.abs(grandDiff))}
-                </p>
-                <p className={`text-[10px] mt-1 ${grandDiff >= 0 ? "text-emerald-600" : "text-red-400"}`}>
-                  {grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"}
-                </p>
               </div>
-            </div>
 
-            {validRows.length > 0 && (
-              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-[#4a7fa5]">
-                  <strong>Resumo:</strong> Nos {validRows.length} meses de irregularidade apurados,
-                  o valor correto total seria de <strong>{fmtBRL(grandCorrect)}</strong>,
-                  porém foi cobrado apenas <strong>{fmtBRL(grandCharged)}</strong>.
-                  A diferença de <strong>{fmtBRL(Math.abs(grandDiff))}</strong> representa o ajuste financeiro a ser lançado
-                  referente ao consumo irregular de <strong>{totalM3} m³</strong>.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <FileText size={18} className="text-[#1a5fa8]" />
-            <div>
-              <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
-              <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos — editável e copiável</p>
+              {validRows.length > 0 && (
+                <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+                  <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-[#4a7fa5]">
+                    <strong>Resumo:</strong> Nos {validRows.length} meses de irregularidade apurados,
+                    o valor correto total seria de <strong>{fmtBRL(grandCorrect)}</strong>,
+                    porém foi cobrado apenas <strong>{fmtBRL(grandCharged)}</strong>.
+                    A diferença de <strong>{fmtBRL(Math.abs(grandDiff))}</strong> representa o ajuste financeiro a ser lançado
+                    referente ao consumo irregular de <strong>{totalM3} m³</strong>.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="p-6 space-y-5">
-            {/* Campos complementares */}
-            <div>
-              <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para o texto</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Número do AI
-                  </label>
-                  <input
-                    value={aiNumber}
-                    onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 14036735"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Data de Retirada da Irregularidade
-                  </label>
-                  <input
-                    value={removalDate}
-                    onChange={(e) => setRemovalDate(maskDate(e.target.value))}
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Maior Consumo Pós-Regularização (m³)
-                  </label>
-                  <input
-                    value={postRegM3}
-                    onChange={(e) => setPostRegM3(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 49"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Mês de Referência Pós-Reg. (MM/AAAA)
-                  </label>
-                  <input
-                    value={postRegRef}
-                    onChange={(e) => setPostRegRef(maskMonthYear(e.target.value))}
-                    placeholder="Ex: 03/2026"
-                    maxLength={7}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                  />
-                </div>
+          {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+              <FileText size={18} className="text-[#1a5fa8]" />
+              <div>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
+                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos — editável e copiável</p>
               </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Volume Faturado no Mês Impactado (m³)
-                  </label>
-                  <input
-                    value={billedM3}
-                    onChange={(e) => setBilledM3(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 20"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                  />
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Campos complementares */}
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para o texto</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Número do AI
+                    </label>
+                    <input
+                      value={aiNumber}
+                      onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Ex: 14036735"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Data de Retirada da Irregularidade
+                    </label>
+                    <input
+                      value={removalDate}
+                      onChange={(e) => setRemovalDate(maskDate(e.target.value))}
+                      placeholder="DD/MM/AAAA"
+                      maxLength={10}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Maior Consumo Pós-Reg. (m³)
+                    </label>
+                    <input
+                      value={postRegM3}
+                      onChange={(e) => setPostRegM3(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Ex: 49"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Mês de Ref. Pós-Reg. (MM/AAAA)
+                    </label>
+                    <input
+                      value={postRegRef}
+                      onChange={(e) => setPostRegRef(maskMonthYear(e.target.value))}
+                      placeholder="Ex: 03/2026"
+                      maxLength={7}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="sm:col-span-3 flex flex-col justify-end">
-                  <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
-                    <Info size={12} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                    <p className="text-[11px] text-[#4a7fa5]">
-                      Os valores de <strong>período</strong>, <strong>valor correto</strong>, <strong>valor cobrado</strong>,
-                      <strong> diferença</strong> e <strong>volume total recuperado</strong> são preenchidos automaticamente
-                      a partir dos cálculos.
-                    </p>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Vol. Faturado no Mês do Corte (m³)
+                    </label>
+                    <input
+                      value={billedM3}
+                      onChange={(e) => setBilledM3(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Ex: 20"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div className="sm:col-span-3 flex flex-col justify-end">
+                    <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
+                      <Info size={12} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                      <p className="text-[11px] text-[#4a7fa5]">
+                        Os valores de <strong>período</strong>, <strong>valor correto</strong>, <strong>valor cobrado</strong>,
+                        <strong> diferença</strong> e <strong>volume total recuperado</strong> são preenchidos automaticamente
+                        a partir dos cálculos.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Botão gerar */}
-            <div className="flex justify-end">
-              <button
-                onClick={handleGenerateText}
-                disabled={validRows.length === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all shadow"
-              >
-                <RefreshCw size={14} />
-                Gerar / Atualizar Texto
-              </button>
-            </div>
-
-            {/* Textarea editável */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-gray-600">Revisão e Edição do Texto</label>
+              {/* Botão gerar */}
+              <div className="flex justify-end">
                 <button
-                  onClick={handleCopy}
-                  disabled={!reportText}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
+                  onClick={handleGenerateText}
+                  disabled={validRows.length === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all shadow"
                 >
-                  {copied ? (
-                    <>
-                      <CheckCircle2 size={13} className="text-emerald-500" />
-                      <span className="text-emerald-600">Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={13} />
-                      Copiar para Área de Transferência
-                    </>
-                  )}
+                  <RefreshCw size={14} />
+                  Gerar / Atualizar Texto
                 </button>
               </div>
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder={
-                  validRows.length === 0
-                    ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
-                    : "Preencha os dados complementares acima e clique em [Gerar / Atualizar Texto]."
-                }
-                rows={10}
-                className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono"
-                spellCheck={false}
-              />
+
+              {/* Textareas editáveis (Água e Esgoto Lado a Lado) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* === LAUDO DA ÁGUA === */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-gray-600">Laudo de Água</label>
+                    <button
+                      onClick={() => handleCopy(waterReportText, setCopiedWater)}
+                      disabled={!waterReportText}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
+                    >
+                      {copiedWater ? (
+                        <>
+                          <CheckCircle2 size={13} className="text-emerald-500" />
+                          <span className="text-emerald-600">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} /> Copiar Água
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <textarea
+                    value={waterReportText}
+                    onChange={(e) => setWaterReportText(e.target.value)}
+                    placeholder={
+                      validRows.length === 0
+                        ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
+                        : "Texto da Água aparecerá aqui."
+                    }
+                    rows={10}
+                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono"
+                    spellCheck={false}
+                  />
+                </div>
+
+                {/* === LAUDO DO ESGOTO === */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-gray-600">Laudo de Esgoto</label>
+                    <button
+                      onClick={() => handleCopy(sewageReportText, setCopiedSewage)}
+                      disabled={!sewageReportText}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
+                    >
+                      {copiedSewage ? (
+                        <>
+                          <CheckCircle2 size={13} className="text-emerald-500" />
+                          <span className="text-emerald-600">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} /> Copiar Esgoto
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <textarea
+                    value={sewageReportText}
+                    onChange={(e) => setSewageReportText(e.target.value)}
+                    placeholder={
+                      validRows.length === 0
+                        ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
+                        : "Texto do Esgoto aparecerá aqui caso existam valores informados."
+                    }
+                    rows={10}
+                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              
               <p className="mt-1.5 text-[11px] text-gray-400 flex items-center gap-1.5">
                 <Info size={11} />
-                Clique dentro do texto para editar manualmente antes de copiar.
+                Clique dentro de qualquer um dos textos para editar manualmente antes de copiar.
               </p>
+
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
-    </div>
     </div>
   );
 }
