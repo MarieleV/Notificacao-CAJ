@@ -152,6 +152,46 @@ const TARIFF_STRUCTURES: Record<string, { serviceRate: string, tiers: any[] }> =
   }
 };
 
+const K1_DATA = [
+  // Residencial
+  { category: "Residencial", activity: "Casa", k1: "1,00" },
+  { category: "Residencial", activity: "Cond. Minha Casa Minha Vida", k1: "1,00" },
+  { category: "Residencial", activity: "Condomínio Fechado", k1: "1,00" },
+  { category: "Residencial", activity: "Consumo por Rateio", k1: "1,00" },
+  { category: "Residencial", activity: "Prédio", k1: "1,00" },
+  { category: "Residencial", activity: "Residencial - diversos, não especificados", k1: "1,00" },
+  // Comercial
+  { category: "Comercial", activity: "Comercial - diversos, não especificados", k1: "1,00" },
+  { category: "Comercial", activity: "Esporte", k1: "1,00" },
+  { category: "Comercial", activity: "Lojas, Mini-mercado e pequenos comércios", k1: "1,00" },
+  { category: "Comercial", activity: "Salão de Beleza/Barbearia/Estética", k1: "1,00" },
+  { category: "Comercial", activity: "Hotel/Motel", k1: "1,03" },
+  { category: "Comercial", activity: "Petshop/Veterinária/Agropecuária", k1: "1,11" },
+  { category: "Comercial", activity: "Lavandeira", k1: "1,24" },
+  { category: "Comercial", activity: "Lavação/Posto de Gasolina", k1: "1,53" },
+  { category: "Comercial", activity: "Shopping/Centro Comercial", k1: "1,53" },
+  { category: "Comercial", activity: "Bar/Restaurante/Espaço de Eventos", k1: "1,55" },
+  { category: "Comercial", activity: "Mercado e Similares (c/ açougue, padaria, etc)", k1: "1,65" },
+  // Industrial
+  { category: "Industrial", activity: "Industrias - contribui somente esgoto doméstico", k1: "1,00" },
+  { category: "Industrial", activity: "Industrias - diversos, não especificados", k1: "1,02" },
+  { category: "Industrial", activity: "Ind. Borracha", k1: "1,10" },
+  { category: "Industrial", activity: "Ind. Metal/Mecânica", k1: "1,10" },
+  { category: "Industrial", activity: "Ind. Elétrica", k1: "1,14" },
+  { category: "Industrial", activity: "Ind. Mineradora", k1: "1,15" },
+  { category: "Industrial", activity: "Ind. Têxtil", k1: "1,19" },
+  { category: "Industrial", activity: "Ind. Plástico", k1: "1,25" },
+  { category: "Industrial", activity: "Condomínio Industrial", k1: "1,30" },
+  { category: "Industrial", activity: "Ind. Química", k1: "1,35" },
+  { category: "Industrial", activity: "Ind. Papel", k1: "1,45" },
+  { category: "Industrial", activity: "Ind. Alimentos", k1: "1,55" },
+  { category: "Industrial", activity: "Ind. Construção", k1: "1,68" },
+  { category: "Industrial", activity: "Aterro Sanitário", k1: "1,68" },
+  // Público
+  { category: "Público", activity: "Usos públicos (Hospitais, Escolas, Praças, etc)", k1: "1,00" },
+  { category: "Público", activity: "Unidades prisionais com preparação de refeições", k1: "1,55" },
+];
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function RateTable({
@@ -242,12 +282,16 @@ export function FineCalculator() {
     };
   }, [configOpen]);
 
-  // Estados de Configuração e Tarifas
+  // Estados de Configuração (Água)
   const [selectedTariff, setSelectedTariff] = useState("Residencial");
   const [serviceRates, setServiceRates] = useState<RateEntry[]>([
     { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: TARIFF_STRUCTURES["Residencial"].serviceRate },
   ]);
   const [m3Tiers, setM3Tiers] = useState(TARIFF_STRUCTURES["Residencial"].tiers);
+
+  // Estados de Configuração (Esgoto)
+  const [selectedK1Category, setSelectedK1Category] = useState("Residencial");
+  const [selectedK1Activity, setSelectedK1Activity] = useState("Casa");
   const [k1Factor, setK1Factor] = useState("1,00");
 
   // Estado das Linhas (Água + Esgoto integrados)
@@ -276,10 +320,26 @@ export function FineCalculator() {
   function handleTariffChange(tariffName: string) {
     setSelectedTariff(tariffName);
     const preset = TARIFF_STRUCTURES[tariffName];
-    
     if (preset) {
       setServiceRates(prev => prev.map(r => ({ ...r, value: preset.serviceRate })));
       setM3Tiers(preset.tiers);
+    }
+  }
+
+  function handleK1CategoryChange(category: string) {
+    setSelectedK1Category(category);
+    const firstActivity = K1_DATA.find(item => item.category === category);
+    if (firstActivity) {
+      setSelectedK1Activity(firstActivity.activity);
+      setK1Factor(firstActivity.k1);
+    }
+  }
+
+  function handleK1ActivityChange(activity: string) {
+    setSelectedK1Activity(activity);
+    const item = K1_DATA.find(i => i.activity === activity && i.category === selectedK1Category);
+    if (item) {
+      setK1Factor(item.k1);
     }
   }
 
@@ -460,32 +520,66 @@ export function FineCalculator() {
                 </div>
               </div>
               
-              {/* SELETOR DE ESTRUTURA TARIFÁRIA E FATOR K1 */}
-              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7] grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
-                    Categoria Tarifária
-                  </label>
-                  <select
-                    value={selectedTariff}
-                    onChange={(e) => handleTariffChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer shadow-sm transition-all"
-                  >
-                    {Object.keys(TARIFF_STRUCTURES).map((key) => (
-                      <option key={key} value={key}>{key}</option>
-                    ))}
-                  </select>
+              {/* === BLOCO 1: ESTRUTURA TARIFÁRIA DA ÁGUA === */}
+              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
+                      Estrutura Tarifária (Fatura de Água)
+                    </label>
+                    <select
+                      value={selectedTariff}
+                      onChange={(e) => handleTariffChange(e.target.value)}
+                      className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer shadow-sm transition-all"
+                    >
+                      {Object.keys(TARIFF_STRUCTURES).map((key) => (
+                        <option key={key} value={key}>{key}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
-                    Fator K1 (Esgoto)
-                  </label>
-                  <input
-                    value={k1Factor}
-                    onChange={(e) => setK1Factor(maskBRL(e.target.value))}
-                    placeholder="Ex: 1,00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white transition-all"
-                  />
+              </div>
+
+              {/* === BLOCO 2: CÁLCULO DO FATOR K1 (ESGOTO) === */}
+              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
+                <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-4">
+                  Categoria Tarifária do Esgoto (Fator K1)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_100px] gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Grupo</label>
+                    <select
+                      value={selectedK1Category}
+                      onChange={(e) => handleK1CategoryChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer"
+                    >
+                      {Array.from(new Set(K1_DATA.map(item => item.category))).map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Ramo de Atividade</label>
+                    <select
+                      value={selectedK1Activity}
+                      onChange={(e) => handleK1ActivityChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer"
+                    >
+                      {K1_DATA.filter(item => item.category === selectedK1Category).map(item => (
+                        <option key={item.activity} value={item.activity}>{item.activity}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">K1 Aplicado</label>
+                    <input
+                      value={k1Factor}
+                      onChange={(e) => setK1Factor(maskBRL(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-[#1a5fa8] bg-white focus:outline-none text-center"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -644,61 +738,58 @@ export function FineCalculator() {
           </div>
 
           {/* ── Bloco 2B: Lançamento Esgoto ───────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <div className="flex items-center gap-3">
-              <Plus size={18} className="text-[#4a7fa5]" />
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4">
-            <div className="grid grid-cols-[140px_200px] gap-4 mb-2 px-1">
-              {["Mês/Ano (Automático)", "Esgoto Cobrado Errado (R$)"].map((h, i) => (
-                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
-              ))}
-            </div>
-
-            <div className="space-y-2">
-              {rows.map((row) => (
-                <div key={row.id}>
-                  <div className="grid grid-cols-[140px_200px] gap-4 items-center">
-                    <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
-                      {row.monthYear || "Mês não preenchido"}
-                    </div>
-                    
-                    <input
-                      value={row.chargedSewage}
-                      onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
-                      placeholder="Ex: 10,88"
-                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
-                    />
-                  </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <Plus size={18} className="text-[#4a7fa5]" />
+                <div>
+                  <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
+                  <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
                 </div>
-              ))}
-            </div>
-            
-            {rows.length === 0 && (
-              <div className="py-6 text-center text-gray-300 text-sm">
-                Adicione meses na tabela de Água primeiro.
               </div>
-            )}
-
-            {/* === NOVO: Mensagem informativa do Esgoto === */}
-            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[#4a7fa5]">
-                A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong> (Fator de Carga Poluidora para lançamentos na rede pública de esgotos).
-              </p>
             </div>
-            {/* ============================================ */}
-            
-          </div>
-        </div>
 
+            <div className="p-4">
+              <div className="grid grid-cols-[140px_200px] gap-4 mb-2 px-1">
+                {["Mês/Ano (Automático)", "Esgoto Cobrado Errado (R$)"].map((h, i) => (
+                  <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                {rows.map((row) => (
+                  <div key={row.id}>
+                    <div className="grid grid-cols-[140px_200px] gap-4 items-center">
+                      <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
+                        {row.monthYear || "Mês não preenchido"}
+                      </div>
+                      
+                      <input
+                        value={row.chargedSewage}
+                        onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
+                        placeholder="Ex: 10,88"
+                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {rows.length === 0 && (
+                <div className="py-6 text-center text-gray-300 text-sm">
+                  Adicione meses na tabela de Água primeiro.
+                </div>
+              )}
+
+              {/* Mensagem informativa do Esgoto */}
+              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-[#4a7fa5]">
+                  A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong> (Fator de Carga Poluidora para lançamentos na rede pública de esgotos).
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
