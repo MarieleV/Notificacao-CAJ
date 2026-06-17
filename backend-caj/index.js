@@ -1,19 +1,18 @@
 const express = require("express");
 const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { Document, Packer, Paragraph, AlignmentType } = require("docx");
+// NOVO: Adicionadas ferramentas para construção de Tabelas no Word
+const { Document, Packer, Paragraph, AlignmentType, TextRun, Table, TableRow, TableCell, WidthType } = require("docx");
 
 const app = express();
 
-// Middlewares
-app.use(cors({ origin: "*" })); // Em produção, restrinja para a URL do seu React
-app.use(express.json()); // Permite ler o body das requisições em JSON
+app.use(cors({ origin: "*" })); 
+app.use(express.json()); 
 
 // ==============================================================================
 // 1. ROTA: GERAR NOTIFICAÇÃO COM IA
 // ==============================================================================
 app.post("/api/gerar", async (req, res) => {
-  // NOVO: Recebendo as 4 novas variáveis do front-end
   const { api_key, textos_base, dataConstatacao, protocolo, funcionario, equipe } = req.body;
 
   if (!api_key) {
@@ -55,39 +54,148 @@ app.post("/api/gerar", async (req, res) => {
 });
 
 // ==============================================================================
-// 2. ROTA: EXPORTAR PARA WORD (Padrão Jurídico)
+// 2. ROTA: EXPORTAR PARA WORD (Tabela Padrão ERP)
 // ==============================================================================
 app.post("/api/exportar_word", async (req, res) => {
-  const { texto_final } = req.body;
+  const { texto_final, protocolo } = req.body;
 
-  // 1. Verificamos se o texto está chegando corretamente do front-end
   if (!texto_final) {
-    console.log("ERRO: texto_final chegou vazio ou undefined!");
     return res.status(400).json({ detail: "O texto final não foi enviado ao servidor." });
   }
 
   try {
+    // Se o protocolo foi preenchido na tela, usa ele. Se não, deixa a tag.
+    const numProtocolo = protocolo ? protocolo : "{PROTOCOLO}";
+
+    // Construção da Tabela com as Tags do ERP
+    const table = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        // Linha 1: Matricula | Categoria | HD
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Matricula: ", bold: true }), new TextRun("{MATRICULA}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Categoria: ", bold: true }), new TextRun("{CATEGORIA_TARIFA_PRINCIPAL}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Nº HD: ", bold: true }), new TextRun("{NUMERO_HIDROMETRO}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 2: Cliente
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              children: [new Paragraph({ children: [new TextRun({ text: "Cliente: ", bold: true }), new TextRun("{NOME_CLIENTE_MORADOR}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 3: Endereço e Bairro
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "Endereço: ", bold: true }), new TextRun("{ENDERECO_LOGRADOURO}, "), new TextRun({ text: "Nº ", bold: true }), new TextRun("{ENDERECO_NUMERO_IMOVEL}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Bairro: ", bold: true }), new TextRun("{ENDERECO_BAIRRO}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 4: Localização e CEP
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              children: [new Paragraph({ children: [new TextRun({ text: "Localização: ", bold: true }), new TextRun("{LOCALIZACAO} - "), new TextRun({ text: "CEP: ", bold: true }), new TextRun("{ENDERECO_CEP_PRINCIPAL}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 5: Texto Gerado pela IA
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              // Quebra as linhas do texto corretamente na tabela
+              children: texto_final.split('\n').map(line => new Paragraph({ text: line, alignment: AlignmentType.JUSTIFY, spacing: { after: 120 } })),
+              margins: { top: 200, bottom: 200, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 6: Defesa
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "Defesa: ", bold: true }),
+                    new TextRun("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.")
+                  ],
+                  alignment: AlignmentType.JUSTIFY
+                })
+              ],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        // Linha 7: Canais de atendimento
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 3,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "Canais de atendimento: ", bold: true }),
+                    new TextRun("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira."),
+                    new TextRun({ text: "Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", break: 1 }),
+                    new TextRun({ text: "Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras. WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", break: 1 })
+                  ],
+                  alignment: AlignmentType.JUSTIFY
+                })
+              ],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        })
+      ],
+    });
+
     const doc = new Document({
-      styles: {
-        default: {
-          document: {
-            run: { font: "Arial", size: 24 },
-          },
-        },
-      },
+      styles: { default: { document: { run: { font: "Arial", size: 24 } } } }, // size 24 = 12pt
       sections: [
         {
           properties: {
-            page: {
-              margin: { top: 1699, left: 1699, bottom: 1123, right: 1123 },
-            },
+            page: { margin: { top: 1699, left: 1699, bottom: 1123, right: 1123 } },
           },
           children: [
+            // Título Centralizado
             new Paragraph({
-              text: String(texto_final), // Garante que é uma string
-              alignment: AlignmentType.JUSTIFY,
-              spacing: { line: 360 },
+              children: [
+                new TextRun({
+                  text: `Auto de Infração nº ${numProtocolo}`,
+                  bold: true,
+                  underline: {},
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
             }),
+            // Tabela renderizada logo abaixo
+            table,
           ],
         },
       ],
@@ -100,7 +208,6 @@ app.post("/api/exportar_word", async (req, res) => {
     res.send(buffer);
     
   } catch (error) {
-    // 2. Se a biblioteca docx quebrar, o erro vai aparecer no terminal!
     console.error("ERRO FATAL AO GERAR DOCX:", error);
     res.status(500).json({ detail: "Erro interno ao gerar o documento." });
   }
@@ -109,31 +216,25 @@ app.post("/api/exportar_word", async (req, res) => {
 // ==============================================================================
 // 3. ROTA: CALCULADORA DE MULTAS
 // ==============================================================================
-
-// Funções auxiliares matemáticas equivalentes ao Python
 const parseBRL = (val) => {
   if (!val) return 0.0;
   const parsed = parseFloat(val.replace(/\./g, "").replace(",", "."));
   return isNaN(parsed) ? 0.0 : parsed;
 };
-
 const parseMY = (val) => {
   if (!val) return null;
   const parts = val.split("/");
   if (parts.length !== 2) return null;
-  return parseInt(parts[1]) * 12 + parseInt(parts[0]); // Converte para um número absoluto de meses para facilitar comparação
+  return parseInt(parts[1]) * 12 + parseInt(parts[0]); 
 };
-
 const inRange = (targetStr, startStr, endStr) => {
   const target = parseMY(targetStr);
   const start = parseMY(startStr);
   const end = parseMY(endStr);
-
   if (!target || !start) return false;
   if (end) return target >= start && target <= end;
   return target >= start;
 };
-
 const fmtBRL = (val) => {
   return "R$ " + val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
@@ -148,9 +249,6 @@ app.post("/api/calcular_multa", (req, res) => {
   const calcRows = [];
   const validDates = [];
 
-  // ==========================================
-  // 1. Processamento da ÁGUA
-  // ==========================================
   for (const r of rows) {
     const targetDtNum = parseMY(r.monthYear);
     const consumption = parseBRL(r.consumption);
@@ -168,7 +266,6 @@ app.post("/api/calcular_multa", (req, res) => {
           break;
         }
       }
-
       if (m3Tiers.length > 0 && consumption > 0) {
         correctWater = 0;
         let remainingConsumption = consumption;
@@ -197,22 +294,15 @@ app.post("/api/calcular_multa", (req, res) => {
     });
   }
 
-  // ==========================================
-  // 2. Processamento do ESGOTO (80% da Água * K1)
-  // ==========================================
   const calcSewageRows = [];
   for (const sr of sewageRows) {
-    // Procura o mês correspondente nos resultados da água
     const waterMatch = calcRows.find(wr => wr.monthYear === sr.monthYear && !wr.hasError);
-    
     const cSewage = parseBRL(sr.chargedSewage);
     const cService = parseBRL(sr.chargedService);
     const tCharged = cSewage + cService;
-
     let totalCorrect = null;
     let hasError = true;
 
-    // Se achou a água calculada perfeitamente, o esgoto é 80% do valor total correto da água * K1
     if (waterMatch && waterMatch.totalCorrect !== null) {
       totalCorrect = waterMatch.totalCorrect * 0.8 * k1;
       hasError = false;
@@ -227,24 +317,17 @@ app.post("/api/calcular_multa", (req, res) => {
     });
   }
 
-  // ==========================================
-  // 3. Totalizadores (KPIs)
-  // ==========================================
   const validRows = calcRows.filter((cr) => !cr.hasError && cr.totalCorrect !== null);
   const totalM3 = validRows.reduce((acc, cr) => acc + cr.consumption, 0);
   const grandCorrect = validRows.reduce((acc, cr) => acc + cr.totalCorrect, 0);
   const grandCharged = validRows.reduce((acc, cr) => acc + cr.totalCharged, 0);
   const grandDiff = grandCorrect - grandCharged;
 
-  // Totais de Esgoto
   const validSewageRows = calcSewageRows.filter((sr) => !sr.hasError && sr.totalCorrect !== null);
   const grandSewageCorrect = validSewageRows.reduce((acc, sr) => acc + sr.totalCorrect, 0);
   const grandSewageCharged = validSewageRows.reduce((acc, sr) => acc + sr.totalCharged, 0);
   const grandSewageDiff = grandSewageCorrect - grandSewageCharged;
 
-  // ==========================================
-  // 4. Geração do Texto de Relatório
-  // ==========================================
   validDates.sort((a, b) => parseMY(a) - parseMY(b));
   const numMonths = validRows.length;
   const firstMonth = validDates[0] || "—";
@@ -256,10 +339,8 @@ app.post("/api/calcular_multa", (req, res) => {
   const postRef = (postRegRef || "").trim() ? postRegRef.trim().toUpperCase() : "[MM/AAAA]";
   const billedVol = (billedM3 || "").trim() ? billedM3.trim() : "[m³]";
   const mesStr = numMonths === 1 ? "mês" : "meses";
-
   const absoluteTotalDiff = grandDiff + grandSewageDiff;
 
-  // TEXTO 1: LAUDO DE ÁGUA
   const waterReportText = `Cálculo do consumo estimado de água ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
 ${numMonths} ${mesStr}, com consumo impactado pela violação: ${firstMonth} até ${lastMonth}.
@@ -270,7 +351,6 @@ Valor a ser lançado ${fmtBRL(grandDiff)}.
 Volume faturado no mês impactado pela violação: ${billedVol} m³.
 Volume total recuperado: ${totalM3} m³.`;
 
-  // TEXTO 2: LAUDO DE ESGOTO (Molde exato solicitado)
   let sewageReportText = "";
   if (validSewageRows.length > 0) {
     sewageReportText = `Cálculo do consumo estimado de esgoto ref. ${aiRef}.
@@ -283,25 +363,17 @@ Valor a ser lançado ${fmtBRL(grandSewageDiff)}.
 Volume total recuperado: ${totalM3} m³.`;
   }
 
-  // ENVIO DA RESPOSTA ATUALIZADA
   res.json({
-    rows: calcRows,
-    sewageRows: calcSewageRows,
-    totals: { 
-      totalM3, grandCorrect, grandCharged, grandDiff, validCount: numMonths,
-      grandSewageCorrect, grandSewageCharged, grandSewageDiff, absoluteTotalDiff
-    },
-    waterReportText,     // Envia o texto da Água
-    sewageReportText     // Envia o texto do Esgoto
+    rows: calcRows, sewageRows: calcSewageRows,
+    totals: { totalM3, grandCorrect, grandCharged, grandDiff, validCount: numMonths, grandSewageCorrect, grandSewageCharged, grandSewageDiff, absoluteTotalDiff },
+    waterReportText, sewageReportText
   });
 });
 
-// Condicional vital para rodar tanto localmente quanto no Vercel (Serverless)
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Motor de Notificações rodando na porta ${PORT}`);
   });
 }
-
 module.exports = app;

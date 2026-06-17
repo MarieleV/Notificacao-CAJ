@@ -4,8 +4,6 @@ import {
   ChevronDown, X, FileText, Loader2, Info, Key, Search,
 } from "lucide-react";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function maskDate(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
@@ -186,12 +184,11 @@ export function NotificationDrafter() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   
-  // === NOVOS ESTADOS PARA PREENCHIMENTO AUTOMÁTICO ===
+  // Estados automáticos
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [funcionario, setFuncionario] = useState("");
   const [equipe, setEquipe] = useState("");
-  // ===================================================
 
   const [generatedText, setGeneratedText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -271,7 +268,8 @@ export function NotificationDrafter() {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto_final: generatedText }),
+        // NOVO: Adicionado o envio do protocolo para o título do Word
+        body: JSON.stringify({ texto_final: generatedText, protocolo }),
       });
 
       if (!response.ok) throw new Error("Erro ao gerar Word.");
@@ -491,7 +489,6 @@ export function NotificationDrafter() {
             </div>
             <div className="p-6">
               
-              {/* === NOVOS CAMPOS: DADOS COMPLEMENTARES === */}
               <div className="mb-6">
                 <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para preenchimento automático</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -542,7 +539,6 @@ export function NotificationDrafter() {
                   </div>
                 </div>
               </div>
-              {/* ========================================= */}
 
               <button
                 onClick={handleGenerate}
@@ -631,14 +627,14 @@ export function NotificationDrafter() {
                   className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
                 >
                   <Download size={17} />
-                  Baixar .docx (ABNT/Jurídico)
+                  Baixar .docx (Modelo Padrão ERP)
                 </button>
               </div>
               <div className="px-6 pb-4">
                 <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
                   <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-[#4a7fa5]">
-                    O arquivo Word é gerado com margens 3×2cm, espaçamento 1.5, fonte Arial 12 e texto justificado, nos padrões ABNT/Jurídico — pronto para impressão ou assinatura digital.
+                    O arquivo Word será exportado com as variáveis de sistema (ex: MATRICULA, NOME_CLIENTE) para que o seu ERP comercial substitua-as automaticamente em lote.
                   </p>
                 </div>
               </div>
