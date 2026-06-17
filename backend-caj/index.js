@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-// NOVO: Adicionadas ferramentas para construção de Tabelas no Word
 const { Document, Packer, Paragraph, AlignmentType, TextRun, Table, TableRow, TableCell, WidthType } = require("docx");
 
 const app = express();
@@ -54,7 +53,7 @@ app.post("/api/gerar", async (req, res) => {
 });
 
 // ==============================================================================
-// 2. ROTA: EXPORTAR PARA WORD (Tabela Padrão ERP)
+// 2. ROTA: EXPORTAR PARA WORD (Tabela Padrão ERP + AR)
 // ==============================================================================
 app.post("/api/exportar_word", async (req, res) => {
   const { texto_final, protocolo } = req.body;
@@ -64,14 +63,12 @@ app.post("/api/exportar_word", async (req, res) => {
   }
 
   try {
-    // Se o protocolo foi preenchido na tela, usa ele. Se não, deixa a tag.
     const numProtocolo = protocolo ? protocolo : "{PROTOCOLO}";
 
-    // Construção da Tabela com as Tags do ERP
-    const table = new Table({
+    // --- TABELA 1: DADOS DO AUTO DE INFRAÇÃO ---
+    const table1 = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
-        // Linha 1: Matricula | Categoria | HD
         new TableRow({
           children: [
             new TableCell({
@@ -88,7 +85,6 @@ app.post("/api/exportar_word", async (req, res) => {
             }),
           ],
         }),
-        // Linha 2: Cliente
         new TableRow({
           children: [
             new TableCell({
@@ -98,7 +94,6 @@ app.post("/api/exportar_word", async (req, res) => {
             }),
           ],
         }),
-        // Linha 3: Endereço e Bairro
         new TableRow({
           children: [
             new TableCell({
@@ -112,7 +107,6 @@ app.post("/api/exportar_word", async (req, res) => {
             }),
           ],
         }),
-        // Linha 4: Localização e CEP
         new TableRow({
           children: [
             new TableCell({
@@ -122,18 +116,15 @@ app.post("/api/exportar_word", async (req, res) => {
             }),
           ],
         }),
-        // Linha 5: Texto Gerado pela IA
         new TableRow({
           children: [
             new TableCell({
               columnSpan: 3,
-              // Quebra as linhas do texto corretamente na tabela
               children: texto_final.split('\n').map(line => new Paragraph({ text: line, alignment: AlignmentType.JUSTIFY, spacing: { after: 120 } })),
               margins: { top: 200, bottom: 200, left: 100, right: 100 },
             }),
           ],
         }),
-        // Linha 6: Defesa
         new TableRow({
           children: [
             new TableCell({
@@ -151,7 +142,6 @@ app.post("/api/exportar_word", async (req, res) => {
             }),
           ],
         }),
-        // Linha 7: Canais de atendimento
         new TableRow({
           children: [
             new TableCell({
@@ -161,7 +151,7 @@ app.post("/api/exportar_word", async (req, res) => {
                   children: [
                     new TextRun({ text: "Canais de atendimento: ", bold: true }),
                     new TextRun("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira."),
-                    new TextRun({ text: "Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", break: 1 }),
+                    new TextRun({ text: " Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", break: 1 }),
                     new TextRun({ text: "Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras. WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", break: 1 })
                   ],
                   alignment: AlignmentType.JUSTIFY
@@ -174,15 +164,133 @@ app.post("/api/exportar_word", async (req, res) => {
       ],
     });
 
+    // --- TABELA 2: DESTINATÁRIO CORREIOS ---
+    const table2 = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "Destinatário: ", bold: true }), new TextRun("{NOME_CLIENTE_MORADOR}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Endereço: ", bold: true }), new TextRun("{ENDERECO_LOGRADOURO}, "), new TextRun({ text: "Nº ", bold: true }), new TextRun("{ENDERECO_NUMERO_IMOVEL}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Localização: ", bold: true }), new TextRun("{LOCALIZACAO}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Auto de infração: ", bold: true }), new TextRun(numProtocolo)] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Matricula: ", bold: true }), new TextRun("{MATRICULA}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+      ]
+    });
+
+    // --- TABELA 3: AVISO DE RECEBIMENTO (AR) ---
+    const table3 = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "AVISO DE RECEBIMENTO - AR", bold: true })], alignment: AlignmentType.CENTER })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO: ", bold: true }), new TextRun(`${numProtocolo}.`)] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "MATRICULA: ", bold: true }), new TextRun("{MATRICULA}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "NOME: ", bold: true }), new TextRun("{NOME_CLIENTE_MORADOR}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "ENDEREÇO: ", bold: true }), new TextRun("{ENDERECO}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "LOCALIZAÇÃO: ", bold: true }), new TextRun("{LOCALIZACAO}.")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "TENTATIVAS: ", bold: true }), new TextRun("1ª ___ / ___ / _______. - 2ª___ / ___ / _______.   - 3ª  ___ / ___ / _______.")] })],
+              margins: { top: 150, bottom: 150, left: 100, right: 100 },
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              children: [new Paragraph({ children: [new TextRun({ text: "NOME LEGIVEL DO RECEBEDOR:", bold: true })] })],
+              margins: { top: 250, bottom: 250, left: 100, right: 100 }, // Margem extra para assinatura
+            }),
+          ]
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "DOCUMENTO:", bold: true })] })],
+              margins: { top: 250, bottom: 250, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "DATA DE RECEBIMENTO:", bold: true })] })],
+              margins: { top: 250, bottom: 250, left: 100, right: 100 },
+            }),
+          ]
+        }),
+      ]
+    });
+
     const doc = new Document({
-      styles: { default: { document: { run: { font: "Arial", size: 24 } } } }, // size 24 = 12pt
+      styles: { default: { document: { run: { font: "Arial", size: 24 } } } }, // Arial tamanho 12pt
       sections: [
         {
           properties: {
             page: { margin: { top: 1699, left: 1699, bottom: 1123, right: 1123 } },
           },
           children: [
-            // Título Centralizado
             new Paragraph({
               children: [
                 new TextRun({
@@ -194,8 +302,11 @@ app.post("/api/exportar_word", async (req, res) => {
               alignment: AlignmentType.CENTER,
               spacing: { after: 400 },
             }),
-            // Tabela renderizada logo abaixo
-            table,
+            table1,
+            new Paragraph({ text: "", spacing: { before: 200, after: 200 } }), // Espaço entre as tabelas
+            table2,
+            new Paragraph({ text: "", spacing: { before: 200, after: 200 } }), // Espaço entre as tabelas
+            table3,
           ],
         },
       ],
