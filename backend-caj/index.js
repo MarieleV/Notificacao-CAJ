@@ -1,7 +1,12 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { Document, Packer, Paragraph, AlignmentType, TextRun, Table, TableRow, TableCell, WidthType } = require("docx");
+const { 
+  Document, Packer, Paragraph, AlignmentType, TextRun, 
+  Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun 
+} = require("docx");
 
 const app = express();
 
@@ -53,7 +58,7 @@ app.post("/api/gerar", async (req, res) => {
 });
 
 // ==============================================================================
-// 2. ROTA: EXPORTAR PARA WORD (Tabela Padrão ERP + AR)
+// 2. ROTA: EXPORTAR PARA WORD (Padrão ERP Oficial + AR)
 // ==============================================================================
 app.post("/api/exportar_word", async (req, res) => {
   const { texto_final, protocolo } = req.body;
@@ -65,7 +70,61 @@ app.post("/api/exportar_word", async (req, res) => {
   try {
     const numProtocolo = protocolo ? protocolo : "{PROTOCOLO}";
 
-    // --- TABELA 1: DADOS DO AUTO DE INFRAÇÃO ---
+    // Captura a Data e Hora exatas do momento da geração do Docx
+    const now = new Date();
+    const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
+    const horaStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    // Configuração para tirar as bordas da tabela do Cabeçalho
+    const noBorders = {
+      top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    };
+
+    // Leitura inteligente da Logo
+    let logoElements = [];
+    try {
+      const logoPath = path.join(__dirname, "public", "logo-docx-vale.jpg");
+      const logoImage = new ImageRun({
+        data: fs.readFileSync(logoPath),
+        transformation: { width: 90, height: 90 }, // Ajustado para não quebrar a linha
+      });
+      logoElements.push(logoImage);
+    } catch (error) {
+      console.warn("Aviso: logo-docx-vale.jpg não encontrada na pasta. Gerando sem logo.");
+    }
+
+    // --- CABEÇALHO (LOGO + EMPRESA) ---
+    const headerTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: noBorders,
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({ children: [new TextRun({ text: "COMPANHIA ÁGUAS DE JOINVILLE", bold: true })] }),
+                new Paragraph({ children: [new TextRun({ text: "Rua TIJUCAS, 213" })] }),
+                new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO - CFC", bold: true })] }),
+              ],
+              verticalAlign: "center",
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({ children: logoElements, alignment: AlignmentType.RIGHT })
+              ],
+              verticalAlign: "center",
+            })
+          ]
+        })
+      ]
+    });
+
+    // --- TABELA 1: DADOS DO AUTO DE INFRAÇÃO (3 Colunas) ---
     const table1 = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -76,11 +135,11 @@ app.post("/api/exportar_word", async (req, res) => {
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "Categoria: ", bold: true }), new TextRun("{CATEGORIA_TARIFA_PRINCIPAL}")] })],
+              children: [new Paragraph({ children: [new TextRun({ text: "Auto de Infração nº ", bold: true }), new TextRun(numProtocolo)] })],
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "Nº HD: ", bold: true }), new TextRun("{NUMERO_HIDROMETRO}")] })],
+              children: [new Paragraph({ children: [new TextRun({ text: "Data: ", bold: true }), new TextRun(dataStr)] })],
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
             }),
           ],
@@ -88,8 +147,25 @@ app.post("/api/exportar_word", async (req, res) => {
         new TableRow({
           children: [
             new TableCell({
-              columnSpan: 3,
+              children: [new Paragraph({ children: [new TextRun({ text: "Categoria: ", bold: true }), new TextRun("{CATEGORIA_TARIFA_PRINCIPAL}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({ children: [new Paragraph({ text: "" })] }), // Coluna do meio vazia
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Hora: ", bold: true }), new TextRun(horaStr)] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
               children: [new Paragraph({ children: [new TextRun({ text: "Cliente: ", bold: true }), new TextRun("{NOME_CLIENTE_MORADOR}")] })],
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Nº HD: ", bold: true }), new TextRun("{NUMERO_HIDROMETRO}")] })],
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
             }),
           ],
@@ -263,8 +339,8 @@ app.post("/api/exportar_word", async (req, res) => {
           children: [
             new TableCell({
               columnSpan: 2,
-              children: [new Paragraph({ children: [new TextRun({ text: "NOME LEGIVEL DO RECEBEDOR:", bold: true })] })],
-              margins: { top: 250, bottom: 250, left: 100, right: 100 }, // Margem extra para assinatura
+              children: [new Paragraph({ children: [new TextRun({ text: "NOME LEGÍVEL DO RECEBEDOR:", bold: true })] })],
+              margins: { top: 250, bottom: 250, left: 100, right: 100 },
             }),
           ]
         }),
@@ -284,28 +360,19 @@ app.post("/api/exportar_word", async (req, res) => {
     });
 
     const doc = new Document({
-      styles: { default: { document: { run: { font: "Arial", size: 24 } } } }, // Arial tamanho 12pt
+      styles: { default: { document: { run: { font: "Arial", size: 24 } } } }, // Arial tamanho 12
       sections: [
         {
           properties: {
-            page: { margin: { top: 1699, left: 1699, bottom: 1123, right: 1123 } },
+            page: { margin: { top: 1699, left: 1699, bottom: 1123, right: 1123 } }, // Margens 3x2 cm
           },
           children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Auto de Infração nº ${numProtocolo}`,
-                  bold: true,
-                  underline: {},
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 400 },
-            }),
+            headerTable,
+            new Paragraph({ text: "", spacing: { before: 100, after: 100 } }), // Espaço vazio
             table1,
-            new Paragraph({ text: "", spacing: { before: 200, after: 200 } }), // Espaço entre as tabelas
+            new Paragraph({ text: "", spacing: { before: 300, after: 300 } }), // Espaço vazio para separar tabelas
             table2,
-            new Paragraph({ text: "", spacing: { before: 200, after: 200 } }), // Espaço entre as tabelas
+            new Paragraph({ text: "", spacing: { before: 300, after: 300 } }), // Espaço vazio para separar tabelas
             table3,
           ],
         },
