@@ -91,34 +91,43 @@ app.post("/api/exportar_word", async (req, res) => {
     if (fs.existsSync(logoPath)) {
       const logoImage = new ImageRun({
         data: fs.readFileSync(logoPath),
-        transformation: { width: 75, height: 75 },
+        transformation: { width: 85, height: 85 },
         type: "jpg"
       });
       logoElements = [new Paragraph({ children: [logoImage], alignment: AlignmentType.LEFT })];
     }
 
-    // --- CABEÇALHO (LOGO À ESQUERDA + INFO À DIREITA) ---
+    // --- CABEÇALHO (LOGO, TEXTO CENTRAL, DATA/HORA DIREITA) ---
     const headerTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: noBorders,
       rows: [
         new TableRow({
           children: [
+            // Coluna 1: Logo à esquerda
             new TableCell({
               children: logoElements,
-              width: { size: 30, type: WidthType.PERCENTAGE },
+              width: { size: 25, type: WidthType.PERCENTAGE },
               verticalAlign: "center",
             }),
+            // Coluna 2: Informações da Companhia ao Centro
             new TableCell({
               children: [
-                new Paragraph({ children: [new TextRun({ text: "Águas de Joinville", bold: true })], alignment: AlignmentType.RIGHT }),
-                new Paragraph({ children: [new TextRun({ text: "COMPANHIA ÁGUAS DE JOINVILLE", bold: true })], alignment: AlignmentType.RIGHT }),
-                new Paragraph({ children: [new TextRun("Rua TIJUCAS, 213")], alignment: AlignmentType.RIGHT }),
-                new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO - CFC", bold: true })], alignment: AlignmentType.RIGHT }),
-                new Paragraph({ children: [new TextRun({ text: `Data: ${dataStr}   Hora: ${horaStr}`, bold: true })], alignment: AlignmentType.RIGHT }),
+                new Paragraph({ children: [new TextRun({ text: "COMPANHIA ÁGUAS DE JOINVILLE" })] }),
+                new Paragraph({ children: [new TextRun("Rua TIJUCAS, 213")] }),
+                new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO - CFC" })] }),
               ],
-              width: { size: 70, type: WidthType.PERCENTAGE },
+              width: { size: 50, type: WidthType.PERCENTAGE },
               verticalAlign: "center",
+            }),
+            // Coluna 3: Data e Hora à direita
+            new TableCell({
+              children: [
+                new Paragraph({ children: [new TextRun(`Data:   ${dataStr}`)] }),
+                new Paragraph({ children: [new TextRun(`Hora:   ${horaStr}`)] })
+              ],
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              verticalAlign: "bottom", // Mantém alinhado pra baixo para ficar elegante
             })
           ]
         })
@@ -272,7 +281,6 @@ app.post("/api/exportar_word", async (req, res) => {
     });
 
     const doc = new Document({
-      // Forçamos a fonte Arial tamanho 20 (que equivale a 10pt) para caber 100% em uma página
       styles: { default: { document: { run: { font: "Arial", size: 20 } }, paragraph: { spacing: { after: 0 } } } },
       sections: [
         {
