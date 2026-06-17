@@ -4,6 +4,15 @@ import {
   ChevronDown, X, FileText, Loader2, Info, Key, Search,
 } from "lucide-react";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function maskDate(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return digits.slice(0, 2) + "/" + digits.slice(2);
+  return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+}
+
 const INFRACTION_CODES = [
   {
     code: "20400",
@@ -175,7 +184,15 @@ export function NotificationDrafter() {
   const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // <-- ADICIONE ESTA LINHA
+  const [searchTerm, setSearchTerm] = useState(""); 
+  
+  // === NOVOS ESTADOS PARA PREENCHIMENTO AUTOMÁTICO ===
+  const [dataConstatacao, setDataConstatacao] = useState("");
+  const [protocolo, setProtocolo] = useState("");
+  const [funcionario, setFuncionario] = useState("");
+  const [equipe, setEquipe] = useState("");
+  // ===================================================
+
   const [generatedText, setGeneratedText] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -193,7 +210,6 @@ export function NotificationDrafter() {
     selectedCodes.includes(c.code)
   );
 
-  // <-- BLOCO INTEIRO ADICIONADO PARA FILTRAGEM
   const filteredCodes = INFRACTION_CODES.filter((item) => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -202,7 +218,6 @@ export function NotificationDrafter() {
       item.category.toLowerCase().includes(searchLower)
     );
   });
-  // ------------------------------------
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
@@ -224,7 +239,11 @@ export function NotificationDrafter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           api_key: apiKey,
-          textos_base: textosBase
+          textos_base: textosBase,
+          dataConstatacao,
+          protocolo,
+          funcionario,
+          equipe
         }),
       });
 
@@ -330,7 +349,6 @@ export function NotificationDrafter() {
 
                 {dropdownOpen && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                    {/* <-- ADICIONE O BLOCO DA BARRA DE PESQUISA AQUI --> */}
                     <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
                       <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -344,7 +362,6 @@ export function NotificationDrafter() {
                         />
                       </div>
                     </div>
-                    {/* <------------------------------------------------> */}
                     <div className="p-2 border-b border-gray-100 bg-gray-50">
                       <p className="text-xs text-gray-500 px-2">Clique para selecionar/desmarcar</p>
                     </div>
@@ -469,10 +486,64 @@ export function NotificationDrafter() {
               <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Geração com Inteligência Artificial</h2>
-                <p className="text-gray-500 text-xs">Redige a notificação formal em um clique</p>
+                <p className="text-gray-500 text-xs">Preencha os dados e redija a notificação formal em um clique</p>
               </div>
             </div>
             <div className="p-6">
+              
+              {/* === NOVOS CAMPOS: DADOS COMPLEMENTARES === */}
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para preenchimento automático</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Data da Constatação
+                    </label>
+                    <input
+                      value={dataConstatacao}
+                      onChange={(e) => setDataConstatacao(maskDate(e.target.value))}
+                      placeholder="DD/MM/AAAA"
+                      maxLength={10}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Protocolo
+                    </label>
+                    <input
+                      value={protocolo}
+                      onChange={(e) => setProtocolo(e.target.value)}
+                      placeholder="Ex: 12345678"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Funcionário
+                    </label>
+                    <input
+                      value={funcionario}
+                      onChange={(e) => setFuncionario(e.target.value)}
+                      placeholder="Nome do funcionário"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Equipe
+                    </label>
+                    <input
+                      value={equipe}
+                      onChange={(e) => setEquipe(e.target.value)}
+                      placeholder="Ex: FIMM, Leiturista..."
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* ========================================= */}
+
               <button
                 onClick={handleGenerate}
                 disabled={selectedCodes.length === 0 || loading}
@@ -509,7 +580,7 @@ export function NotificationDrafter() {
                   </span>
                   <div>
                     <h2 className="text-[#0b1e35] font-semibold text-sm">Revisão e Edição do Texto</h2>
-                    <p className="text-gray-500 text-xs">Clique no texto para personalizar — nome, datas, número do contrato</p>
+                    <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
@@ -524,10 +595,6 @@ export function NotificationDrafter() {
                   className="w-full h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 font-mono leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all"
                   spellCheck={false}
                 />
-                <div className="mt-2 flex items-center gap-1.5 text-gray-400">
-                  <Info size={11} />
-                  <p className="text-[11px]">Substitua os campos vazios com os dados reais do caso</p>
-                </div>
               </div>
             </div>
           )}

@@ -13,7 +13,8 @@ app.use(express.json()); // Permite ler o body das requisições em JSON
 // 1. ROTA: GERAR NOTIFICAÇÃO COM IA
 // ==============================================================================
 app.post("/api/gerar", async (req, res) => {
-  const { api_key, textos_base } = req.body;
+  // NOVO: Recebendo as 4 novas variáveis do front-end
+  const { api_key, textos_base, dataConstatacao, protocolo, funcionario, equipe } = req.body;
 
   if (!api_key) {
     return res.status(400).json({ detail: "API Key é obrigatória." });
@@ -30,15 +31,14 @@ app.post("/api/gerar", async (req, res) => {
         Não adicione saudações ou textos extras. Apenas preencha o template.
         
         Se houver mais de uma infração, some as informações nos campos "Descrição do fato gerador", "Dispositivo legal" e "Penalidade prevista" de forma coesa.
-        Deixe os campos de Data, Protocolo, Funcionário e Equipe vazios.
 
         FORMATO OBRIGATÓRIO:
         Descrição do fato gerador: [Suas consolidações aqui]
         Dispositivo legal infringido: [Suas consolidações aqui]
-        Data da constatação: 
-        Protocolo: 
-        Funcionário: 
-        Equipe: 
+        Data da constatação: ${dataConstatacao || "Não informada"}
+        Protocolo: ${protocolo || "Não informado"}
+        Funcionário: ${funcionario || "Não informado"}
+        Equipe: ${equipe || "Não informada"}
         Penalidade prevista: [Suas consolidações aqui]
 
         INFRAÇÕES BRUTAS (SELECIONADAS PELO USUÁRIO):
