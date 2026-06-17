@@ -285,7 +285,7 @@ export function FineCalculator() {
   // Estados de Configuração (Água)
   const [selectedTariff, setSelectedTariff] = useState("Residencial");
   const [serviceRates, setServiceRates] = useState<RateEntry[]>([
-    { id: newId(), startMonth: "01/2025", endMonth: "12/2025", value: TARIFF_STRUCTURES["Residencial"].serviceRate },
+    { id: newId(), startMonth: "01/2026", endMonth: "12/2026", value: TARIFF_STRUCTURES["Residencial"].serviceRate },
   ]);
   const [m3Tiers, setM3Tiers] = useState(TARIFF_STRUCTURES["Residencial"].tiers);
 
@@ -297,11 +297,15 @@ export function FineCalculator() {
   // Estado das Linhas (Água + Esgoto integrados)
   const [rows, setRows] = useState<IrregularRow[]>([
     { 
-      id: newId(), monthYear: "01/2025", consumption: "20", 
+      id: newId(), monthYear: "01/2026", consumption: "20", 
       chargedWater: "13,60", chargedService: "31,96", 
       chargedSewage: ""
     },
   ]);
+
+  // Novos estados para o gerador de período em lote
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
 
   // Campos complementares do texto
   const [aiNumber, setAiNumber] = useState("");
@@ -324,11 +328,16 @@ export function FineCalculator() {
       setServiceRates(prev => prev.map(r => ({ ...r, value: preset.serviceRate })));
       setM3Tiers(preset.tiers);
     }
-  }
 
-  function handleK1CategoryChange(category: string) {
-    setSelectedK1Category(category);
-    const firstActivity = K1_DATA.find(item => item.category === category);
+    // === Sincronização Inteligente do Grupo K1 ===
+    let k1Cat = "Residencial";
+    if (tariffName.includes("Comercial")) k1Cat = "Comercial";
+    else if (tariffName.includes("Industrial")) k1Cat = "Industrial";
+    else if (tariffName.includes("Pública")) k1Cat = "Público";
+
+    setSelectedK1Category(k1Cat);
+    
+    const firstActivity = K1_DATA.find(item => item.category === k1Cat);
     if (firstActivity) {
       setSelectedK1Activity(firstActivity.activity);
       setK1Factor(firstActivity.k1);
@@ -358,7 +367,7 @@ export function FineCalculator() {
     );
   }
 
-  // ─── Handlers de Linhas Irregulares ───────────────────────────────────────
+  // ─── Handlers de Linhas Irregulares (Avulso e Em Lote) ────────────────────
 
   function addRow() {
     setRows((p) => [...p, { 
@@ -366,6 +375,52 @@ export function FineCalculator() {
       chargedWater: "", chargedService: "",
       chargedSewage: ""
     }]);
+  }
+
+  function handleGeneratePeriod() {
+    const start = parseMonthYear(periodStart);
+    const end = parseMonthYear(periodEnd);
+
+    if (!start || !end) {
+      alert("Formato de data inválido. Use o padrão MM/AAAA.");
+      return;
+    }
+    if (start > end) {
+      alert("A data de início deve ser anterior ou igual à data de fim.");
+      return;
+    }
+
+    const generatedRows: IrregularRow[] = [];
+    let current = new Date(start);
+
+    // Loop que adiciona 1 mês até chegar no fim do período
+    while (current <= end) {
+      const mm = String(current.getMonth() + 1).padStart(2, "0");
+      const yyyy = current.getFullYear();
+      const monthYearStr = `${mm}/${yyyy}`;
+
+      generatedRows.push({
+        id: newId(),
+        monthYear: monthYearStr,
+        consumption: "",
+        chargedWater: "",
+        chargedService: "",
+        chargedSewage: ""
+      });
+
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    setRows((prev) => {
+      // Cria uma lista dos meses que já existem para não adicionar duplicado
+      const existingMonths = prev.map(r => r.monthYear);
+      const filteredRows = generatedRows.filter(r => !existingMonths.includes(r.monthYear));
+      return [...prev, ...filteredRows];
+    });
+
+    // Limpa os campos após gerar
+    setPeriodStart("");
+    setPeriodEnd("");
   }
 
   function removeRow(id: number) {
@@ -545,26 +600,15 @@ export function FineCalculator() {
                 <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-4">
                   Categoria Tarifária do Esgoto (Fator K1)
                 </label>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_100px] gap-4">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Grupo</label>
-                    <select
-                      value={selectedK1Category}
-                      onChange={(e) => handleK1CategoryChange(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer"
-                    >
-                      {Array.from(new Set(K1_DATA.map(item => item.category))).map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
+                  
+                  {/* Seletor de Atividade (A lista continua sendo filtrada pelo grupo oculto) */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Ramo de Atividade</label>
                     <select
                       value={selectedK1Activity}
                       onChange={(e) => handleK1ActivityChange(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer h-[38px]"
                     >
                       {K1_DATA.filter(item => item.category === selectedK1Category).map(item => (
                         <option key={item.activity} value={item.activity}>{item.activity}</option>
@@ -572,12 +616,13 @@ export function FineCalculator() {
                     </select>
                   </div>
 
+                  {/* Campo Final do K1 */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">K1 Aplicado</label>
                     <input
                       value={k1Factor}
                       onChange={(e) => setK1Factor(maskBRL(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-[#1a5fa8] bg-white focus:outline-none text-center"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-[#1a5fa8] bg-white focus:outline-none text-center h-[38px]"
                     />
                   </div>
                 </div>
@@ -651,20 +696,40 @@ export function FineCalculator() {
 
           {/* ── Bloco 2A: Lançamento Água ───────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Plus size={18} className="text-[#1a5fa8]" />
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Água</h2>
-                  <p className="text-gray-400 text-xs mt-0.5">Insira os dados de cada mês com consumo irregular</p>
+                  <p className="text-gray-400 text-xs mt-0.5">Gere um período automático ou adicione mês a mês</p>
                 </div>
               </div>
-              <button
-                onClick={addRow}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] text-white rounded-lg text-xs font-medium transition-all shadow"
-              >
-                <Plus size={12} /> Adicionar mês
-              </button>
+
+              {/* GERADOR DE PERÍODO (NOVO) */}
+              <div className="flex items-center gap-2 bg-[#f8fafe] p-1.5 rounded-lg border border-[#dce9f7]">
+                <input
+                  value={periodStart}
+                  onChange={(e) => setPeriodStart(maskMonthYear(e.target.value))}
+                  placeholder="Início (MM/AAAA)"
+                  maxLength={7}
+                  className="w-[115px] px-2.5 py-1.5 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8] transition-all text-center"
+                />
+                <span className="text-gray-400 text-xs font-medium">até</span>
+                <input
+                  value={periodEnd}
+                  onChange={(e) => setPeriodEnd(maskMonthYear(e.target.value))}
+                  placeholder="Fim (MM/AAAA)"
+                  maxLength={7}
+                  className="w-[115px] px-2.5 py-1.5 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8] transition-all text-center"
+                />
+                <button
+                  onClick={handleGeneratePeriod}
+                  disabled={periodStart.length < 7 || periodEnd.length < 7}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-300 text-white rounded-md text-xs font-semibold transition-all shadow-sm"
+                >
+                  <RefreshCw size={12} /> Gerar
+                </button>
+              </div>
             </div>
 
             <div className="p-4">
@@ -721,7 +786,7 @@ export function FineCalculator() {
                       )}
                       {dateError && (
                         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
-                          <AlertCircle size={10} /> Formato inválido. Use MM/AAAA (ex: 01/2025).
+                          <AlertCircle size={10} /> Formato inválido. Use MM/AAAA (ex: 01/2026).
                         </div>
                       )}
                     </div>
@@ -731,9 +796,20 @@ export function FineCalculator() {
 
               {rows.length === 0 && (
                 <div className="py-8 text-center text-gray-300 text-sm">
-                  Nenhum mês adicionado. Clique em "Adicionar mês" para começar.
+                  Utilize o gerador de período acima ou clique abaixo para adicionar manualmente.
                 </div>
               )}
+
+              {/* Botão de adicionar mês avulso no final da tabela */}
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={addRow}
+                  className="flex items-center gap-1.5 text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
+                >
+                  <Plus size={12} /> Adicionar mês avulso manualmente
+                </button>
+              </div>
+
             </div>
           </div>
 
