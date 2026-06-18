@@ -235,21 +235,39 @@ export function NotificationDrafter() {
   });
 
   // Lê a planilha (preferencialmente .CSV para ser mais rápido)
+  // Função para ler o Excel quando o usuário faz o upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const bstr = event.target?.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
-      setExcelData(data);
-      alert(`${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`);
+      try {
+        // Usa o método moderno (ArrayBuffer) para evitar corrompimento na leitura
+        const arrayBuffer = event.target?.result;
+        const wb = XLSX.read(arrayBuffer, { type: "array" });
+        
+        const wsname = wb.SheetNames[0]; // Lê sempre a primeira aba da planilha
+        const ws = wb.Sheets[wsname];
+        
+        // Converte para JSON (defval: "" garante que células vazias não quebrem o código)
+        const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        
+        setExcelData(data);
+        
+        if (data.length === 0) {
+          alert("Aviso: A planilha parece estar vazia ou os dados não estão na primeira aba.");
+        } else {
+          alert(`${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`);
+        }
+      } catch (error) {
+        console.error("Erro ao ler a planilha:", error);
+        alert("Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.");
+      }
     };
-    reader.readAsBinaryString(file);
+    
+    // Faz a leitura usando ArrayBuffer ao invés do antigo BinaryString
+    reader.readAsArrayBuffer(file);
   };
 
   // Busca a matrícula na memória e salva os dados escondidos
