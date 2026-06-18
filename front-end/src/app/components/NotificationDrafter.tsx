@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Loader2, Info, Key, Search,
+  ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck
 } from "lucide-react";
 
 function maskDate(raw: string): string {
@@ -184,11 +185,28 @@ export function NotificationDrafter() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   
-  // Estados automáticos
+  // Estados da planilha
+  const [excelData, setExcelData] = useState<any[]>([]);
+  
+  // O único dado de identificação que o usuário digita agora
+  const [matricula, setMatricula] = useState("");
+  
+  // Campos de contexto geral (não dependem da planilha)
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [funcionario, setFuncionario] = useState("");
   const [equipe, setEquipe] = useState("");
+
+  // Estado interno que guarda os dados encontrados na planilha
+  const [clienteData, setClienteData] = useState({
+    nomeCliente: "",
+    logradouro: "",
+    bairro: "",
+    cep: "",
+    localizacao: "",
+    categoriaTarifa: "",
+    numeroHidrometro: ""
+  });
 
   const [generatedText, setGeneratedText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -215,6 +233,48 @@ export function NotificationDrafter() {
       item.category.toLowerCase().includes(searchLower)
     );
   });
+
+  // Lê a planilha (preferencialmente .CSV para ser mais rápido)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: "binary" });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+      setExcelData(data);
+      alert(`${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  // Busca a matrícula na memória e salva os dados escondidos
+  const handleSearchMatricula = () => {
+    if (!matricula) return;
+    
+    // ATENÇÃO: Se as colunas no seu Excel tiverem nomes diferentes, ajuste os nomes dentro dos colchetes
+    const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
+
+    if (encontrado) {
+      setClienteData({
+        nomeCliente: encontrado["NOME"] || "",
+        logradouro: encontrado["Endereço"] || "",
+        bairro: encontrado["Bairro"] || "",
+        cep: encontrado["CEP"] || "",
+        localizacao: encontrado["Localização"] || "",
+        categoriaTarifa: encontrado["Ativ. Econômica - Residencial"] || "",
+        numeroHidrometro: encontrado["Numero Hidrometro"] || ""
+      });
+    } else {
+      alert("Matrícula não encontrada na planilha.");
+      // Limpa os dados se não achar, para o backend usar as {Tags} e o ERP preencher depois
+      setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+    }
+  };
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
@@ -268,8 +328,12 @@ export function NotificationDrafter() {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // NOVO: Adicionado o envio do protocolo para o título do Word
-        body: JSON.stringify({ texto_final: generatedText, protocolo }),
+        body: JSON.stringify({ 
+          texto_final: generatedText, 
+          protocolo,
+          matricula, 
+          ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
+        }),
       });
 
       if (!response.ok) throw new Error("Erro ao gerar Word.");
@@ -480,64 +544,91 @@ export function NotificationDrafter() {
 
           {/* Step 2 — Generate */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Geração com Inteligência Artificial</h2>
-                <p className="text-gray-500 text-xs">Preencha os dados e redija a notificação formal em um clique</p>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <div>
+                  <h2 className="text-[#0b1e35] font-semibold text-sm">Dados da Notificação</h2>
+                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente (caso use planilha)</p>
+                </div>
               </div>
             </div>
+
             <div className="p-6">
               
+              {/* === PAINEL DE PLANILHA (OPCIONAL E ENXUTO) === */}
+              <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
+                  <p className="text-[10px] text-gray-500">Faça o upload do Excel/CSV para habilitar a busca automática por Matrícula.</p>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <input 
+                    type="file" 
+                    accept=".csv, .xlsx, .xls" 
+                    onChange={handleFileUpload}
+                    className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* === CAMPOS ENXUTOS === */}
               <div className="mb-6">
-                <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para preenchimento automático</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Data da Constatação
-                    </label>
-                    <input
-                      value={dataConstatacao}
-                      onChange={(e) => setDataConstatacao(maskDate(e.target.value))}
-                      placeholder="DD/MM/AAAA"
-                      maxLength={10}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Protocolo
-                    </label>
-                    <input
-                      value={protocolo}
-                      onChange={(e) => setProtocolo(e.target.value)}
-                      placeholder="Ex: 12345678"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Funcionário
-                    </label>
-                    <input
-                      value={funcionario}
-                      onChange={(e) => setFuncionario(e.target.value)}
-                      placeholder="Nome do funcionário"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Equipe
-                    </label>
-                    <input
-                      value={equipe}
-                      onChange={(e) => setEquipe(e.target.value)}
-                      placeholder="Ex: FIMM, Leiturista..."
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
+                
+                {/* Linha 1: Matrícula e Busca */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={matricula}
+                        onChange={(e) => setMatricula(e.target.value)}
+                        placeholder="Ex: 1298382-9"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      />
+                      <button 
+                        onClick={handleSearchMatricula}
+                        disabled={excelData.length === 0}
+                        title={excelData.length === 0 ? "Carregue a planilha primeiro" : "Buscar dados"}
+                        className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Buscar
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Card de Confirmação visual caso ache o cliente */}
+                {clienteData.nomeCliente && (
+                  <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-3">
+                    <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
+                      <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro}, Bairro {clienteData.bairro}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Linha 2: Constatação, Protocolo, Funcionário, Equipe */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
+                    <input value={dataConstatacao} onChange={(e) => setDataConstatacao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" maxLength={10} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
+                    <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
+                    <input value={funcionario} onChange={(e) => setFuncionario(e.target.value)} placeholder="Nome" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
+                    <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                </div>
+
               </div>
 
               <button
@@ -634,7 +725,7 @@ export function NotificationDrafter() {
                 <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
                   <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-[#4a7fa5]">
-                    O arquivo Word será exportado com as variáveis de sistema (ex: MATRICULA, NOME_CLIENTE) para que o seu ERP comercial substitua-as automaticamente em lote.
+                    O arquivo Word será exportado com as variáveis embutidas. Se você subiu a planilha e buscou pela matrícula, elas serão preenchidas automaticamente; senão, seu ERP fará isso.
                   </p>
                 </div>
               </div>
