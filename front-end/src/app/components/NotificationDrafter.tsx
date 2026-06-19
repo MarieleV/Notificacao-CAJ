@@ -279,12 +279,12 @@ export function NotificationDrafter() {
 
     if (encontrado) {
       setClienteData({
-        nomeCliente: encontrado["NOME"] || "",
+        nomeCliente: encontrado["Morador"] || "",
         logradouro: encontrado["Endereço"] || "",
         bairro: encontrado["Bairro"] || "",
         cep: encontrado["CEP"] || "",
         localizacao: encontrado["Localização"] || "",
-        categoriaTarifa: encontrado["Ativ. Econômica - Residencial"] || "",
+        categoriaTarifa: encontrado["Ativ. Econômica"] || "",
         numeroHidrometro: encontrado["Numero Hidrometro"] || ""
       });
     } else {
@@ -622,7 +622,7 @@ export function NotificationDrafter() {
                     <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
                     <div>
                       <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
-                      <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro}, Bairro {clienteData.bairro}</p>
+                      <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro} | <strong>Hidrômetro:</strong> {clienteData.numeroHidrometro}</p>
                     </div>
                   </div>
                 )}
