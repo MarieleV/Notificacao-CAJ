@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx"; // Voltamos a usar o XLSX, mas agora de forma otimizada!
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck
@@ -185,20 +185,17 @@ export function NotificationDrafter() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   
-  // Estados da planilha
-  const [excelData, setExcelData] = useState<any[]>([]);
+  // Guardamos apenas a referência do Arquivo (não os dados!), impedindo o Out of Memory
+  const [reportFile, setReportFile] = useState<File | null>(null);
   
-  // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
-  
-  // Campos de contexto geral (não dependem da planilha)
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [funcionario, setFuncionario] = useState("");
   const [equipe, setEquipe] = useState("");
 
-  // Estado interno que guarda os dados encontrados na planilha
   const [clienteData, setClienteData] = useState({
+    matricula: "",
     nomeCliente: "",
     logradouro: "",
     bairro: "",
@@ -210,6 +207,7 @@ export function NotificationDrafter() {
 
   const [generatedText, setGeneratedText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<"idle" | "generated">("idle");
   const [penaltyVariant, setPenaltyVariant] = useState<PenaltyVariant>("multa");
@@ -234,64 +232,72 @@ export function NotificationDrafter() {
     );
   });
 
-  // Lê a planilha (preferencialmente .CSV para ser mais rápido)
-  // Função para ler o Excel quando o usuário faz o upload
+  // Apenas salva a referência do arquivo no estado
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        // Usa o método moderno (ArrayBuffer) para evitar corrompimento na leitura
-        const arrayBuffer = event.target?.result;
-        const wb = XLSX.read(arrayBuffer, { type: "array" });
-        
-        const wsname = wb.SheetNames[0]; // Lê sempre a primeira aba da planilha
-        const ws = wb.Sheets[wsname];
-        
-        // Converte para JSON (defval: "" garante que células vazias não quebrem o código)
-        const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
-        
-        setExcelData(data);
-        
-        if (data.length === 0) {
-          alert("Aviso: A planilha parece estar vazia ou os dados não estão na primeira aba.");
-        } else {
-          alert(`${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`);
-        }
-      } catch (error) {
-        console.error("Erro ao ler a planilha:", error);
-        alert("Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.");
-      }
-    };
-    
-    // Faz a leitura usando ArrayBuffer ao invés do antigo BinaryString
-    reader.readAsArrayBuffer(file);
+    if (file) {
+      setReportFile(file);
+      alert(`Arquivo "${file.name}" carregado. O sistema usará o arquivo apenas no momento da busca, protegendo a memória do seu computador.`);
+    }
   };
 
-  // Busca a matrícula na memória e salva os dados escondidos
+  // Lógica Protegida contra Out of Memory (Read-on-Demand)
   const handleSearchMatricula = () => {
-    if (!matricula) return;
-    
-    // ATENÇÃO: Se as colunas no seu Excel tiverem nomes diferentes, ajuste os nomes dentro dos colchetes
-    const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
-
-    if (encontrado) {
-      setClienteData({
-        nomeCliente: encontrado["NOME"] || "",
-        logradouro: encontrado["Endereço"] || "",
-        bairro: encontrado["Bairro"] || "",
-        cep: encontrado["CEP"] || "",
-        localizacao: encontrado["Localização"] || "",
-        categoriaTarifa: encontrado["Ativ. Econômica - Residencial"] || "",
-        numeroHidrometro: encontrado["Numero Hidrometro"] || ""
-      });
-    } else {
-      alert("Matrícula não encontrada na planilha.");
-      // Limpa os dados se não achar, para o backend usar as {Tags} e o ERP preencher depois
-      setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+    if (!reportFile) {
+      alert("Por favor, carregue a planilha primeiro.");
+      return;
     }
+    if (!matricula) {
+      alert("Digite uma matrícula para buscar.");
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Damos um pequeno delay para a interface atualizar e mostrar "Buscando..."
+    setTimeout(() => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const arrayBuffer = event.target?.result;
+          
+          // Abre o Excel de forma rápida
+          const wb = XLSX.read(arrayBuffer, { type: "array" });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          
+          // Extrai o JSON direto numa variável local (que é apagada depois da busca)
+          const data = XLSX.utils.sheet_to_json(ws, { defval: "" }) as any[];
+          
+          // Mude "MATRICULA" para o nome exato da coluna na sua planilha
+          const encontrado = data.find((row) => String(row["Matrícula"]) === matricula);
+
+          if (encontrado) {
+            setClienteData({
+              matricula: encontrado["Matrícula"] || matricula,
+              // Mude os campos abaixo para os nomes reais do seu cabeçalho Excel
+              categoriaTarifa: encontrado["Ativ. Econômica"] || "",
+              nomeCliente: encontrado["Morador"] || "",
+              logradouro: encontrado["Endereço"] || "",
+              bairro: encontrado["Bairro"] || "",
+              cep: encontrado["CEP"] || "",
+              localizacao: encontrado["Localização"] || "",
+              numeroHidrometro: encontrado["Numero Hidrometro"] || ""
+            });
+          } else {
+            alert("Matrícula não encontrada na planilha.");
+            setClienteData({ matricula: "", nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Erro ao ler o arquivo Excel.");
+        } finally {
+          setIsSearching(false);
+        }
+      };
+      
+      reader.readAsArrayBuffer(reportFile);
+    }, 100);
   };
 
   const handleGenerate = async () => {
@@ -349,8 +355,8 @@ export function NotificationDrafter() {
         body: JSON.stringify({ 
           texto_final: generatedText, 
           protocolo,
-          matricula, 
-          ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
+          ...clienteData,
+          matricula: clienteData.matricula || matricula
         }),
       });
 
@@ -567,7 +573,7 @@ export function NotificationDrafter() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Dados da Notificação</h2>
-                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente (caso use planilha)</p>
+                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente via Excel/CSV</p>
                 </div>
               </div>
             </div>
@@ -577,8 +583,8 @@ export function NotificationDrafter() {
               {/* === PAINEL DE PLANILHA (OPCIONAL E ENXUTO) === */}
               <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
-                  <p className="text-[10px] text-gray-500">Faça o upload do Excel/CSV para habilitar a busca automática por Matrícula.</p>
+                  <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base (Seguro)</h3>
+                  <p className="text-[10px] text-gray-500">Faça o upload do Excel. A leitura acontece sob demanda para não travar seu PC.</p>
                 </div>
                 <div className="w-full sm:w-auto">
                   <input 
@@ -606,11 +612,11 @@ export function NotificationDrafter() {
                       />
                       <button 
                         onClick={handleSearchMatricula}
-                        disabled={excelData.length === 0}
-                        title={excelData.length === 0 ? "Carregue a planilha primeiro" : "Buscar dados"}
-                        className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!reportFile || isSearching}
+                        title={!reportFile ? "Carregue a planilha primeiro" : "Buscar dados"}
+                        className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        Buscar
+                        {isSearching ? <Loader2 size={12} className="animate-spin" /> : "Buscar"}
                       </button>
                     </div>
                   </div>
@@ -621,7 +627,7 @@ export function NotificationDrafter() {
                   <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-3">
                     <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
                     <div>
-                      <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
+                      <p className="text-xs font-bold text-emerald-800">Cliente localizado com sucesso!</p>
                       <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro}, Bairro {clienteData.bairro}</p>
                     </div>
                   </div>
@@ -643,7 +649,7 @@ export function NotificationDrafter() {
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
-                    <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: FIMM" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
                 </div>
 
