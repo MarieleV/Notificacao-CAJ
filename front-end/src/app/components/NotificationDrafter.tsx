@@ -190,6 +190,8 @@ export function NotificationDrafter() {
   
   // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
+  // Grava a matrícula exata que o usuário validou no botão "Buscar"
+  const [matriculaBuscada, setMatriculaBuscada] = useState("");
   
   // Campos de contexto geral (não dependem da planilha)
   const [dataConstatacao, setDataConstatacao] = useState("");
@@ -273,8 +275,10 @@ export function NotificationDrafter() {
   // Busca a matrícula na memória e salva os dados escondidos
   const handleSearchMatricula = () => {
     if (!matricula) return;
+
+    // NOVA LINHA: Registra que ele apertou o botão para o que está digitado agora
+    setMatriculaBuscada(matricula);
     
-    // ATENÇÃO: Se as colunas no seu Excel tiverem nomes diferentes, ajuste os nomes dentro dos colchetes
     const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
 
     if (encontrado) {
@@ -294,10 +298,19 @@ export function NotificationDrafter() {
     }
   };
 
+  // REGRA: Tem algo digitado E (AND) o que está digitado é diferente da última busca feita
+  const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
+
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
     if (!apiKey) {
       alert("Por favor, insira sua Chave de API do Gemini no topo da tela.");
+      return;
+    }
+
+    // TRAVA DE SEGURANÇA NA FUNÇÃO: Impede a geração se o usuário mudou a matrícula mas não buscou
+    if (esqueceuDeBuscar) {
+      alert("Você digitou/alterou a matrícula, mas esqueceu de clicar em 'Buscar'. Por favor, busque os dados antes de gerar o documento.");
       return;
     }
 
@@ -392,10 +405,6 @@ export function NotificationDrafter() {
               onChange={(e) => setApiKey(e.target.value)}
               className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48"
             />
-          </div>
-          <div className="flex items-center gap-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-1.5">
-            <Sparkles size={13} className="text-[#1a5fa8]" />
-            <span className="text-[#1a5fa8] text-xs font-medium">Powered by Python & Gemini</span>
           </div>
         </div>
       </div>
@@ -651,9 +660,10 @@ export function NotificationDrafter() {
 
               <button
                 onClick={handleGenerate}
-                disabled={selectedCodes.length === 0 || loading}
+                disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar}
                 className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
               >
+              
                 {loading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
@@ -666,10 +676,14 @@ export function NotificationDrafter() {
                   </>
                 )}
               </button>
-              {selectedCodes.length === 0 && (
+              {(selectedCodes.length === 0 || esqueceuDeBuscar) && (
                 <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <AlertCircle size={13} />
-                  <p className="text-xs">Selecione ao menos um código de infração para habilitar a geração</p>
+                  <AlertCircle size={13} className="flex-shrink-0" />
+                  <p className="text-xs">
+                    {esqueceuDeBuscar 
+                      ? "Você digitou uma Matrícula. Clique no botão 'Buscar' ao lado dela para confirmar os dados antes de gerar o texto."
+                      : "Selecione ao menos um código de infração para habilitar a geração."}
+                  </p>
                 </div>
               )}
             </div>
