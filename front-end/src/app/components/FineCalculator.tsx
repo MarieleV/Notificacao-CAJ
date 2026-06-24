@@ -53,7 +53,20 @@ function maskMonthYear(raw: string): string {
 }
 
 function maskBRL(raw: string): string {
-  return raw.replace(/[^0-9,]/g, "");
+  // 1. Remove tudo que não for número (vírgulas, pontos, letras)
+  const digits = raw.replace(/\D/g, "");
+  
+  // 2. Se o campo for apagado/vazio, retorna vazio para mostrar o placeholder
+  if (!digits) return "";
+  
+  // 3. Transforma em número inteiro e divide por 100 (para criar os centavos)
+  const val = parseInt(digits, 10) / 100;
+  
+  // 4. Formata nativamente para o padrão monetário brasileiro (ex: 1.234,56)
+  return val.toLocaleString("pt-BR", { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
 }
 
 function maskDate(raw: string): string {
@@ -215,24 +228,35 @@ function RateTable({
       <div className="space-y-2">
         {rows.map((row) => (
           <div key={row.id} className="flex gap-2 items-center">
+            {/* Campo Início */}
             <div className="flex-1">
               <input
-                value={row.startMonth}
-                onChange={(e) => onChange(row.id, "startMonth", maskMonthYear(e.target.value))}
-                placeholder="Início MM/AAAA"
-                maxLength={7}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                type="month"
+                // Converte MM/AAAA para YYYY-MM para o input entender
+                value={row.startMonth.split('/').reverse().join('-')} 
+                onChange={(e) => {
+                  // Converte YYYY-MM de volta para MM/AAAA
+                  const [y, m] = e.target.value.split('-');
+                  onChange(row.id, "startMonth", `${m}/${y}`);
+                }}
+                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
               />
             </div>
+            
+            {/* Campo Fim */}
             <div className="flex-1">
               <input
-                value={row.endMonth}
-                onChange={(e) => onChange(row.id, "endMonth", maskMonthYear(e.target.value))}
-                placeholder="Fim MM/AAAA"
-                maxLength={7}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                type="month"
+                value={row.endMonth.split('/').reverse().join('-')}
+                onChange={(e) => {
+                  const [y, m] = e.target.value.split('-');
+                  onChange(row.id, "endMonth", `${m}/${y}`);
+                }}
+                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
               />
             </div>
+            
+            {/* Campo Valor */}
             <div className="flex-1">
               <input
                 value={row.value}
@@ -241,6 +265,7 @@ function RateTable({
                 className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
               />
             </div>
+            
             <button
               onClick={() => onRemove(row.id)}
               className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
