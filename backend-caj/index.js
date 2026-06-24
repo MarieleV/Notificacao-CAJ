@@ -60,10 +60,11 @@ app.post("/api/gerar", async (req, res) => {
 // ==============================================================================
 // 2. ROTA: EXPORTAR PARA WORD (Padrão ERP Oficial + AR - 1 Página A4)
 // ==============================================================================
+
 app.post("/api/exportar_word", async (req, res) => {
-  // Recebendo os dados preenchidos do front-end (repare que tirei o numeroImovel daqui)
+  // 1. Receba o autoInfracao do req.body
   const { 
-    texto_final, protocolo, matricula, nomeCliente, 
+    texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
     logradouro, bairro, cep, localizacao, 
     categoriaTarifa, numeroHidrometro 
   } = req.body;
@@ -73,8 +74,9 @@ app.post("/api/exportar_word", async (req, res) => {
   }
 
   try {
-    // Variáveis dinâmicas
+    // 2. Crie a variável dinâmica para o Auto de Infração
     const numProtocolo = protocolo || "{PROTOCOLO}";
+    const numAutoInfracao = autoInfracao || "{AUTO_INFRACAO}"; // <-- AQUI
     const mat = matricula || "{MATRICULA}";
     const cliente = nomeCliente || "{NOME_CLIENTE_MORADOR}";
     const endLogradouro = logradouro || "{ENDERECO_LOGRADOURO}";
@@ -151,7 +153,6 @@ app.post("/api/exportar_word", async (req, res) => {
         }),
         new TableRow({
           children: [
-            // AQUI: Endereço sem a palavra Nº e sem a variável do número, pois já vem embutido
             new TableCell({ columnSpan: 2, children: [new Paragraph({ children: [new TextRun({ text: "Endereço: ", bold: true }), new TextRun(endLogradouro)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Bairro: ", bold: true }), new TextRun(endBairro)] })], margins: defaultMargin }),
           ],
@@ -202,14 +203,14 @@ app.post("/api/exportar_word", async (req, res) => {
         }),
         new TableRow({
           children: [
-            // AQUI TAMBÉM: Endereço sem a palavra Nº
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Endereço: ", bold: true }), new TextRun(endLogradouro)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Localização: ", bold: true }), new TextRun(`${loc}.`)] })], margins: defaultMargin }),
           ]
         }),
         new TableRow({
           children: [
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Auto de infração: ", bold: true }), new TextRun(numProtocolo)] })], margins: defaultMargin }),
+            // 3. Atualizado para numAutoInfracao
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Auto de infração: ", bold: true }), new TextRun(numAutoInfracao)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Matricula: ", bold: true }), new TextRun(mat)] })], margins: defaultMargin }),
           ]
         }),
@@ -222,14 +223,14 @@ app.post("/api/exportar_word", async (req, res) => {
         new TableRow({ children: [new TableCell({ columnSpan: 2, children: [new Paragraph({ children: [new TextRun({ text: "AVISO DE RECEBIMENTO - AR", bold: true })], alignment: AlignmentType.CENTER })], margins: defaultMargin })] }),
         new TableRow({
           children: [
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO: ", bold: true }), new TextRun(`${numProtocolo}.`)] })], margins: defaultMargin }),
+            // 4. Atualizado para numAutoInfracao
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO: ", bold: true }), new TextRun(`${numAutoInfracao}.`)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "MATRICULA: ", bold: true }), new TextRun(`${mat}.`)] })], margins: defaultMargin }),
           ]
         }),
         new TableRow({ children: [new TableCell({ columnSpan: 2, children: [new Paragraph({ children: [new TextRun({ text: "NOME: ", bold: true }), new TextRun(`${cliente}.`)] })], margins: defaultMargin })] }),
         new TableRow({
           children: [
-            // AQUI TAMBÉM: Endereço direto no AR
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ENDEREÇO: ", bold: true }), new TextRun(`${endLogradouro}.`)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "LOCALIZAÇÃO: ", bold: true }), new TextRun(`${loc}.`)] })], margins: defaultMargin }),
           ]
@@ -252,7 +253,8 @@ app.post("/api/exportar_word", async (req, res) => {
           properties: { page: { margin: { top: 1000, left: 1133, bottom: 1000, right: 1133 } } },
           children: [
             headerTable,
-            new Paragraph({ children: [new TextRun({ text: `Auto de Infração nº ${numProtocolo}`, bold: true, underline: {} })], alignment: AlignmentType.CENTER, spacing: { before: 150, after: 150 } }),
+            // 5. O Título principal recebe numAutoInfracao
+            new Paragraph({ children: [new TextRun({ text: `Auto de Infração nº ${numAutoInfracao}`, bold: true, underline: {} })], alignment: AlignmentType.CENTER, spacing: { before: 150, after: 150 } }),
             table1,
             new Paragraph({ children: [new TextRun(" ")], spacing: { before: 50, after: 50 } }), 
             table2,

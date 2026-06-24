@@ -196,6 +196,7 @@ export function NotificationDrafter() {
   // Campos de contexto geral (não dependem da planilha)
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
+  const [autoInfracao, setAutoInfracao] = useState("");
   const [funcionario, setFuncionario] = useState("");
   const [equipe, setEquipe] = useState("");
 
@@ -362,6 +363,7 @@ export function NotificationDrafter() {
         body: JSON.stringify({ 
           texto_final: generatedText, 
           protocolo,
+          autoInfracao,
           matricula, 
           ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
         }),
@@ -636,8 +638,8 @@ export function NotificationDrafter() {
                   </div>
                 )}
 
-                {/* Linha 2: Constatação, Protocolo, Funcionário, Equipe */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                {/* Linha 2: Constatação, Protocolo, Auto Infração, Funcionário, Equipe */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
                     <input value={dataConstatacao} onChange={(e) => setDataConstatacao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" maxLength={10} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -646,6 +648,12 @@ export function NotificationDrafter() {
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
                     <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
+                  {/* --- NOVO INPUT: AUTO DE INFRAÇÃO --- */}
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº Auto Infração</label>
+                    <input value={autoInfracao} onChange={(e) => setAutoInfracao(e.target.value)} placeholder="Ex: 98765" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                  {/* ------------------------------------ */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
                     <input value={funcionario} onChange={(e) => setFuncionario(e.target.value)} placeholder="Nome" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
