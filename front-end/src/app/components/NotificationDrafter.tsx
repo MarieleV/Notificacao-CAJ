@@ -193,7 +193,6 @@ export function NotificationDrafter() {
   // Grava a matrícula exata que o usuário validou no botão "Buscar"
   const [matriculaBuscada, setMatriculaBuscada] = useState("");
   
-  // Campos de contexto geral (não dependem da planilha)
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [autoInfracao, setAutoInfracao] = useState("");
@@ -302,10 +301,31 @@ export function NotificationDrafter() {
   // REGRA: Tem algo digitado E (AND) o que está digitado é diferente da última busca feita
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
 
+  // NOVA REGRA: Verifica se algum dos campos de texto obrigatórios está vazio
+  const camposObrigatoriosVazios = 
+    !matricula.trim() || 
+    !dataConstatacao.trim() || 
+    !protocolo.trim() || 
+    !autoInfracao.trim() || 
+    !funcionario.trim() || 
+    !equipe.trim();
+
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
     if (!apiKey) {
       alert("Por favor, insira sua Chave de API do Gemini no topo da tela.");
+      return;
+    }
+
+    // --- NOVA TRAVA: CAMPOS OBRIGATÓRIOS ---
+    if (camposObrigatoriosVazios) {
+      alert("Por favor, preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Nº Auto de Infração, Funcionário e Equipe).");
+      return;
+    }
+
+    // TRAVA DE SEGURANÇA NA FUNÇÃO: Impede a geração se o usuário mudou a matrícula mas não buscou
+    if (esqueceuDeBuscar) {
+      alert("Você digitou/alterou a matrícula, mas esqueceu de clicar em 'Buscar'. Por favor, busque os dados antes de gerar o documento.");
       return;
     }
 
@@ -668,7 +688,8 @@ export function NotificationDrafter() {
 
               <button
                 onClick={handleGenerate}
-                disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar}
+                // ATUALIZADO: Adicionado o camposObrigatoriosVazios
+                disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar || camposObrigatoriosVazios}
                 className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
               >
               
@@ -684,13 +705,15 @@ export function NotificationDrafter() {
                   </>
                 )}
               </button>
-              {(selectedCodes.length === 0 || esqueceuDeBuscar) && (
+              {(selectedCodes.length === 0 || esqueceuDeBuscar || camposObrigatoriosVazios) && (
                 <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <AlertCircle size={13} className="flex-shrink-0" />
                   <p className="text-xs">
-                    {esqueceuDeBuscar 
+                    {selectedCodes.length === 0 
+                      ? "Selecione ao menos um código de infração para habilitar a geração."
+                      : esqueceuDeBuscar 
                       ? "Você digitou uma Matrícula. Clique no botão 'Buscar' ao lado dela para confirmar os dados antes de gerar o texto."
-                      : "Selecione ao menos um código de infração para habilitar a geração."}
+                      : "Preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Nº Auto, Funcionário e Equipe)."}
                   </p>
                 </div>
               )}
