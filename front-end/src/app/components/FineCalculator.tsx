@@ -12,6 +12,7 @@ type IrregularRow = {
   id: number;
   monthYear: string;
   consumption: string;
+  irregularConsumption: string;   // NOVO CAMPO
   chargedWater: string;
   chargedService: string;
   chargedSewage: string;         
@@ -53,16 +54,9 @@ function maskMonthYear(raw: string): string {
 }
 
 function maskBRL(raw: string): string {
-  // 1. Remove tudo que não for número (vírgulas, pontos, letras)
   const digits = raw.replace(/\D/g, "");
-  
-  // 2. Se o campo for apagado/vazio, retorna vazio para mostrar o placeholder
   if (!digits) return "";
-  
-  // 3. Transforma em número inteiro e divide por 100 (para criar os centavos)
   const val = parseInt(digits, 10) / 100;
-  
-  // 4. Formata nativamente para o padrão monetário brasileiro (ex: 1.234,56)
   return val.toLocaleString("pt-BR", { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
@@ -228,22 +222,17 @@ function RateTable({
       <div className="space-y-2">
         {rows.map((row) => (
           <div key={row.id} className="flex gap-2 items-center">
-            {/* Campo Início */}
             <div className="flex-1">
               <input
                 type="month"
-                // Converte MM/AAAA para YYYY-MM para o input entender
                 value={row.startMonth.split('/').reverse().join('-')} 
                 onChange={(e) => {
-                  // Converte YYYY-MM de volta para MM/AAAA
                   const [y, m] = e.target.value.split('-');
                   onChange(row.id, "startMonth", `${m}/${y}`);
                 }}
                 className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
               />
             </div>
-            
-            {/* Campo Fim */}
             <div className="flex-1">
               <input
                 type="month"
@@ -255,8 +244,6 @@ function RateTable({
                 className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
               />
             </div>
-            
-            {/* Campo Valor */}
             <div className="flex-1">
               <input
                 value={row.value}
@@ -265,7 +252,6 @@ function RateTable({
                 className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
               />
             </div>
-            
             <button
               onClick={() => onRemove(row.id)}
               className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
@@ -289,8 +275,6 @@ function RateTable({
 
 export function FineCalculator() {
   const [configOpen, setConfigOpen] = useState(false);
-  
-  // 1. Click Outside Ref
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -319,16 +303,17 @@ export function FineCalculator() {
   const [selectedK1Activity, setSelectedK1Activity] = useState("Casa");
   const [k1Factor, setK1Factor] = useState("1,00");
 
-  // Estado das Linhas (Água + Esgoto integrados)
+  // Estado das Linhas — agora inclui irregularConsumption
   const [rows, setRows] = useState<IrregularRow[]>([
     { 
-      id: newId(), monthYear: "01/2026", consumption: "20", 
+      id: newId(), monthYear: "01/2026", consumption: "20",
+      irregularConsumption: "",
       chargedWater: "13,60", chargedService: "31,96", 
       chargedSewage: ""
     },
   ]);
 
-  // Novos estados para o gerador de período em lote
+  // Gerador de período em lote
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
 
@@ -354,7 +339,6 @@ export function FineCalculator() {
       setM3Tiers(preset.tiers);
     }
 
-    // === Sincronização Inteligente do Grupo K1 ===
     let k1Cat = "Residencial";
     if (tariffName.includes("Comercial")) k1Cat = "Comercial";
     else if (tariffName.includes("Industrial")) k1Cat = "Industrial";
@@ -392,11 +376,12 @@ export function FineCalculator() {
     );
   }
 
-  // ─── Handlers de Linhas Irregulares (Avulso e Em Lote) ────────────────────
+  // ─── Handlers de Linhas Irregulares ──────────────────────────────────────
 
   function addRow() {
     setRows((p) => [...p, { 
-      id: newId(), monthYear: "", consumption: "", 
+      id: newId(), monthYear: "", consumption: "",
+      irregularConsumption: "",
       chargedWater: "", chargedService: "",
       chargedSewage: ""
     }]);
@@ -418,7 +403,6 @@ export function FineCalculator() {
     const generatedRows: IrregularRow[] = [];
     let current = new Date(start);
 
-    // Loop que adiciona 1 mês até chegar no fim do período
     while (current <= end) {
       const mm = String(current.getMonth() + 1).padStart(2, "0");
       const yyyy = current.getFullYear();
@@ -428,6 +412,7 @@ export function FineCalculator() {
         id: newId(),
         monthYear: monthYearStr,
         consumption: "",
+        irregularConsumption: "",
         chargedWater: "",
         chargedService: "",
         chargedSewage: ""
@@ -437,13 +422,11 @@ export function FineCalculator() {
     }
 
     setRows((prev) => {
-      // Cria uma lista dos meses que já existem para não adicionar duplicado
       const existingMonths = prev.map(r => r.monthYear);
       const filteredRows = generatedRows.filter(r => !existingMonths.includes(r.monthYear));
       return [...prev, ...filteredRows];
     });
 
-    // Limpa os campos após gerar
     setPeriodStart("");
     setPeriodEnd("");
   }
@@ -458,7 +441,7 @@ export function FineCalculator() {
         if (r.id !== id) return r;
         if (field === "monthYear") return { ...r, monthYear: maskMonthYear(val) };
         if (field === "consumption") return { ...r, consumption: val.replace(/[^0-9,]/g, "") };
-        
+        if (field === "irregularConsumption") return { ...r, irregularConsumption: val.replace(/[^0-9,]/g, "") };
         if (["chargedWater", "chargedService", "chargedSewage"].includes(field)) {
           return { ...r, [field]: maskBRL(val) };
         }
@@ -467,7 +450,7 @@ export function FineCalculator() {
     );
   }
 
-  // ─── Integração com Back-end (API Python/Node) ────────────────────────────
+  // ─── Integração com Back-end ──────────────────────────────────────────────
   const [apiData, setApiData] = useState<any>(null);
 
   useEffect(() => {
@@ -500,7 +483,7 @@ export function FineCalculator() {
     }
   }
 
-  // ─── Pontes Seguras (Mata o erro de 'undefined') ──────────────────────────
+  // ─── Pontes Seguras ───────────────────────────────────────────────────────
   
   const calcRows = rows.map((row) => {
     const apiCalc = apiData?.rows?.find((r: any) => r.id === row.id);
@@ -532,7 +515,6 @@ export function FineCalculator() {
   // ─── Geração de Texto ─────────────────────────────────────────────────────
   function handleGenerateText() {
     if (apiData?.waterReportText) setWaterReportText(apiData.waterReportText);
-    
     if (apiData?.sewageReportText) {
       setSewageReportText(apiData.sewageReportText);
     } else {
@@ -560,7 +542,7 @@ export function FineCalculator() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top bar (COM MENU DE PARÂMETROS EMBUTIDO) */}
+      {/* Top bar */}
       <div className="relative bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm z-50">
         <div>
           <div className="flex items-center gap-2">
@@ -572,7 +554,6 @@ export function FineCalculator() {
           </p>
         </div>
         
-        {/* WRAPPER DO CLICK OUTSIDE */}
         <div ref={panelRef} className="relative">
           <button
             onClick={() => setConfigOpen((v) => !v)}
@@ -587,7 +568,6 @@ export function FineCalculator() {
             {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
 
-          {/* Painel Suspenso (Dropdown) de Configurações */}
           {configOpen && (
             <div className="absolute top-full right-0 mt-3 w-full min-w-[700px] max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right z-50">
               
@@ -600,7 +580,6 @@ export function FineCalculator() {
                 </div>
               </div>
               
-              {/* === BLOCO 1: ESTRUTURA TARIFÁRIA DA ÁGUA === */}
               <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
@@ -620,14 +599,11 @@ export function FineCalculator() {
                 </div>
               </div>
 
-              {/* === BLOCO 2: CÁLCULO DO FATOR K1 (ESGOTO) === */}
               <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
                 <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-4">
                   Categoria Tarifária do Esgoto (Fator K1)
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
-                  
-                  {/* Seletor de Atividade (A lista continua sendo filtrada pelo grupo oculto) */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Ramo de Atividade</label>
                     <select
@@ -640,8 +616,6 @@ export function FineCalculator() {
                       ))}
                     </select>
                   </div>
-
-                  {/* Campo Final do K1 */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">K1 Aplicado</label>
                     <input
@@ -654,7 +628,6 @@ export function FineCalculator() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                {/* Tabela A — Serviço */}
                 <div>
                   <RateTable
                     title="Valor do Serviço (R$/mês)"
@@ -668,13 +641,11 @@ export function FineCalculator() {
                   />
                 </div>
 
-                {/* Tabela B — m³ (Faixas de Consumo) */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Droplets size={14} className="text-[#1a5fa8]" />
                     <h3 className="text-sm font-semibold text-[#0b1e35]">Valor do Metro Cúbico (R$/m³)</h3>
                   </div>
-                  
                   <div className="space-y-2">
                     {m3Tiers.map((tier) => (
                       <div key={tier.id} className="flex gap-2 items-center">
@@ -696,7 +667,6 @@ export function FineCalculator() {
                 </div>
               </div>
 
-              {/* Legenda colunas */}
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Início</span>
@@ -704,7 +674,6 @@ export function FineCalculator() {
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
                   <span className="w-5" />
                 </div>
-
                 <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Faixa de Consumo</span>
                   <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
@@ -715,7 +684,6 @@ export function FineCalculator() {
         </div>
       </div>
 
-      {/* A rolagem ocupa 100% da tela */}
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-[1400px] mx-auto space-y-8 w-full">
 
@@ -730,7 +698,7 @@ export function FineCalculator() {
                 </div>
               </div>
 
-              {/* GERADOR DE PERÍODO (NOVO) */}
+              {/* Gerador de Período */}
               <div className="flex items-center gap-2 bg-[#f8fafe] p-1.5 rounded-lg border border-[#dce9f7]">
                 <input
                   value={periodStart}
@@ -758,8 +726,16 @@ export function FineCalculator() {
             </div>
 
             <div className="p-4">
-              <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 mb-2 px-1">
-                {["Mês/Ano", "Consumo Regular (m³)", "Água Cobrada Errada (R$)", "Serviço Cobrado Errado (R$)", ""].map((h, i) => (
+              {/* ── Cabeçalho da tabela — agora com 6 colunas de dados + botão ── */}
+              <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 mb-2 px-1">
+                {[
+                  "Mês/Ano",
+                  "Consumo Regular (m³)",
+                  "Consumo Irregular (m³)",
+                  "Água Cobrada Errada (R$)",
+                  "Serviço Cobrado Errado (R$)",
+                  ""
+                ].map((h, i) => (
                   <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
                 ))}
               </div>
@@ -772,38 +748,61 @@ export function FineCalculator() {
 
                   return (
                     <div key={row.id}>
-                      <div className="grid grid-cols-[140px_1fr_1fr_1fr_40px] gap-4 items-center">
+                      <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 items-center">
+                        {/* Mês/Ano */}
                         <input
                           value={row.monthYear}
                           onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
                           placeholder="MM/AAAA"
                           maxLength={7}
                           className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all ${
-                            dateError ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
+                            dateError
+                              ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
+                              : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
                           }`}
                         />
+
+                        {/* Consumo Regular */}
                         <input
                           value={row.consumption}
                           onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
                           placeholder="Ex: 20"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
+
+                        {/* Consumo Irregular (NOVO) */}
+                        <input
+                          value={row.irregularConsumption}
+                          onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value)}
+                          placeholder="Ex: 15"
+                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                        />
+
+                        {/* Água Cobrada Errada */}
                         <input
                           value={row.chargedWater}
                           onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
                           placeholder="Ex: 13,60"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
+
+                        {/* Serviço Cobrado Errado */}
                         <input
                           value={row.chargedService}
                           onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
                           placeholder="Ex: 31,96"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-                        <button onClick={() => removeRow(row.id)} className="text-gray-300 hover:text-red-400 transition-colors justify-self-center">
+
+                        {/* Remover */}
+                        <button
+                          onClick={() => removeRow(row.id)}
+                          className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
+                        >
                           <Trash2 size={13} />
                         </button>
                       </div>
+
                       {noRate && (
                         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
                           <AlertCircle size={10} /> Nenhum preço cadastrado para este período.
@@ -825,7 +824,6 @@ export function FineCalculator() {
                 </div>
               )}
 
-              {/* Botão de adicionar mês avulso no final da tabela */}
               <div className="mt-4 flex justify-center">
                 <button
                   onClick={addRow}
@@ -834,7 +832,6 @@ export function FineCalculator() {
                   <Plus size={12} /> Adicionar mês avulso manualmente
                 </button>
               </div>
-
             </div>
           </div>
 
@@ -864,7 +861,6 @@ export function FineCalculator() {
                       <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
                         {row.monthYear || "Mês não preenchido"}
                       </div>
-                      
                       <input
                         value={row.chargedSewage}
                         onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
@@ -882,7 +878,6 @@ export function FineCalculator() {
                 </div>
               )}
 
-              {/* Mensagem informativa do Esgoto */}
               <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
                 <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-[#4a7fa5]">
@@ -905,18 +900,18 @@ export function FineCalculator() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                    <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
-                      <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
-                      <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
-                    </tr>
-                  </thead>
+                  <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-gray-50">
                   {calcRows.map((c) => {
                     if (c.hasError) {
@@ -1006,7 +1001,6 @@ export function FineCalculator() {
 
             <div className="p-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total m³ */}
                 <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Droplets size={14} className="text-[#1a5fa8]" />
@@ -1016,7 +1010,6 @@ export function FineCalculator() {
                   <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
                 </div>
 
-                {/* Valor correto */}
                 <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Calculator size={14} className="text-[#1a5fa8]" />
@@ -1026,7 +1019,6 @@ export function FineCalculator() {
                   <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
                 </div>
 
-                {/* Valor cobrado errado */}
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertCircle size={14} className="text-red-500" />
@@ -1036,7 +1028,6 @@ export function FineCalculator() {
                   <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
                 </div>
 
-                {/* Diferença */}
                 <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
@@ -1079,7 +1070,6 @@ export function FineCalculator() {
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Campos complementares */}
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para o texto</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1155,7 +1145,6 @@ export function FineCalculator() {
                 </div>
               </div>
 
-              {/* Botão gerar */}
               <div className="flex justify-end">
                 <button
                   onClick={handleGenerateText}
@@ -1167,9 +1156,8 @@ export function FineCalculator() {
                 </button>
               </div>
 
-              {/* Textareas editáveis (Água e Esgoto Lado a Lado) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                {/* === LAUDO DA ÁGUA === */}
+                {/* Laudo da Água */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-semibold text-gray-600">Laudo de Água</label>
@@ -1179,14 +1167,9 @@ export function FineCalculator() {
                       className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
                     >
                       {copiedWater ? (
-                        <>
-                          <CheckCircle2 size={13} className="text-emerald-500" />
-                          <span className="text-emerald-600">Copiado!</span>
-                        </>
+                        <><CheckCircle2 size={13} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
                       ) : (
-                        <>
-                          <Copy size={13} /> Copiar Água
-                        </>
+                        <><Copy size={13} /> Copiar Água</>
                       )}
                     </button>
                   </div>
@@ -1204,7 +1187,7 @@ export function FineCalculator() {
                   />
                 </div>
 
-                {/* === LAUDO DO ESGOTO === */}
+                {/* Laudo do Esgoto */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-semibold text-gray-600">Laudo de Esgoto</label>
@@ -1214,14 +1197,9 @@ export function FineCalculator() {
                       className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
                     >
                       {copiedSewage ? (
-                        <>
-                          <CheckCircle2 size={13} className="text-emerald-500" />
-                          <span className="text-emerald-600">Copiado!</span>
-                        </>
+                        <><CheckCircle2 size={13} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
                       ) : (
-                        <>
-                          <Copy size={13} /> Copiar Esgoto
-                        </>
+                        <><Copy size={13} /> Copiar Esgoto</>
                       )}
                     </button>
                   </div>
@@ -1244,7 +1222,6 @@ export function FineCalculator() {
                 <Info size={11} />
                 Clique dentro de qualquer um dos textos para editar manualmente antes de copiar.
               </p>
-
             </div>
           </div>
 
