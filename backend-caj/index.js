@@ -361,21 +361,20 @@ app.post("/api/exportar_pdf", async (req, res) => {
     let endRowIA = doc.y + dynamicPad;
     doc.moveTo(35, endRowIA).lineTo(560, endRowIA).stroke(); 
 
-    // --- 6. DEFESA (Ajuste preciso de margens) ---
-    // x: 45 dá um respiro na esquerda, width: 505 mantém o respiro na direita
+    // --- 6. DEFESA (Ajuste de Margem Direita para não grudar) ---
+    // Alterado width de 515 para 505 para dar mais espaço à direita
     doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", 40, endRowIA + dynamicPad, { continued: true })
-       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", x: 45, width: 505, lineGap: 1.5 });
+       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 505, lineGap: 1.5 });
     
     let endRowDefesa = doc.y + dynamicPad;
-    doc.moveTo(35, endRowDefesa).lineTo(560, endRowDefesa).stroke(); 
+    doc.moveTo(35, endRowDefesa).lineTo(560, endRowDefesa).stroke();
 
-    // --- 7. CANAIS DE ATENDIMENTO (Mesma lógica de margens) ---
+    // Linha 7: Canais de Atendimento (Altura Dinâmica)
     doc.font("Helvetica-Bold").text("Canais de atendimento: ", 40, endRowDefesa + dynamicPad, { continued: true })
-       .font("Helvetica").text("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.", { width: 505 });
-    doc.text("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", 45, doc.y, { width: 505 });
-    doc.text("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras.", 45, doc.y, { width: 505 });
-    doc.text("WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", 45, doc.y, { width: 505 });
-    
+       .font("Helvetica").text("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.");
+    doc.text("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", 40, doc.y);
+    doc.text("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras.", 40, doc.y);
+    doc.text("WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", 40, doc.y);
     let endRowCanais = doc.y + dynamicPad;
 
     // Moldura Externa da Tabela Principal
