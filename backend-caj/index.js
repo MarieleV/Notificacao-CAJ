@@ -274,6 +274,7 @@ app.post("/api/exportar_word", async (req, res) => {
 // ==============================================================================
 // 3. NOVA ROTA: EXPORTAR PARA PDF (Otimizado para Vercel Serverless)
 // ==============================================================================
+
 app.post("/api/exportar_pdf", async (req, res) => {
   const { 
     texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
@@ -296,91 +297,132 @@ app.post("/api/exportar_pdf", async (req, res) => {
     const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     const horaStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-    // Instancia o PDF em memória (Margens padrão A4)
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    // Margens bem curtas para garantir que caiba em 1 página
+    const doc = new PDFDocument({ margin: 35, size: "A4" });
 
-    // Configura os cabeçalhos de resposta para download binário direto
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=Notificacao_Extrajudicial_${numAutoInfracao}.pdf`);
-    
-    // Vincula o gerador à resposta HTTP stream
     doc.pipe(res);
 
-    // --- RENDERIZAÇÃO DO LOGO CORPORATIVO ---
+    // --- 1. CABEÇALHO ---
     const logoPath = path.join(__dirname, "public", "logo-docx-vale.jpg");
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 40, 35, { width: 55 });
+      doc.image(logoPath, 35, 30, { width: 65 });
     }
 
-    // --- CABEÇALHO ---
-    doc.font("Helvetica-Bold").fontSize(10).text("COMPANHIA ÁGUAS DE JOINVILLE", 110, 40);
-    doc.font("Helvetica").fontSize(8).text("Rua TIJUCAS, 213", 110, 53);
-    doc.font("Helvetica-Bold").fontSize(9).text("AUTO DE INFRAÇÃO - CFC", 110, 65);
+    doc.font("Helvetica-Bold").fontSize(9).text("COMPANHIA ÁGUAS DE JOINVILLE", 120, 35);
+    doc.font("Helvetica").fontSize(8).text("Rua TIJUCAS, 213", 120, 47);
+    doc.font("Helvetica-Bold").text("AUTO DE INFRAÇÃO - CFC", 120, 59);
 
-    doc.font("Helvetica").fontSize(8)
-       .text(`Data:   ${dataStr}`, 470, 40)
-       .text(`Hora:   ${horaStr}`, 470, 53);
+    doc.font("Helvetica").text(`Data:   ${dataStr}`, 470, 35);
+    doc.text(`Hora:   ${horaStr}`, 470, 47);
 
-    // Linha divisória do cabeçalho
-    doc.moveTo(40, 85).lineTo(555, 85).lineWidth(0.5).stroke();
+    // --- 2. TÍTULO ---
+    doc.moveDown(3);
+    doc.font("Helvetica-Bold").fontSize(11).text(`Auto de Infração nº ${numAutoInfracao}`, { align: "center", underline: true });
+    doc.moveDown(1.5);
 
-    // --- TÍTULO DO AUTO ---
-    doc.font("Helvetica-Bold").fontSize(12).text(`Auto de Infração nº ${numAutoInfracao}`, 40, 100, { align: "center", underline: true });
-
-    // --- BOX DE DADOS CADASTRAIS (Tabela 1 adaptada) ---
-    let currentY = 130;
-    doc.rect(40, currentY, 515, 65).lineWidth(0.5).stroke();
-
-    doc.font("Helvetica-Bold").fontSize(9).text("Matrícula: ", 45, currentY + 8).font("Helvetica").text(mat, 95, currentY + 8);
-    doc.font("Helvetica-Bold").text("Categoria: ", 220, currentY + 8).font("Helvetica").text(categoriaTarifa || "-", 270, currentY + 8);
-    doc.font("Helvetica-Bold").text("Nº HD: ", 410, currentY + 8).font("Helvetica").text(numeroHidrometro || "-", 445, currentY + 8);
+    // --- 3. DADOS INICIAIS ---
+    let startBox1 = doc.y;
+    doc.font("Helvetica-Bold").fontSize(8.5).text("Matricula: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${mat}      `, { continued: true })
+       .font("Helvetica-Bold").text("Categoria: ", { continued: true }).font("Helvetica").text(`${categoriaTarifa || "-"}      `, { continued: true })
+       .font("Helvetica-Bold").text("Nº HD: ", { continued: true }).font("Helvetica").text(numeroHidrometro || "-");
     
-    doc.font("Helvetica-Bold").text("Cliente: ", 45, currentY + 22).font("Helvetica").text(cliente, 85, currentY + 22);
-    doc.font("Helvetica-Bold").text("Endereço: ", 45, currentY + 36).font("Helvetica").text(endLogradouro, 95, currentY + 36);
-    doc.font("Helvetica-Bold").text("Bairro: ", 410, currentY + 36).font("Helvetica").text(bairro || "-", 445, currentY + 36);
-    doc.font("Helvetica-Bold").text("Localização: ", 45, currentY + 50).font("Helvetica").text(`${loc} - CEP: ${cep || "-"}`, 105, currentY + 50);
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Cliente: ", 40, doc.y, { continued: true }).font("Helvetica").text(cliente);
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Endereço: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}      `, { continued: true })
+       .font("Helvetica-Bold").text("Bairro: ", { continued: true }).font("Helvetica").text(bairro || "-");
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Localização: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${loc} - `, { continued: true })
+       .font("Helvetica-Bold").text("CEP: ", { continued: true }).font("Helvetica").text(cep || "-");
+    
+    let endBox1 = doc.y + 5;
+    doc.rect(35, startBox1 - 5, 525, endBox1 - startBox1).stroke();
+    
+    // Atualiza a posição Y para debaixo da caixa
+    doc.y = endBox1 + 10;
 
-    // --- CORPO DO TEXTO (GERADO PELA IA) ---
-    doc.font("Helvetica").fontSize(9.5).text(texto_final, 40, 215, { align: "justify", width: 515, lineGap: 3 });
+    // --- 4. TEXTO DA IA ---
+    doc.font("Helvetica").fontSize(9).text(texto_final, 35, doc.y, { align: "justify", width: 525, lineGap: 2 });
+    doc.moveDown(1);
 
-    // --- SEÇÃO JURÍDICA E CANAIS DE ATENDIMENTO ---
-    doc.moveDown(2);
-    doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", { continued: true })
-       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis...", { align: "justify" });
+    // --- 5. DEFESA E CANAIS ---
+    let startBox2 = doc.y;
+    doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", 40, doc.y, { continued: true })
+       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 515 });
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Canais de atendimento: ", 40, doc.y, { continued: true })
+       .font("Helvetica").text("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.");
+    doc.text("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", 40, doc.y);
+    doc.text("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras.", 40, doc.y);
+    doc.text("WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", 40, doc.y);
+    
+    let endBox2 = doc.y + 5;
+    doc.rect(35, startBox2 - 5, 525, endBox2 - startBox2).stroke();
+
+    doc.y = endBox2 + 10;
+
+    // --- 6. DESTINATÁRIO ---
+    let startBox3 = doc.y;
+    doc.font("Helvetica-Bold").text("Destinatário: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${cliente}.`);
+    doc.moveDown(0.3);
+    doc.font("Helvetica-Bold").text("Endereço: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}.      `, { continued: true })
+       .font("Helvetica-Bold").text("Localização: ", { continued: true }).font("Helvetica").text(`${loc}.`);
+    doc.moveDown(0.3);
+    doc.font("Helvetica-Bold").text("Auto de infração: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${numAutoInfracao}      `, { continued: true })
+       .font("Helvetica-Bold").text("Matricula: ", { continued: true }).font("Helvetica").text(mat);
+    
+    let endBox3 = doc.y + 5;
+    doc.rect(35, startBox3 - 5, 525, endBox3 - startBox3).stroke();
+
+    doc.y = endBox3 + 10;
+
+    // --- 7. AVISO DE RECEBIMENTO (AR) ---
+    let startAR = doc.y;
+    doc.font("Helvetica-Bold").fontSize(10).text("AVISO DE RECEBIMENTO - AR", 35, doc.y + 5, { align: "center" });
+    doc.moveDown(1);
+    
+    doc.fontSize(8.5);
+    doc.font("Helvetica-Bold").text("AUTO DE INFRAÇÃO: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${numAutoInfracao}.      `, { continued: true })
+       .font("Helvetica-Bold").text("MATRICULA: ", { continued: true }).font("Helvetica").text(`${mat}.`);
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("NOME: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${cliente}.`);
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("ENDEREÇO: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}.      `, { continued: true })
+       .font("Helvetica-Bold").text("LOCALIZAÇÃO: ", { continued: true }).font("Helvetica").text(`${loc}.`);
     
     doc.moveDown(1);
-    doc.font("Helvetica-Bold").text("Canais de atendimento: ")
-       .font("Helvetica").text("• Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.\n• Comasa: Rua Albano Schmidt, 4932 - Comasa, das 8h às 12h.\n• WhatsApp: (47) 99771-8115 | Call Center: 115", { lineGap: 2 });
-
-    // --- ADICIONA NOVA PÁGINA PARA O AR (AVISO DE RECEBIMENTO) ---
-    doc.addPage();
-
-    doc.rect(40, 40, 515, 260).lineWidth(1).stroke();
-    doc.font("Helvetica-Bold").fontSize(11).text("AVISO DE RECEBIMENTO - AR", 40, 55, { align: "center" });
-    doc.moveTo(40, 75).lineTo(555, 75).lineWidth(0.5).stroke();
-
-    doc.fontSize(9.5)
-       .text("AUTO DE INFRAÇÃO: ", 50, 90).font("Helvetica").text(numAutoInfracao, 160, 90)
-       .font("Helvetica-Bold").text("MATRÍCULA: ", 340, 90).font("Helvetica").text(mat, 410, 90);
-
-    doc.font("Helvetica-Bold").text("NOME: ", 50, 115).font("Helvetica").text(cliente, 90, 115);
-    doc.font("Helvetica-Bold").text("ENDEREÇO: ", 50, 140).font("Helvetica").text(`${endLogradouro} - ${loc}`, 110, 140);
+    doc.font("Helvetica-Bold").text("TENTATIVAS: ", 40, doc.y, { continued: true })
+       .font("Helvetica").text("1ª ___ / ___ / _______.   -   2ª ___ / ___ / _______.   -   3ª ___ / ___ / _______.");
     
-    doc.font("Helvetica-Bold").text("TENTATIVAS: ", 50, 165).font("Helvetica").text("1ª ___/___/____   -   2ª ___/___/____   -   3ª ___/___/____");
-
-    doc.moveTo(40, 195).lineTo(555, 195).stroke();
-    doc.font("Helvetica-Bold").fontSize(8.5).text("NOME LEGÍVEL DO RECEBEDOR:", 50, 205);
+    doc.moveDown(2);
+    // Linha de assinatura do recebedor
+    let line1Y = doc.y;
+    doc.moveTo(35, line1Y).lineTo(560, line1Y).stroke();
+    doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 40, line1Y + 5);
     
-    doc.moveTo(40, 250).lineTo(555, 250).stroke();
-    doc.text("DOCUMENTO DE IDENTIDADE:", 50, 260);
-    doc.text("DATA DE RECEBIMENTO: ____/____/_______", 320, 260);
+    doc.moveDown(2.5);
+    // Linha de documento e data
+    let line2Y = doc.y;
+    doc.moveTo(35, line2Y).lineTo(560, line2Y).stroke();
+    doc.text("DOCUMENTO:", 40, line2Y + 5);
+    doc.text("DATA DE RECEBIMENTO:", 320, line2Y + 5);
 
-    // Fecha o fluxo do documento
+    let endAR = doc.y + 20;
+    doc.rect(35, startAR, 525, endAR - startAR).stroke();
+
+    // Fecha o PDF
     doc.end();
 
   } catch (error) {
     console.error("ERRO FATAL AO GERAR PDF:", error);
-    res.status(500).json({ detail: "Erro interno no servidor ao construir o arquivo PDF." });
+    res.status(500).json({ detail: "Erro interno no servidor." });
   }
 });
 
