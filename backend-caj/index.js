@@ -8,6 +8,8 @@ const {
   Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun 
 } = require("docx");
 
+const PDFDocument = require("pdfkit");
+
 const app = express();
 
 app.use(cors({ origin: "*" })); 
@@ -276,7 +278,127 @@ app.post("/api/exportar_word", async (req, res) => {
 });
 
 // ==============================================================================
-// 3. ROTA: CALCULADORA DE MULTAS (MANTIDA INTACTA)
+// 3. ROTA: EXPORTAR PARA PDF (Padrão Leve para Vercel)
+// ==============================================================================
+app.post("/api/exportar_pdf", async (req, res) => {
+  const { 
+    texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
+    logradouro, bairro, cep, localizacao, 
+    categoriaTarifa, numeroHidrometro 
+  } = req.body;
+
+  if (!texto_final) {
+    return res.status(400).json({ detail: "O texto final não foi enviado ao servidor." });
+  }
+
+  try {
+    // Variáveis formatadas
+    const numAutoInfracao = autoInfracao || "{AUTO_INFRACAO}";
+    const mat = matricula || "{MATRICULA}";
+    const cliente = nomeCliente || "{NOME_CLIENTE_MORADOR}";
+    const endLogradouro = logradouro || "{ENDERECO_LOGRADOURO}";
+    const loc = localizacao || "{LOCALIZACAO}";
+
+    const now = new Date();
+    const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    const horaStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
+    // Configuração inicial do documento
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+
+    // Configura os headers da resposta para forçar o download do PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=Notificacao_${numAutoInfracao}.pdf`);
+    
+    // Conecta o fluxo de dados do PDF diretamente na resposta HTTP
+    doc.pipe(res);
+
+    // --- CABEÇALHO ---
+    const logoPath = path.join(__dirname, "public", "logo-docx-vale.jpg");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 40, { width: 60 });
+    }
+
+    doc.font("Helvetica-Bold").fontSize(10)
+       .text("COMPANHIA ÁGUAS DE JOINVILLE", 120, 50)
+       .font("Helvetica").fontSize(9)
+       .text("Rua TIJUCAS, 213", 120, 65)
+       .font("Helvetica-Bold")
+       .text("AUTO DE INFRAÇÃO - CFC", 120, 80);
+
+    doc.font("Helvetica").fontSize(9)
+       .text(`Data: ${dataStr}`, 450, 50)
+       .text(`Hora: ${horaStr}`, 450, 65);
+
+    doc.moveDown(4);
+
+    // --- TÍTULO ---
+    doc.font("Helvetica-Bold").fontSize(14)
+       .text(`Auto de Infração nº ${numAutoInfracao}`, { align: "center", underline: true });
+    
+    doc.moveDown(2);
+
+    // --- BLOCO DE DADOS (Simulando a Tabela 1) ---
+    doc.font("Helvetica").fontSize(10);
+    doc.text(`Matrícula: `, { continued: true }).font("Helvetica-Bold").text(`${mat}      `, { continued: true })
+       .font("Helvetica").text(`Categoria: `, { continued: true }).font("Helvetica-Bold").text(`${categoriaTarifa || "-"}      `, { continued: true })
+       .font("Helvetica").text(`Nº HD: `, { continued: true }).font("Helvetica-Bold").text(`${numeroHidrometro || "-"}`);
+    
+    doc.moveDown(0.5);
+    doc.font("Helvetica").text(`Cliente: `, { continued: true }).font("Helvetica-Bold").text(`${cliente}`);
+    doc.moveDown(0.5);
+    doc.font("Helvetica").text(`Endereço: `, { continued: true }).font("Helvetica-Bold").text(`${endLogradouro}      `, { continued: true })
+       .font("Helvetica").text(`Bairro: `, { continued: true }).font("Helvetica-Bold").text(`${bairro || "-"}`);
+    doc.moveDown(0.5);
+    doc.font("Helvetica").text(`Localização: `, { continued: true }).font("Helvetica-Bold").text(`${loc} - `, { continued: true })
+       .font("Helvetica").text(`CEP: `, { continued: true }).font("Helvetica-Bold").text(`${cep || "-"}`);
+
+    doc.moveDown(2);
+
+    // --- TEXTO GERADO PELA IA (Justificado) ---
+    doc.font("Helvetica").fontSize(11);
+    doc.text(texto_final, { align: "justify", lineGap: 4 });
+
+    doc.moveDown(2);
+
+    // --- RODAPÉ DE DEFESA ---
+    doc.font("Helvetica-Bold").fontSize(9).text("Defesa: ", { continued: true })
+       .font("Helvetica")
+       .text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação...", { align: "justify" });
+    
+    // --- PULAR PARA NOVA PÁGINA PARA O AVISO DE RECEBIMENTO (Opcional, mas organiza bem) ---
+    doc.addPage();
+
+    // --- AVISO DE RECEBIMENTO (AR) ---
+    doc.font("Helvetica-Bold").fontSize(12).text("AVISO DE RECEBIMENTO - AR", { align: "center" });
+    doc.moveDown(2);
+
+    doc.fontSize(10)
+       .text(`AUTO DE INFRAÇÃO: `, { continued: true }).font("Helvetica").text(`${numAutoInfracao}`, 50, doc.y)
+       .font("Helvetica-Bold").text(`MATRÍCULA: `, 300, doc.y - 12, { continued: true }).font("Helvetica").text(`${mat}`);
+    
+    doc.moveDown(1.5);
+    doc.font("Helvetica-Bold").text(`NOME: `, 50, doc.y).font("Helvetica").text(`${cliente}`);
+    doc.moveDown(1);
+    doc.font("Helvetica-Bold").text(`ENDEREÇO: `, 50, doc.y).font("Helvetica").text(`${endLogradouro}`);
+
+    // Linhas de Assinatura
+    doc.moveDown(4);
+    doc.rect(50, doc.y, 500, 0).stroke(); // Linha
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 50, doc.y);
+
+    // Finaliza a montagem e envia o buffer para o client
+    doc.end();
+
+  } catch (error) {
+    console.error("ERRO FATAL AO GERAR PDF:", error);
+    res.status(500).json({ detail: "Erro interno ao gerar o documento PDF." });
+  }
+});
+
+// ==============================================================================
+// 4. ROTA: CALCULADORA DE MULTAS (MANTIDA INTACTA)
 // ==============================================================================
 const parseBRL = (val) => {
   if (!val) return 0.0;
