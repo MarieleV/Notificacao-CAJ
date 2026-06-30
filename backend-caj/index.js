@@ -272,7 +272,7 @@ app.post("/api/exportar_word", async (req, res) => {
 });
 
 // ==============================================================================
-// 3. NOVA ROTA: EXPORTAR PARA PDF (Otimizado para Vercel Serverless)
+// 3. NOVA ROTA: EXPORTAR PARA PDF (Otimizado para 1 folha A4 com Tabelas Desenhadas)
 // ==============================================================================
 
 app.post("/api/exportar_pdf", async (req, res) => {
@@ -297,7 +297,6 @@ app.post("/api/exportar_pdf", async (req, res) => {
     const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     const horaStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-    // Margens bem curtas para garantir que caiba em 1 página
     const doc = new PDFDocument({ margin: 35, size: "A4" });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -317,9 +316,10 @@ app.post("/api/exportar_pdf", async (req, res) => {
     doc.font("Helvetica").text(`Data:   ${dataStr}`, 470, 35);
     doc.text(`Hora:   ${horaStr}`, 470, 47);
 
-    // --- 2. TÍTULO ---
+    // --- 2. TÍTULO (Centralizado e corrigido) ---
     doc.moveDown(3);
-    doc.font("Helvetica-Bold").fontSize(11).text(`Auto de Infração nº ${numAutoInfracao}`, { align: "center", underline: true });
+    // Adicionamos o "width: 525" (largura total da área útil) para forçar o centro exato
+    doc.font("Helvetica-Bold").fontSize(11).text(`Auto de Infração nº ${numAutoInfracao}`, 35, doc.y, { align: "center", width: 525, underline: true });
     doc.moveDown(1.5);
 
     // --- 3. DADOS INICIAIS ---
@@ -341,13 +341,14 @@ app.post("/api/exportar_pdf", async (req, res) => {
     
     let endBox1 = doc.y + 5;
     doc.rect(35, startBox1 - 5, 525, endBox1 - startBox1).stroke();
-    
-    // Atualiza a posição Y para debaixo da caixa
     doc.y = endBox1 + 10;
 
-    // --- 4. TEXTO DA IA ---
-    doc.font("Helvetica").fontSize(9).text(texto_final, 35, doc.y, { align: "justify", width: 525, lineGap: 2 });
-    doc.moveDown(1);
+    // --- 4. TEXTO DA IA (Com borda) ---
+    let startBoxIA = doc.y;
+    doc.font("Helvetica").fontSize(9).text(texto_final, 40, doc.y, { align: "justify", width: 515, lineGap: 2 });
+    let endBoxIA = doc.y;
+    doc.rect(35, startBoxIA - 5, 525, (endBoxIA - startBoxIA) + 10).stroke();
+    doc.y = endBoxIA + 15;
 
     // --- 5. DEFESA E CANAIS ---
     let startBox2 = doc.y;
@@ -363,59 +364,78 @@ app.post("/api/exportar_pdf", async (req, res) => {
     
     let endBox2 = doc.y + 5;
     doc.rect(35, startBox2 - 5, 525, endBox2 - startBox2).stroke();
-
     doc.y = endBox2 + 10;
 
-    // --- 6. DESTINATÁRIO ---
-    let startBox3 = doc.y;
-    doc.font("Helvetica-Bold").text("Destinatário: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${cliente}.`);
-    doc.moveDown(0.3);
-    doc.font("Helvetica-Bold").text("Endereço: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}.      `, { continued: true })
-       .font("Helvetica-Bold").text("Localização: ", { continued: true }).font("Helvetica").text(`${loc}.`);
-    doc.moveDown(0.3);
-    doc.font("Helvetica-Bold").text("Auto de infração: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${numAutoInfracao}      `, { continued: true })
-       .font("Helvetica-Bold").text("Matricula: ", { continued: true }).font("Helvetica").text(mat);
+    // --- 6. DESTINATÁRIO (Tabela Estruturada) ---
+    let b6Y = doc.y;
+    let rowH = 16; // Altura de cada linha da tabela
+    let meioX = 298; // Meio da folha para as linhas verticais
     
-    let endBox3 = doc.y + 5;
-    doc.rect(35, startBox3 - 5, 525, endBox3 - startBox3).stroke();
-
-    doc.y = endBox3 + 10;
-
-    // --- 7. AVISO DE RECEBIMENTO (AR) ---
-    let startAR = doc.y;
-    doc.font("Helvetica-Bold").fontSize(10).text("AVISO DE RECEBIMENTO - AR", 35, doc.y + 5, { align: "center" });
-    doc.moveDown(1);
+    // Linha 1
+    doc.font("Helvetica-Bold").text("Destinatário: ", 40, b6Y + 4, { continued: true }).font("Helvetica").text(`${cliente}.`);
+    doc.moveTo(35, b6Y + rowH).lineTo(560, b6Y + rowH).stroke(); 
     
+    // Linha 2
+    doc.font("Helvetica-Bold").text("Endereço: ", 40, b6Y + rowH + 4, { continued: true }).font("Helvetica").text(`${endLogradouro}`);
+    doc.font("Helvetica-Bold").text("Localização: ", meioX + 5, b6Y + rowH + 4, { continued: true }).font("Helvetica").text(`${loc}.`);
+    doc.moveTo(35, b6Y + rowH * 2).lineTo(560, b6Y + rowH * 2).stroke();
+    
+    // Linha 3
+    doc.font("Helvetica-Bold").text("Auto de infração: ", 40, b6Y + rowH * 2 + 4, { continued: true }).font("Helvetica").text(`${numAutoInfracao}`);
+    doc.font("Helvetica-Bold").text("Matricula: ", meioX + 5, b6Y + rowH * 2 + 4, { continued: true }).font("Helvetica").text(mat);
+    
+    // Linha Vertical (divisão das colunas nas linhas 2 e 3)
+    doc.moveTo(meioX, b6Y + rowH).lineTo(meioX, b6Y + rowH * 3).stroke();
+    
+    // Borda Externa
+    doc.rect(35, b6Y, 525, rowH * 3).stroke();
+    doc.y = b6Y + (rowH * 3) + 15;
+
+
+    // --- 7. AVISO DE RECEBIMENTO (Tabela Estruturada) ---
+    let b7Y = doc.y;
+    
+    // Linha 1 (Título)
+    doc.font("Helvetica-Bold").fontSize(10).text("AVISO DE RECEBIMENTO - AR", 35, b7Y + 4, { align: "center", width: 525 });
+    doc.moveTo(35, b7Y + rowH).lineTo(560, b7Y + rowH).stroke(); 
+    
+    // Linha 2
     doc.fontSize(8.5);
-    doc.font("Helvetica-Bold").text("AUTO DE INFRAÇÃO: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${numAutoInfracao}.      `, { continued: true })
-       .font("Helvetica-Bold").text("MATRICULA: ", { continued: true }).font("Helvetica").text(`${mat}.`);
+    doc.font("Helvetica-Bold").text("AUTO DE INFRAÇÃO: ", 40, b7Y + rowH + 4, { continued: true }).font("Helvetica").text(`${numAutoInfracao}.`);
+    doc.font("Helvetica-Bold").text("MATRICULA: ", meioX + 5, b7Y + rowH + 4, { continued: true }).font("Helvetica").text(`${mat}.`);
+    doc.moveTo(35, b7Y + rowH * 2).lineTo(560, b7Y + rowH * 2).stroke(); 
     
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("NOME: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${cliente}.`);
+    // Linha 3
+    doc.font("Helvetica-Bold").text("NOME: ", 40, b7Y + rowH * 2 + 4, { continued: true }).font("Helvetica").text(`${cliente}.`);
+    doc.moveTo(35, b7Y + rowH * 3).lineTo(560, b7Y + rowH * 3).stroke(); 
     
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("ENDEREÇO: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}.      `, { continued: true })
-       .font("Helvetica-Bold").text("LOCALIZAÇÃO: ", { continued: true }).font("Helvetica").text(`${loc}.`);
+    // Linha 4
+    doc.font("Helvetica-Bold").text("ENDEREÇO: ", 40, b7Y + rowH * 3 + 4, { continued: true }).font("Helvetica").text(`${endLogradouro}.`);
+    doc.font("Helvetica-Bold").text("LOCALIZAÇÃO: ", meioX + 5, b7Y + rowH * 3 + 4, { continued: true }).font("Helvetica").text(`${loc}.`);
+    doc.moveTo(35, b7Y + rowH * 4).lineTo(560, b7Y + rowH * 4).stroke(); 
     
-    doc.moveDown(1);
-    doc.font("Helvetica-Bold").text("TENTATIVAS: ", 40, doc.y, { continued: true })
+    // Linha 5
+    doc.font("Helvetica-Bold").text("TENTATIVAS: ", 40, b7Y + rowH * 4 + 4, { continued: true })
        .font("Helvetica").text("1ª ___ / ___ / _______.   -   2ª ___ / ___ / _______.   -   3ª ___ / ___ / _______.");
+    doc.moveTo(35, b7Y + rowH * 5).lineTo(560, b7Y + rowH * 5).stroke(); 
     
-    doc.moveDown(2);
-    // Linha de assinatura do recebedor
-    let line1Y = doc.y;
-    doc.moveTo(35, line1Y).lineTo(560, line1Y).stroke();
-    doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 40, line1Y + 5);
+    // Linha 6 (Mais alta para assinatura)
+    let tallH = 26;
+    doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 40, b7Y + rowH * 5 + 4);
+    doc.moveTo(35, b7Y + rowH * 5 + tallH).lineTo(560, b7Y + rowH * 5 + tallH).stroke(); 
     
-    doc.moveDown(2.5);
-    // Linha de documento e data
-    let line2Y = doc.y;
-    doc.moveTo(35, line2Y).lineTo(560, line2Y).stroke();
-    doc.text("DOCUMENTO:", 40, line2Y + 5);
-    doc.text("DATA DE RECEBIMENTO:", 320, line2Y + 5);
-
-    let endAR = doc.y + 20;
-    doc.rect(35, startAR, 525, endAR - startAR).stroke();
+    // Linha 7
+    doc.text("DOCUMENTO:", 40, b7Y + rowH * 5 + tallH + 4);
+    doc.text("DATA DE RECEBIMENTO:", meioX + 5, b7Y + rowH * 5 + tallH + 4);
+    
+    // Linhas Verticais do AR
+    let totalARHeight = (rowH * 5) + (tallH * 2);
+    doc.moveTo(meioX, b7Y + rowH).lineTo(meioX, b7Y + rowH * 2).stroke(); // Linha 2
+    doc.moveTo(meioX, b7Y + rowH * 3).lineTo(meioX, b7Y + rowH * 4).stroke(); // Linha 4
+    doc.moveTo(meioX, b7Y + rowH * 5 + tallH).lineTo(meioX, b7Y + totalARHeight).stroke(); // Linha 7
+    
+    // Borda Externa do AR
+    doc.rect(35, b7Y, 525, totalARHeight).stroke();
 
     // Fecha o PDF
     doc.end();
