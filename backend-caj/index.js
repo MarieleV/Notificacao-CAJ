@@ -272,7 +272,7 @@ app.post("/api/exportar_word", async (req, res) => {
 });
 
 // ==============================================================================
-// 3. NOVA ROTA: EXPORTAR PARA PDF (Otimizado para 1 folha A4 com Tabelas Desenhadas)
+// 3. NOVA ROTA: EXPORTAR PARA PDF(Otimizado para 1 folha A4 com Tabela Unificada)
 // ==============================================================================
 
 app.post("/api/exportar_pdf", async (req, res) => {
@@ -316,60 +316,79 @@ app.post("/api/exportar_pdf", async (req, res) => {
     doc.font("Helvetica").text(`Data:   ${dataStr}`, 470, 35);
     doc.text(`Hora:   ${horaStr}`, 470, 47);
 
-    // --- 2. TÍTULO (Centralizado e corrigido) ---
+    // --- 2. TÍTULO (Centralização Matemática e Garantida) ---
     doc.moveDown(3);
-    // Adicionamos o "width: 525" (largura total da área útil) para forçar o centro exato
-    doc.font("Helvetica-Bold").fontSize(11).text(`Auto de Infração nº ${numAutoInfracao}`, 35, doc.y, { align: "center", width: 525, underline: true });
+    const titleStr = `Auto de Infração nº ${numAutoInfracao}`;
+    doc.font("Helvetica-Bold").fontSize(11);
+    const titleWidth = doc.widthOfString(titleStr);
+    const titleX = 35 + (525 - titleWidth) / 2; // (Margem Esquerda) + (Largura Útil - Largura Texto) / 2
+    doc.text(titleStr, titleX, doc.y, { underline: true });
+    
     doc.moveDown(1.5);
 
-    // --- 3. DADOS INICIAIS ---
-    let startBox1 = doc.y;
-    doc.font("Helvetica-Bold").fontSize(8.5).text("Matricula: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${mat}      `, { continued: true })
-       .font("Helvetica-Bold").text("Categoria: ", { continued: true }).font("Helvetica").text(`${categoriaTarifa || "-"}      `, { continued: true })
-       .font("Helvetica-Bold").text("Nº HD: ", { continued: true }).font("Helvetica").text(numeroHidrometro || "-");
+    // --- 3. TABELA PRINCIPAL (UNIFICADA CONFORME IMAGEM) ---
+    let b1Y = doc.y;
+    let rowH = 16; // Altura padrão das linhas simples
+    let pad = 4.5; // Padding interno padrão
+    let dynamicPad = 8; // Padding maior para áreas de texto longo (IA, Defesa, Canais)
     
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("Cliente: ", 40, doc.y, { continued: true }).font("Helvetica").text(cliente);
-    
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("Endereço: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${endLogradouro}      `, { continued: true })
-       .font("Helvetica-Bold").text("Bairro: ", { continued: true }).font("Helvetica").text(bairro || "-");
-    
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("Localização: ", 40, doc.y, { continued: true }).font("Helvetica").text(`${loc} - `, { continued: true })
-       .font("Helvetica-Bold").text("CEP: ", { continued: true }).font("Helvetica").text(cep || "-");
-    
-    let endBox1 = doc.y + 5;
-    doc.rect(35, startBox1 - 5, 525, endBox1 - startBox1).stroke();
-    doc.y = endBox1 + 10;
+    let col2X = 200; // Início da coluna Categoria
+    let col3X = 370; // Início da coluna Nº HD / Bairro
 
-    // --- 4. TEXTO DA IA (Com borda) ---
-    let startBoxIA = doc.y;
-    doc.font("Helvetica").fontSize(9).text(texto_final, 40, doc.y, { align: "justify", width: 515, lineGap: 2 });
-    let endBoxIA = doc.y;
-    doc.rect(35, startBoxIA - 5, 525, (endBoxIA - startBoxIA) + 10).stroke();
-    doc.y = endBoxIA + 15;
-
-    // --- 5. DEFESA E CANAIS ---
-    let startBox2 = doc.y;
-    doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", 40, doc.y, { continued: true })
-       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 515 });
+    // Linha 1: Matrícula | Categoria | Nº HD
+    doc.font("Helvetica-Bold").fontSize(8.5).text("Matricula: ", 40, b1Y + pad, { continued: true }).font("Helvetica").text(mat);
+    doc.font("Helvetica-Bold").text("Categoria: ", col2X + 5, b1Y + pad, { continued: true }).font("Helvetica").text(categoriaTarifa || "-");
+    doc.font("Helvetica-Bold").text("Nº HD: ", col3X + 5, b1Y + pad, { continued: true }).font("Helvetica").text(numeroHidrometro || "-");
+    doc.moveTo(35, b1Y + rowH).lineTo(560, b1Y + rowH).stroke(); 
     
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("Canais de atendimento: ", 40, doc.y, { continued: true })
+    // Linha 2: Cliente
+    doc.font("Helvetica-Bold").text("Cliente: ", 40, b1Y + rowH + pad, { continued: true }).font("Helvetica").text(cliente);
+    doc.moveTo(35, b1Y + rowH * 2).lineTo(560, b1Y + rowH * 2).stroke();
+    
+    // Linha 3: Endereço | Bairro
+    doc.font("Helvetica-Bold").text("Endereço: ", 40, b1Y + rowH * 2 + pad, { continued: true }).font("Helvetica").text(endLogradouro);
+    doc.font("Helvetica-Bold").text("Bairro: ", col3X + 5, b1Y + rowH * 2 + pad, { continued: true }).font("Helvetica").text(bairro || "-");
+    doc.moveTo(35, b1Y + rowH * 3).lineTo(560, b1Y + rowH * 3).stroke();
+    
+    // Linha 4: Localização
+    doc.font("Helvetica-Bold").text("Localização: ", 40, b1Y + rowH * 3 + pad, { continued: true })
+       .font("Helvetica").text(`${loc} - CEP: ${cep || "-"}`);
+    doc.moveTo(35, b1Y + rowH * 4).lineTo(560, b1Y + rowH * 4).stroke();
+
+    // Linha 5: Texto da IA (Altura Dinâmica)
+    let yRowIA = b1Y + rowH * 4;
+    doc.font("Helvetica").fontSize(9).text(texto_final, 40, yRowIA + dynamicPad, { align: "justify", width: 515, lineGap: 2 });
+    let endRowIA = doc.y + dynamicPad;
+    doc.moveTo(35, endRowIA).lineTo(560, endRowIA).stroke(); 
+
+    // Linha 6: Defesa (Altura Dinâmica com Padding extra)
+    doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", 40, endRowIA + dynamicPad, { continued: true })
+       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 515, lineGap: 1.5 });
+    let endRowDefesa = doc.y + dynamicPad;
+    doc.moveTo(35, endRowDefesa).lineTo(560, endRowDefesa).stroke(); 
+
+    // Linha 7: Canais de Atendimento (Altura Dinâmica)
+    doc.font("Helvetica-Bold").text("Canais de atendimento: ", 40, endRowDefesa + dynamicPad, { continued: true })
        .font("Helvetica").text("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.");
     doc.text("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.", 40, doc.y);
     doc.text("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras.", 40, doc.y);
     doc.text("WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br", 40, doc.y);
-    
-    let endBox2 = doc.y + 5;
-    doc.rect(35, startBox2 - 5, 525, endBox2 - startBox2).stroke();
-    doc.y = endBox2 + 10;
+    let endRowCanais = doc.y + dynamicPad;
 
-    // --- 6. DESTINATÁRIO (Tabela Estruturada) ---
+    // Moldura Externa da Tabela Principal
+    doc.rect(35, b1Y, 525, endRowCanais - b1Y).stroke();
+
+    // Divisórias Verticais (Linha 1 e Linha 3)
+    doc.moveTo(col2X, b1Y).lineTo(col2X, b1Y + rowH).stroke(); // Linha 1 -> Categoria
+    doc.moveTo(col3X, b1Y).lineTo(col3X, b1Y + rowH).stroke(); // Linha 1 -> Nº HD
+    doc.moveTo(col3X, b1Y + rowH * 2).lineTo(col3X, b1Y + rowH * 3).stroke(); // Linha 3 -> Bairro
+
+    // Avança para a próxima tabela
+    doc.y = endRowCanais + 15;
+
+    // --- 4. DESTINATÁRIO (Tabela Estruturada) ---
     let b6Y = doc.y;
-    let rowH = 16; // Altura de cada linha da tabela
-    let meioX = 298; // Meio da folha para as linhas verticais
+    let meioX = 298; // Divisão exata do meio da folha (35 margem + 525/2)
     
     // Linha 1
     doc.font("Helvetica-Bold").text("Destinatário: ", 40, b6Y + 4, { continued: true }).font("Helvetica").text(`${cliente}.`);
@@ -384,15 +403,13 @@ app.post("/api/exportar_pdf", async (req, res) => {
     doc.font("Helvetica-Bold").text("Auto de infração: ", 40, b6Y + rowH * 2 + 4, { continued: true }).font("Helvetica").text(`${numAutoInfracao}`);
     doc.font("Helvetica-Bold").text("Matricula: ", meioX + 5, b6Y + rowH * 2 + 4, { continued: true }).font("Helvetica").text(mat);
     
-    // Linha Vertical (divisão das colunas nas linhas 2 e 3)
+    // Linhas Verticais e Borda
     doc.moveTo(meioX, b6Y + rowH).lineTo(meioX, b6Y + rowH * 3).stroke();
-    
-    // Borda Externa
     doc.rect(35, b6Y, 525, rowH * 3).stroke();
+    
     doc.y = b6Y + (rowH * 3) + 15;
 
-
-    // --- 7. AVISO DE RECEBIMENTO (Tabela Estruturada) ---
+    // --- 5. AVISO DE RECEBIMENTO (Tabela Estruturada) ---
     let b7Y = doc.y;
     
     // Linha 1 (Título)
@@ -419,7 +436,7 @@ app.post("/api/exportar_pdf", async (req, res) => {
        .font("Helvetica").text("1ª ___ / ___ / _______.   -   2ª ___ / ___ / _______.   -   3ª ___ / ___ / _______.");
     doc.moveTo(35, b7Y + rowH * 5).lineTo(560, b7Y + rowH * 5).stroke(); 
     
-    // Linha 6 (Mais alta para assinatura)
+    // Linha 6 (Área de Assinatura)
     let tallH = 26;
     doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 40, b7Y + rowH * 5 + 4);
     doc.moveTo(35, b7Y + rowH * 5 + tallH).lineTo(560, b7Y + rowH * 5 + tallH).stroke(); 
@@ -428,13 +445,12 @@ app.post("/api/exportar_pdf", async (req, res) => {
     doc.text("DOCUMENTO:", 40, b7Y + rowH * 5 + tallH + 4);
     doc.text("DATA DE RECEBIMENTO:", meioX + 5, b7Y + rowH * 5 + tallH + 4);
     
-    // Linhas Verticais do AR
+    // Linhas Verticais e Borda
     let totalARHeight = (rowH * 5) + (tallH * 2);
     doc.moveTo(meioX, b7Y + rowH).lineTo(meioX, b7Y + rowH * 2).stroke(); // Linha 2
     doc.moveTo(meioX, b7Y + rowH * 3).lineTo(meioX, b7Y + rowH * 4).stroke(); // Linha 4
     doc.moveTo(meioX, b7Y + rowH * 5 + tallH).lineTo(meioX, b7Y + totalARHeight).stroke(); // Linha 7
     
-    // Borda Externa do AR
     doc.rect(35, b7Y, 525, totalARHeight).stroke();
 
     // Fecha o PDF
