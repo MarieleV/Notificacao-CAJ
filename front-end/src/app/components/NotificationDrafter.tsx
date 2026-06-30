@@ -895,7 +895,7 @@ export function NotificationDrafter() {
                   className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#0b1e35]"
                 >
                   <Download size={17} />
-                  Baixar .docx (Modelo Padrão ERP)
+                  Baixar .docx
                 </button>
               </div>
 
