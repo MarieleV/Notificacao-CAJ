@@ -301,12 +301,11 @@ export function NotificationDrafter() {
   // REGRA: Tem algo digitado E (AND) o que está digitado é diferente da última busca feita
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
 
-  // NOVA REGRA: Verifica se algum dos campos de texto obrigatórios está vazio
+  // NOVA REGRA: Verifica se algum dos campos de texto obrigatórios está vazio (Nº Auto Infração removido daqui)
   const camposObrigatoriosVazios = 
     !matricula.trim() || 
     !dataConstatacao.trim() || 
     !protocolo.trim() || 
-    !autoInfracao.trim() || 
     !funcionario.trim() || 
     !equipe.trim();
 
@@ -319,7 +318,7 @@ export function NotificationDrafter() {
 
     // --- NOVA TRAVA: CAMPOS OBRIGATÓRIOS ---
     if (camposObrigatoriosVazios) {
-      alert("Por favor, preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Nº Auto de Infração, Funcionário e Equipe).");
+      alert("Por favor, preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe).");
       return;
     }
 
@@ -370,6 +369,11 @@ export function NotificationDrafter() {
   };
 
   const handleDownload = async () => {
+    if (!autoInfracao.trim()) {
+      alert("Por favor, informe o Nº do Auto de Infração antes de baixar o documento.");
+      return;
+    }
+    
     try {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_word", {
         method: "POST",
@@ -379,7 +383,7 @@ export function NotificationDrafter() {
           protocolo,
           autoInfracao,
           matricula, 
-          ...clienteData
+          ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
         }),
       });
 
@@ -401,6 +405,11 @@ export function NotificationDrafter() {
   };
 
   const handleDownloadPDF = async () => {
+    if (!autoInfracao.trim()) {
+      alert("Por favor, informe o Nº do Auto de Infração antes de baixar o documento.");
+      return;
+    }
+
     try {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_pdf", {
         method: "POST",
@@ -683,8 +692,8 @@ export function NotificationDrafter() {
                   </div>
                 )}
 
-                {/* Linha 2: Constatação, Protocolo, Auto Infração, Funcionário, Equipe */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                {/* Linha 2: Constatação, Protocolo, Funcionário, Equipe */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
                     <input value={dataConstatacao} onChange={(e) => setDataConstatacao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" maxLength={10} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -692,10 +701,6 @@ export function NotificationDrafter() {
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
                     <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº Auto Infração</label>
-                    <input value={autoInfracao} onChange={(e) => setAutoInfracao(e.target.value)} placeholder="Ex: 98765" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
@@ -735,7 +740,7 @@ export function NotificationDrafter() {
                       ? "Selecione ao menos um código de infração para habilitar a geração."
                       : esqueceuDeBuscar 
                       ? "Você digitou uma Matrícula. Clique no botão 'Buscar' ao lado dela para confirmar os dados antes de gerar o texto."
-                      : "Preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Nº Auto, Funcionário e Equipe)."}
+                      : "Preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe)."}
                   </p>
                 </div>
               )}
@@ -798,15 +803,37 @@ export function NotificationDrafter() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Baixe o arquivo formatado em PDF ou Word</p>
+                  <p className="text-gray-500 text-xs">Informe o Nº do Auto e baixe o arquivo formatado em PDF ou Word</p>
                 </div>
               </div>
+
+              {/* === NOVO LOCAL DO Nº AUTO INFRAÇÃO === */}
+              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50">
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Nº Auto Infração <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-3 items-center">
+                  <input 
+                    value={autoInfracao} 
+                    onChange={(e) => setAutoInfracao(e.target.value)} 
+                    placeholder="Ex: 98765" 
+                    className="w-64 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" 
+                  />
+                  {!autoInfracao.trim() && (
+                    <span className="text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Obrigatório preencher para habilitar os downloads
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div className="p-6 flex flex-col sm:flex-row gap-3">
-                
-                {/* NOVO: Botão de Baixar em PDF */}
+                {/* Botão de Baixar em PDF */}
                 <button
                   onClick={handleDownloadPDF}
-                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all"
+                  disabled={!autoInfracao.trim()}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   <FileText size={17} />
                   Baixar em PDF
@@ -815,13 +842,14 @@ export function NotificationDrafter() {
                 {/* Botão de Baixar Word */}
                 <button
                   onClick={handleDownload}
-                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                  disabled={!autoInfracao.trim()}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#0b1e35]"
                 >
                   <Download size={17} />
                   Baixar .docx (Modelo Padrão ERP)
                 </button>
-
               </div>
+
               <div className="px-6 pb-4">
                 <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
                   <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
