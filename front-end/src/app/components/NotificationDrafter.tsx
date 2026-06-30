@@ -310,7 +310,7 @@ export function NotificationDrafter() {
         } else {
           setFileModal({
             type: "success",
-            message: `${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`,
+            message: `${data.length} registros carregados com sucesso!`,
           });
         }
       } catch (error) {
