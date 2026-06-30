@@ -361,11 +361,13 @@ app.post("/api/exportar_pdf", async (req, res) => {
     let endRowIA = doc.y + dynamicPad;
     doc.moveTo(35, endRowIA).lineTo(560, endRowIA).stroke(); 
 
-    // Linha 6: Defesa (Altura Dinâmica com Padding extra)
+    // --- 6. DEFESA (Ajuste de Margem Direita para não grudar) ---
+    // Alterado width de 515 para 505 para dar mais espaço à direita
     doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", 40, endRowIA + dynamicPad, { continued: true })
-       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 515, lineGap: 1.5 });
+       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.", { align: "justify", width: 505, lineGap: 1.5 });
+    
     let endRowDefesa = doc.y + dynamicPad;
-    doc.moveTo(35, endRowDefesa).lineTo(560, endRowDefesa).stroke(); 
+    doc.moveTo(35, endRowDefesa).lineTo(560, endRowDefesa).stroke();
 
     // Linha 7: Canais de Atendimento (Altura Dinâmica)
     doc.font("Helvetica-Bold").text("Canais de atendimento: ", 40, endRowDefesa + dynamicPad, { continued: true })
