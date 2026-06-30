@@ -329,12 +329,6 @@ export function NotificationDrafter() {
       return;
     }
 
-    // TRAVA DE SEGURANÇA NA FUNÇÃO: Impede a geração se o usuário mudou a matrícula mas não buscou
-    if (esqueceuDeBuscar) {
-      alert("Você digitou/alterou a matrícula, mas esqueceu de clicar em 'Buscar'. Por favor, busque os dados antes de gerar o documento.");
-      return;
-    }
-
     setLoading(true);
     setStep("idle");
 
@@ -385,7 +379,7 @@ export function NotificationDrafter() {
           protocolo,
           autoInfracao,
           matricula, 
-          ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
+          ...clienteData
         }),
       });
 
@@ -403,6 +397,37 @@ export function NotificationDrafter() {
     } catch (error) {
       console.error(error);
       alert("Erro ao baixar o arquivo Word pelo servidor.");
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          texto_final: generatedText, 
+          protocolo,
+          autoInfracao,
+          matricula, 
+          ...clienteData
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erro ao gerar PDF.");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Notificacao_Extrajudicial_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao baixar o arquivo PDF. Verifique se a rota no back-end já foi criada.");
     }
   };
 
@@ -668,12 +693,10 @@ export function NotificationDrafter() {
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
                     <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
-                  {/* --- NOVO INPUT: AUTO DE INFRAÇÃO --- */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº Auto Infração</label>
                     <input value={autoInfracao} onChange={(e) => setAutoInfracao(e.target.value)} placeholder="Ex: 98765" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
-                  {/* ------------------------------------ */}
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
                     <input value={funcionario} onChange={(e) => setFuncionario(e.target.value)} placeholder="Nome" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -688,7 +711,6 @@ export function NotificationDrafter() {
 
               <button
                 onClick={handleGenerate}
-                // ATUALIZADO: Adicionado o camposObrigatoriosVazios
                 disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar || camposObrigatoriosVazios}
                 className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
               >
@@ -733,9 +755,29 @@ export function NotificationDrafter() {
                     <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
                   </div>
                 </div>
-                <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                  Gerado com sucesso
-                </span>
+                
+                {/* Botão Copiar Movido para o Step 3 */}
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
+                    Gerado com sucesso
+                  </span>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all"
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle2 size={14} className="text-emerald-500" />
+                        <span className="text-emerald-600">Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        Copiar Texto
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="p-6">
                 <textarea
@@ -756,26 +798,21 @@ export function NotificationDrafter() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Copie para a área de transferência ou baixe o arquivo Word formatado</p>
+                  <p className="text-gray-500 text-xs">Baixe o arquivo formatado em PDF ou Word</p>
                 </div>
               </div>
               <div className="p-6 flex flex-col sm:flex-row gap-3">
+                
+                {/* NOVO: Botão de Baixar em PDF */}
                 <button
-                  onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-[#1a5fa8] text-[#1a5fa8] rounded-xl font-semibold text-sm hover:bg-[#eef6ff] transition-all"
+                  onClick={handleDownloadPDF}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all"
                 >
-                  {copied ? (
-                    <>
-                      <CheckCircle2 size={17} className="text-emerald-500" />
-                      <span className="text-emerald-600">Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={17} />
-                      Copiar Texto
-                    </>
-                  )}
+                  <FileText size={17} />
+                  Baixar em PDF
                 </button>
+
+                {/* Botão de Baixar Word */}
                 <button
                   onClick={handleDownload}
                   className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
@@ -783,12 +820,13 @@ export function NotificationDrafter() {
                   <Download size={17} />
                   Baixar .docx (Modelo Padrão ERP)
                 </button>
+
               </div>
               <div className="px-6 pb-4">
                 <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
                   <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-[#4a7fa5]">
-                    O arquivo Word será exportado com as variáveis embutidas. Se você subiu a planilha e buscou pela matrícula, elas serão preenchidas automaticamente; senão, seu ERP fará isso.
+                    Os arquivos serão exportados com as variáveis embutidas. Se você subiu a planilha e buscou pela matrícula, elas serão preenchidas automaticamente; senão, seu ERP fará isso.
                   </p>
                 </div>
               </div>
