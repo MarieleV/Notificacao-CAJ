@@ -595,32 +595,37 @@ export function NotificationDrafter() {
                 </div>
               )}
 
-              {/* Penalty variant selector */}
-              <div className="mt-5">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Info size={12} className="text-gray-400" />
-                  <p className="text-xs text-gray-400 font-medium">Tipo de penalidade a aplicar</p>
+              {/* SELETOR SEM O CAMPO CINZA */}
+              <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Info size={14} className="text-gray-400" />
+                  <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                    Tipo de penalidade
+                  </label>
                 </div>
-                <div className="flex gap-3">
+
+                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                   <button
+                    type="button"
                     onClick={() => setPenaltyVariant("multa")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-semibold transition-all ${
-                      penaltyVariant === "multa"
-                        ? "border-[#1a5fa8] bg-[#eef6ff] text-[#1a5fa8]"
-                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      penaltyVariant === "multa" 
+                        ? "bg-[#1a5fa8] text-white shadow-sm" 
+                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                     }`}
                   >
                     Apenas Multa
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPenaltyVariant("multaCP")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-semibold transition-all ${
-                      penaltyVariant === "multaCP"
-                        ? "border-[#1a5fa8] bg-[#eef6ff] text-[#1a5fa8]"
-                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      penaltyVariant === "multaCP" 
+                        ? "bg-[#1a5fa8] text-white shadow-sm" 
+                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                     }`}
                   >
-                    Multa + Cumprimento de Padronização
+                    Multa + Padronização
                   </button>
                 </div>
               </div>
@@ -652,7 +657,7 @@ export function NotificationDrafter() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Dados da Notificação</h2>
-                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente (caso use planilha)</p>
+                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente</p>
                 </div>
               </div>
             </div>
