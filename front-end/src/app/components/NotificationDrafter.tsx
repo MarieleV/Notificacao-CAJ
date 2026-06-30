@@ -213,6 +213,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type PenaltyVariant = "multa" | "multaCP";
 
+// === NOVO: tipo para o modal de resultado do upload da planilha ===
+type FileModalType = "success" | "warning" | "error";
+interface FileModalState {
+  type: FileModalType;
+  message: string;
+}
+
 export function NotificationDrafter() {
   const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -221,6 +228,10 @@ export function NotificationDrafter() {
   
   // Estados da planilha
   const [excelData, setExcelData] = useState<any[]>([]);
+
+  // === NOVO: estados para overlay de loading e modal de resultado do upload ===
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   
   // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
@@ -272,11 +283,15 @@ export function NotificationDrafter() {
     );
   });
 
+  // === ATUALIZADO: agora usa overlay de loading + modal central no lugar de alert() ===
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setFileLoading(true);
+
     const reader = new FileReader();
+
     reader.onload = (event) => {
       try {
         const arrayBuffer = event.target?.result;
@@ -288,16 +303,40 @@ export function NotificationDrafter() {
         setExcelData(data);
         
         if (data.length === 0) {
-          alert("Aviso: A planilha parece estar vazia ou os dados não estão na primeira aba.");
+          setFileModal({
+            type: "warning",
+            message: "Aviso: A planilha parece estar vazia ou os dados não estão na primeira aba.",
+          });
         } else {
-          alert(`${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`);
+          setFileModal({
+            type: "success",
+            message: `${data.length} registros carregados com sucesso!`,
+          });
         }
       } catch (error) {
         console.error("Erro ao ler a planilha:", error);
-        alert("Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.");
+        setFileModal({
+          type: "error",
+          message:
+            "Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.",
+        });
+      } finally {
+        setFileLoading(false);
       }
     };
+
+    reader.onerror = () => {
+      setFileLoading(false);
+      setFileModal({
+        type: "error",
+        message: "Não foi possível ler o arquivo selecionado. Tente novamente.",
+      });
+    };
+
     reader.readAsArrayBuffer(file);
+
+    // Permite selecionar o mesmo arquivo novamente em uploads futuros
+    e.target.value = "";
   };
 
   const handleSearchMatricula = () => {
@@ -462,6 +501,47 @@ export function NotificationDrafter() {
 
   return (
     <div className="h-full flex flex-col">
+
+      {/* === NOVO: Overlay de carregamento da planilha === */}
+      {fileLoading && (
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 min-w-[220px]">
+            <Loader2 size={32} className="animate-spin text-[#1a5fa8]" />
+            <p className="text-sm font-medium text-gray-700 text-center">Carregando planilha…</p>
+          </div>
+        </div>
+      )}
+
+      {/* === NOVO: Modal central com o resultado do carregamento (sucesso / aviso / erro) === */}
+      {fileModal && (
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 flex flex-col items-center text-center gap-3">
+            {fileModal.type === "success" && (
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 size={26} className="text-emerald-500" />
+              </div>
+            )}
+            {fileModal.type === "warning" && (
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+                <AlertCircle size={26} className="text-amber-500" />
+              </div>
+            )}
+            {fileModal.type === "error" && (
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                <AlertCircle size={26} className="text-red-500" />
+              </div>
+            )}
+            <p className="text-sm text-gray-700 leading-relaxed">{fileModal.message}</p>
+            <button
+              onClick={() => setFileModal(null)}
+              className="mt-1 w-full py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] text-white rounded-lg text-xs font-semibold transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
@@ -675,7 +755,8 @@ export function NotificationDrafter() {
                     type="file" 
                     accept=".csv, .xlsx, .xls" 
                     onChange={handleFileUpload}
-                    className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer"
+                    disabled={fileLoading}
+                    className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
