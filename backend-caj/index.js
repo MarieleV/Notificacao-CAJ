@@ -7,7 +7,7 @@ const {
   Document, Packer, Paragraph, AlignmentType, TextRun, 
   Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun 
 } = require("docx");
-
+// Importação do módulo PDFKit
 const PDFDocument = require("pdfkit");
 
 const app = express();
@@ -62,9 +62,7 @@ app.post("/api/gerar", async (req, res) => {
 // ==============================================================================
 // 2. ROTA: EXPORTAR PARA WORD (Padrão ERP Oficial + AR - 1 Página A4)
 // ==============================================================================
-
 app.post("/api/exportar_word", async (req, res) => {
-  // 1. Receba o autoInfracao do req.body
   const { 
     texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
     logradouro, bairro, cep, localizacao, 
@@ -76,9 +74,8 @@ app.post("/api/exportar_word", async (req, res) => {
   }
 
   try {
-    // 2. Crie a variável dinâmica para o Auto de Infração
     const numProtocolo = protocolo || "{PROTOCOLO}";
-    const numAutoInfracao = autoInfracao || "{AUTO_INFRACAO}"; // <-- AQUI
+    const numAutoInfracao = autoInfracao || "{AUTO_INFRACAO}"; 
     const mat = matricula || "{MATRICULA}";
     const cliente = nomeCliente || "{NOME_CLIENTE_MORADOR}";
     const endLogradouro = logradouro || "{ENDERECO_LOGRADOURO}";
@@ -211,7 +208,6 @@ app.post("/api/exportar_word", async (req, res) => {
         }),
         new TableRow({
           children: [
-            // 3. Atualizado para numAutoInfracao
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Auto de infração: ", bold: true }), new TextRun(numAutoInfracao)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Matricula: ", bold: true }), new TextRun(mat)] })], margins: defaultMargin }),
           ]
@@ -225,7 +221,6 @@ app.post("/api/exportar_word", async (req, res) => {
         new TableRow({ children: [new TableCell({ columnSpan: 2, children: [new Paragraph({ children: [new TextRun({ text: "AVISO DE RECEBIMENTO - AR", bold: true })], alignment: AlignmentType.CENTER })], margins: defaultMargin })] }),
         new TableRow({
           children: [
-            // 4. Atualizado para numAutoInfracao
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "AUTO DE INFRAÇÃO: ", bold: true }), new TextRun(`${numAutoInfracao}.`)] })], margins: defaultMargin }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "MATRICULA: ", bold: true }), new TextRun(`${mat}.`)] })], margins: defaultMargin }),
           ]
@@ -255,7 +250,6 @@ app.post("/api/exportar_word", async (req, res) => {
           properties: { page: { margin: { top: 1000, left: 1133, bottom: 1000, right: 1133 } } },
           children: [
             headerTable,
-            // 5. O Título principal recebe numAutoInfracao
             new Paragraph({ children: [new TextRun({ text: `Auto de Infração nº ${numAutoInfracao}`, bold: true, underline: {} })], alignment: AlignmentType.CENTER, spacing: { before: 150, after: 150 } }),
             table1,
             new Paragraph({ children: [new TextRun(" ")], spacing: { before: 50, after: 50 } }), 
@@ -278,7 +272,7 @@ app.post("/api/exportar_word", async (req, res) => {
 });
 
 // ==============================================================================
-// 3. ROTA: EXPORTAR PARA PDF (Padrão Leve para Vercel)
+// 3. NOVA ROTA: EXPORTAR PARA PDF (Otimizado para Vercel Serverless)
 // ==============================================================================
 app.post("/api/exportar_pdf", async (req, res) => {
   const { 
@@ -288,11 +282,10 @@ app.post("/api/exportar_pdf", async (req, res) => {
   } = req.body;
 
   if (!texto_final) {
-    return res.status(400).json({ detail: "O texto final não foi enviado ao servidor." });
+    return res.status(400).json({ detail: "O texto final não foi enviado." });
   }
 
   try {
-    // Variáveis formatadas
     const numAutoInfracao = autoInfracao || "{AUTO_INFRACAO}";
     const mat = matricula || "{MATRICULA}";
     const cliente = nomeCliente || "{NOME_CLIENTE_MORADOR}";
@@ -303,97 +296,91 @@ app.post("/api/exportar_pdf", async (req, res) => {
     const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     const horaStr = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-    // Configuração inicial do documento
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    // Instancia o PDF em memória (Margens padrão A4)
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
 
-    // Configura os headers da resposta para forçar o download do PDF
+    // Configura os cabeçalhos de resposta para download binário direto
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=Notificacao_${numAutoInfracao}.pdf`);
+    res.setHeader("Content-Disposition", `attachment; filename=Notificacao_Extrajudicial_${numAutoInfracao}.pdf`);
     
-    // Conecta o fluxo de dados do PDF diretamente na resposta HTTP
+    // Vincula o gerador à resposta HTTP stream
     doc.pipe(res);
 
-    // --- CABEÇALHO ---
+    // --- RENDERIZAÇÃO DO LOGO CORPORATIVO ---
     const logoPath = path.join(__dirname, "public", "logo-docx-vale.jpg");
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 40, { width: 60 });
+      doc.image(logoPath, 40, 35, { width: 55 });
     }
 
-    doc.font("Helvetica-Bold").fontSize(10)
-       .text("COMPANHIA ÁGUAS DE JOINVILLE", 120, 50)
-       .font("Helvetica").fontSize(9)
-       .text("Rua TIJUCAS, 213", 120, 65)
-       .font("Helvetica-Bold")
-       .text("AUTO DE INFRAÇÃO - CFC", 120, 80);
+    // --- CABEÇALHO ---
+    doc.font("Helvetica-Bold").fontSize(10).text("COMPANHIA ÁGUAS DE JOINVILLE", 110, 40);
+    doc.font("Helvetica").fontSize(8).text("Rua TIJUCAS, 213", 110, 53);
+    doc.font("Helvetica-Bold").fontSize(9).text("AUTO DE INFRAÇÃO - CFC", 110, 65);
 
-    doc.font("Helvetica").fontSize(9)
-       .text(`Data: ${dataStr}`, 450, 50)
-       .text(`Hora: ${horaStr}`, 450, 65);
+    doc.font("Helvetica").fontSize(8)
+       .text(`Data:   ${dataStr}`, 470, 40)
+       .text(`Hora:   ${horaStr}`, 470, 53);
 
-    doc.moveDown(4);
+    // Linha divisória do cabeçalho
+    doc.moveTo(40, 85).lineTo(555, 85).lineWidth(0.5).stroke();
 
-    // --- TÍTULO ---
-    doc.font("Helvetica-Bold").fontSize(14)
-       .text(`Auto de Infração nº ${numAutoInfracao}`, { align: "center", underline: true });
+    // --- TÍTULO DO AUTO ---
+    doc.font("Helvetica-Bold").fontSize(12).text(`Auto de Infração nº ${numAutoInfracao}`, 40, 100, { align: "center", underline: true });
+
+    // --- BOX DE DADOS CADASTRAIS (Tabela 1 adaptada) ---
+    let currentY = 130;
+    doc.rect(40, currentY, 515, 65).lineWidth(0.5).stroke();
+
+    doc.font("Helvetica-Bold").fontSize(9).text("Matrícula: ", 45, currentY + 8).font("Helvetica").text(mat, 95, currentY + 8);
+    doc.font("Helvetica-Bold").text("Categoria: ", 220, currentY + 8).font("Helvetica").text(categoriaTarifa || "-", 270, currentY + 8);
+    doc.font("Helvetica-Bold").text("Nº HD: ", 410, currentY + 8).font("Helvetica").text(numeroHidrometro || "-", 445, currentY + 8);
     
-    doc.moveDown(2);
+    doc.font("Helvetica-Bold").text("Cliente: ", 45, currentY + 22).font("Helvetica").text(cliente, 85, currentY + 22);
+    doc.font("Helvetica-Bold").text("Endereço: ", 45, currentY + 36).font("Helvetica").text(endLogradouro, 95, currentY + 36);
+    doc.font("Helvetica-Bold").text("Bairro: ", 410, currentY + 36).font("Helvetica").text(bairro || "-", 445, currentY + 36);
+    doc.font("Helvetica-Bold").text("Localização: ", 45, currentY + 50).font("Helvetica").text(`${loc} - CEP: ${cep || "-"}`, 105, currentY + 50);
 
-    // --- BLOCO DE DADOS (Simulando a Tabela 1) ---
-    doc.font("Helvetica").fontSize(10);
-    doc.text(`Matrícula: `, { continued: true }).font("Helvetica-Bold").text(`${mat}      `, { continued: true })
-       .font("Helvetica").text(`Categoria: `, { continued: true }).font("Helvetica-Bold").text(`${categoriaTarifa || "-"}      `, { continued: true })
-       .font("Helvetica").text(`Nº HD: `, { continued: true }).font("Helvetica-Bold").text(`${numeroHidrometro || "-"}`);
+    // --- CORPO DO TEXTO (GERADO PELA IA) ---
+    doc.font("Helvetica").fontSize(9.5).text(texto_final, 40, 215, { align: "justify", width: 515, lineGap: 3 });
+
+    // --- SEÇÃO JURÍDICA E CANAIS DE ATENDIMENTO ---
+    doc.moveDown(2);
+    doc.font("Helvetica-Bold").fontSize(8.5).text("Defesa: ", { continued: true })
+       .font("Helvetica").text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis...", { align: "justify" });
     
-    doc.moveDown(0.5);
-    doc.font("Helvetica").text(`Cliente: `, { continued: true }).font("Helvetica-Bold").text(`${cliente}`);
-    doc.moveDown(0.5);
-    doc.font("Helvetica").text(`Endereço: `, { continued: true }).font("Helvetica-Bold").text(`${endLogradouro}      `, { continued: true })
-       .font("Helvetica").text(`Bairro: `, { continued: true }).font("Helvetica-Bold").text(`${bairro || "-"}`);
-    doc.moveDown(0.5);
-    doc.font("Helvetica").text(`Localização: `, { continued: true }).font("Helvetica-Bold").text(`${loc} - `, { continued: true })
-       .font("Helvetica").text(`CEP: `, { continued: true }).font("Helvetica-Bold").text(`${cep || "-"}`);
+    doc.moveDown(1);
+    doc.font("Helvetica-Bold").text("Canais de atendimento: ")
+       .font("Helvetica").text("• Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.\n• Comasa: Rua Albano Schmidt, 4932 - Comasa, das 8h às 12h.\n• WhatsApp: (47) 99771-8115 | Call Center: 115", { lineGap: 2 });
 
-    doc.moveDown(2);
-
-    // --- TEXTO GERADO PELA IA (Justificado) ---
-    doc.font("Helvetica").fontSize(11);
-    doc.text(texto_final, { align: "justify", lineGap: 4 });
-
-    doc.moveDown(2);
-
-    // --- RODAPÉ DE DEFESA ---
-    doc.font("Helvetica-Bold").fontSize(9).text("Defesa: ", { continued: true })
-       .font("Helvetica")
-       .text("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação...", { align: "justify" });
-    
-    // --- PULAR PARA NOVA PÁGINA PARA O AVISO DE RECEBIMENTO (Opcional, mas organiza bem) ---
+    // --- ADICIONA NOVA PÁGINA PARA O AR (AVISO DE RECEBIMENTO) ---
     doc.addPage();
 
-    // --- AVISO DE RECEBIMENTO (AR) ---
-    doc.font("Helvetica-Bold").fontSize(12).text("AVISO DE RECEBIMENTO - AR", { align: "center" });
-    doc.moveDown(2);
+    doc.rect(40, 40, 515, 260).lineWidth(1).stroke();
+    doc.font("Helvetica-Bold").fontSize(11).text("AVISO DE RECEBIMENTO - AR", 40, 55, { align: "center" });
+    doc.moveTo(40, 75).lineTo(555, 75).lineWidth(0.5).stroke();
 
-    doc.fontSize(10)
-       .text(`AUTO DE INFRAÇÃO: `, { continued: true }).font("Helvetica").text(`${numAutoInfracao}`, 50, doc.y)
-       .font("Helvetica-Bold").text(`MATRÍCULA: `, 300, doc.y - 12, { continued: true }).font("Helvetica").text(`${mat}`);
+    doc.fontSize(9.5)
+       .text("AUTO DE INFRAÇÃO: ", 50, 90).font("Helvetica").text(numAutoInfracao, 160, 90)
+       .font("Helvetica-Bold").text("MATRÍCULA: ", 340, 90).font("Helvetica").text(mat, 410, 90);
+
+    doc.font("Helvetica-Bold").text("NOME: ", 50, 115).font("Helvetica").text(cliente, 90, 115);
+    doc.font("Helvetica-Bold").text("ENDEREÇO: ", 50, 140).font("Helvetica").text(`${endLogradouro} - ${loc}`, 110, 140);
     
-    doc.moveDown(1.5);
-    doc.font("Helvetica-Bold").text(`NOME: `, 50, doc.y).font("Helvetica").text(`${cliente}`);
-    doc.moveDown(1);
-    doc.font("Helvetica-Bold").text(`ENDEREÇO: `, 50, doc.y).font("Helvetica").text(`${endLogradouro}`);
+    doc.font("Helvetica-Bold").text("TENTATIVAS: ", 50, 165).font("Helvetica").text("1ª ___/___/____   -   2ª ___/___/____   -   3ª ___/___/____");
 
-    // Linhas de Assinatura
-    doc.moveDown(4);
-    doc.rect(50, doc.y, 500, 0).stroke(); // Linha
-    doc.moveDown(0.5);
-    doc.font("Helvetica-Bold").text("NOME LEGÍVEL DO RECEBEDOR:", 50, doc.y);
+    doc.moveTo(40, 195).lineTo(555, 195).stroke();
+    doc.font("Helvetica-Bold").fontSize(8.5).text("NOME LEGÍVEL DO RECEBEDOR:", 50, 205);
+    
+    doc.moveTo(40, 250).lineTo(555, 250).stroke();
+    doc.text("DOCUMENTO DE IDENTIDADE:", 50, 260);
+    doc.text("DATA DE RECEBIMENTO: ____/____/_______", 320, 260);
 
-    // Finaliza a montagem e envia o buffer para o client
+    // Fecha o fluxo do documento
     doc.end();
 
   } catch (error) {
     console.error("ERRO FATAL AO GERAR PDF:", error);
-    res.status(500).json({ detail: "Erro interno ao gerar o documento PDF." });
+    res.status(500).json({ detail: "Erro interno no servidor ao construir o arquivo PDF." });
   }
 });
 
@@ -527,9 +514,9 @@ app.post("/api/calcular_multa", (req, res) => {
 
   const waterReportText = `Cálculo do consumo estimado de água ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
-${numMonths} ${mesStr}, com consumo impactado pela violação: ${firstMonth} até ${lastMonth}.
-Maior consumo mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
-Valor total do consumo estimado no período: ${fmtBRL(grandCorrect)}.
+${numMonths} ${mesStr}, com consumption impactado pela violação: ${firstMonth} até ${lastMonth}.
+Maior consumption mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
+Valor total do consumption estimado no período: ${fmtBRL(grandCorrect)}.
 Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandCharged)}.
 Valor a ser lançado ${fmtBRL(grandDiff)}.
 Volume faturado no mês impactado pela violação: ${billedVol} m³.
@@ -537,11 +524,11 @@ Volume total recuperado: ${totalM3} m³.`;
 
   let sewageReportText = "";
   if (validSewageRows.length > 0) {
-    sewageReportText = `Cálculo do consumo estimado de esgoto ref. ${aiRef}.
+    sewageReportText = `Cálculo do consumption estimado de esgoto ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
-${numMonths} ${mesStr}, anterior à retirada, com consumo irregular ${firstMonth} até ${lastMonth}.
-Maior consumo mês cheio sem cortes de água da unidade antes da regularização: ${postM3} m³ REF. ${postRef}.
-Valor total do consumo estimado no período: ${fmtBRL(grandSewageCorrect)}.
+${numMonths} ${mesStr}, anterior à retirada, com consumption irregular ${firstMonth} até ${lastMonth}.
+Maior consumption mês cheio sem cortes de água da unidade antes da regularização: ${postM3} m³ REF. ${postRef}.
+Valor total do consumption estimado no período: ${fmtBRL(grandSewageCorrect)}.
 Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandSewageCharged)}.
 Valor a ser lançado ${fmtBRL(grandSewageDiff)}.
 Volume total recuperado: ${totalM3} m³.`;
