@@ -12,6 +12,39 @@ function maskDate(raw: string): string {
   return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
 }
 
+// === NOVA LISTA DE FUNCIONÁRIOS (Padronizada e em Ordem Alfabética) ===
+const FUNCIONARIOS = [
+  "ADRIANA SCHONS - 7691674",
+  "ALFREDINO SCHALDAG - 864674",
+  "ANDERSON VIEIRA MARCOS - 674633",
+  "ANGELO LINHARES PINTO - 633594",
+  "ARTUR CORSANI NISHITANI - 594541",
+  "BERNARDO THEODORO SANTOS DUTRA - 541751",
+  "CARLOS CLEMILTON ANDRADE DE OLIVEIRA - 751763",
+  "CRISTIANO BRUCH - 763646",
+  "DEBORA EVANS TEIXEIRA - 6461228",
+  "EDIR LAMIN - 1228744",
+  "EDUARDO LIMBERGER NETTO - 827",
+  "ELVIS GUNTHER DAHNERT - 744888",
+  "EMANUELLE DE CARVALHO ALVES - 888770",
+  "FABIANO DA SILVA - 770861",
+  "GILMAR FERNANDES DA SILVEIRA - 8611324",
+  "GLAUBER ANTONIO FACHIN - 1324750",
+  "JONATA DA SILVA - 750761",
+  "JOSE MOACIR FABIAN JUNIOR - 7611559",
+  "LARISSA WELTER EMIDIO - 827587",
+  "LEANDRO BUCH - 587402",
+  "MAIRA FUCHTER - 402852",
+  "MARCEL GAI - 852826",
+  "MARCIO ROBERTO PEREIRA - 864",
+  "MARCIO MONTEIRO DA SILVA - 826635",
+  "MARCOS MOISES MULLER - 6351723",
+  "MATHEUS SIMOES GOMES DE FREITAS - 1723522",
+  "PEROALDO DE SOUZA SANTOS - 522314",
+  "VALTER CARLOS ESTEPHANES - 314960",
+  "VILMAR VIEIRA DE MENESES - 960"
+];
+
 const INFRACTION_CODES = [
   {
     code: "20400",
@@ -190,14 +223,16 @@ export function NotificationDrafter() {
   
   // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
-  // Grava a matrícula exata que o usuário validou no botão "Buscar"
   const [matriculaBuscada, setMatriculaBuscada] = useState("");
   
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [autoInfracao, setAutoInfracao] = useState("");
-  const [funcionario, setFuncionario] = useState("");
   const [equipe, setEquipe] = useState("");
+
+  // === NOVO ESTADO: Controle do menu de funcionários ===
+  const [funcionario, setFuncionario] = useState("");
+  const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
   // Estado interno que guarda os dados encontrados na planilha
   const [clienteData, setClienteData] = useState({
@@ -236,8 +271,6 @@ export function NotificationDrafter() {
     );
   });
 
-  // Lê a planilha (preferencialmente .CSV para ser mais rápido)
-  // Função para ler o Excel quando o usuário faz o upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -245,14 +278,10 @@ export function NotificationDrafter() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        // Usa o método moderno (ArrayBuffer) para evitar corrompimento na leitura
         const arrayBuffer = event.target?.result;
         const wb = XLSX.read(arrayBuffer, { type: "array" });
-        
-        const wsname = wb.SheetNames[0]; // Lê sempre a primeira aba da planilha
+        const wsname = wb.SheetNames[0]; 
         const ws = wb.Sheets[wsname];
-        
-        // Converte para JSON (defval: "" garante que células vazias não quebrem o código)
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
         
         setExcelData(data);
@@ -267,16 +296,11 @@ export function NotificationDrafter() {
         alert("Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.");
       }
     };
-    
-    // Faz a leitura usando ArrayBuffer ao invés do antigo BinaryString
     reader.readAsArrayBuffer(file);
   };
 
-  // Busca a matrícula na memória e salva os dados escondidos
   const handleSearchMatricula = () => {
     if (!matricula) return;
-
-    // NOVA LINHA: Registra que ele apertou o botão para o que está digitado agora
     setMatriculaBuscada(matricula);
     
     const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
@@ -293,15 +317,12 @@ export function NotificationDrafter() {
       });
     } else {
       alert("Matrícula não encontrada na planilha.");
-      // Limpa os dados se não achar, para o backend usar as {Tags} e o ERP preencher depois
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
     }
   };
 
-  // REGRA: Tem algo digitado E (AND) o que está digitado é diferente da última busca feita
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
 
-  // NOVA REGRA: Verifica se algum dos campos de texto obrigatórios está vazio (Nº Auto Infração removido daqui)
   const camposObrigatoriosVazios = 
     !matricula.trim() || 
     !dataConstatacao.trim() || 
@@ -316,13 +337,11 @@ export function NotificationDrafter() {
       return;
     }
 
-    // --- NOVA TRAVA: CAMPOS OBRIGATÓRIOS ---
     if (camposObrigatoriosVazios) {
       alert("Por favor, preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe).");
       return;
     }
 
-    // TRAVA DE SEGURANÇA NA FUNÇÃO: Impede a geração se o usuário mudou a matrícula mas não buscou
     if (esqueceuDeBuscar) {
       alert("Você digitou/alterou a matrícula, mas esqueceu de clicar em 'Buscar'. Por favor, busque os dados antes de gerar o documento.");
       return;
@@ -383,7 +402,7 @@ export function NotificationDrafter() {
           protocolo,
           autoInfracao,
           matricula, 
-          ...clienteData // Envia os dados escondidos (se existirem) para preencher o Word
+          ...clienteData
         }),
       });
 
@@ -702,10 +721,44 @@ export function NotificationDrafter() {
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
                     <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
-                  <div>
+                  
+                  {/* === NOVO COMPONENTE: CAMPO DE FUNCIONÁRIO COM AUTOCOMPLETE === */}
+                  <div className="relative">
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
-                    <input value={funcionario} onChange={(e) => setFuncionario(e.target.value)} placeholder="Nome" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <input 
+                      value={funcionario} 
+                      onChange={(e) => {
+                        setFuncionario(e.target.value);
+                        setFuncSearchOpen(true);
+                      }} 
+                      onFocus={() => setFuncSearchOpen(true)}
+                      onBlur={() => setTimeout(() => setFuncSearchOpen(false), 200)}
+                      placeholder="Pesquisar..." 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" 
+                    />
+                    {funcSearchOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {FUNCIONARIOS.filter(f => f.toLowerCase().includes(funcionario.toLowerCase())).map((f) => (
+                          <div
+                            key={f}
+                            className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
+                            onMouseDown={(e) => {
+                              e.preventDefault(); 
+                              setFuncionario(f);
+                              setFuncSearchOpen(false);
+                            }}
+                          >
+                            {f}
+                          </div>
+                        ))}
+                        {FUNCIONARIOS.filter(f => f.toLowerCase().includes(funcionario.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-500">Nenhum funcionário encontrado</div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  {/* ============================================================== */}
+
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
                     <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -761,7 +814,6 @@ export function NotificationDrafter() {
                   </div>
                 </div>
                 
-                {/* Botão Copiar Movido para o Step 3 */}
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
                     Gerado com sucesso
@@ -807,7 +859,6 @@ export function NotificationDrafter() {
                 </div>
               </div>
 
-              {/* === NOVO LOCAL DO Nº AUTO INFRAÇÃO === */}
               <div className="px-6 py-5 border-b border-gray-100 bg-gray-50">
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                   Nº Auto Infração <span className="text-red-500">*</span>
@@ -829,7 +880,6 @@ export function NotificationDrafter() {
               </div>
 
               <div className="p-6 flex flex-col sm:flex-row gap-3">
-                {/* Botão de Baixar em PDF */}
                 <button
                   onClick={handleDownloadPDF}
                   disabled={!autoInfracao.trim()}
@@ -839,7 +889,6 @@ export function NotificationDrafter() {
                   Baixar em PDF
                 </button>
 
-                {/* Botão de Baixar Word */}
                 <button
                   onClick={handleDownload}
                   disabled={!autoInfracao.trim()}
