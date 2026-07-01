@@ -1,18 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Settings2, ChevronDown, ChevronUp, Plus, Trash2,
-  Calculator, ClipboardList, Info, AlertCircle, Droplets, Wrench,
-  FileText, Copy, CheckCircle2, RefreshCw
+  Settings2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Trash2,
+  Calculator, ClipboardList, Info, AlertCircle, Droplets,
+  FileText, Copy, CheckCircle2, RefreshCw, Lock, Calendar as CalendarIcon
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type RateEntry = { id: number; startMonth: string; endMonth: string; value: string };
 type IrregularRow = {
   id: number;
   monthYear: string;
   consumption: string;
-  irregularConsumption: string;   // NOVO CAMPO
+  irregularConsumption: string;
   chargedWater: string;
   chargedService: string;
   chargedSewage: string;         
@@ -22,14 +21,6 @@ type IrregularRow = {
 
 let uid = 1;
 const newId = () => uid++;
-
-function parseBRL(v: string): number {
-  return parseFloat(v.replace(/\./g, "").replace(",", ".")) || 0;
-}
-
-function fmtBRL(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function parseMonthYear(s: string): Date | null {
   const m = s.match(/^(\d{2})\/(\d{4})$/);
@@ -70,104 +61,238 @@ function maskDate(raw: string): string {
   return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
 }
 
-// ─── Predefinições Tarifárias ────────────────────────────────────────────────
+function fmtBRL(n: number) {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
-const TARIFF_STRUCTURES: Record<string, { serviceRate: string, tiers: any[] }> = {
-  "Residencial": {
-    serviceRate: "34,93",
-    tiers: [
-      { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
-      { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
-      { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-      { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-      { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-    ]
+const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+// ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
+
+function MonthYearPicker({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState<number>(() => {
+    const parsed = parseMonthYear(value);
+    return parsed ? parsed.getFullYear() : new Date().getFullYear();
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const selected = parseMonthYear(value);
+
+  function handleToggle() {
+    if (!isOpen) {
+      setViewYear(selected ? selected.getFullYear() : new Date().getFullYear());
+    }
+    setIsOpen((v) => !v);
+  }
+
+  function selectMonth(monthIndex: number) {
+    const mm = String(monthIndex + 1).padStart(2, "0");
+    onChange(`${mm}/${viewYear}`);
+    setIsOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 w-[128px] px-2.5 py-1.5 border rounded-md text-xs transition-all bg-white ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        } ${selected ? "text-gray-700" : "text-gray-400"}`}
+      >
+        <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
+        <CalendarIcon size={12} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2.5">
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y - 1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-bold text-[#0b1e35] tabular-nums">{viewYear}</span>
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y + 1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MONTHS_SHORT.map((m, idx) => {
+              const isSelected =
+                !!selected && selected.getFullYear() === viewYear && selected.getMonth() === idx;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => selectMonth(idx)}
+                  className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    isSelected
+                      ? "bg-[#1a5fa8] text-white"
+                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                  }`}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Base de Dados Fixa (Somente Leitura) ────────────────────────────────────
+
+const VIGENCIAS_AGUA = [
+  "01/03/2025 Atual",
+  "11/12/2024 a 28/02/2025",
+  "01/03/2024 a 10/12/2024",
+  "01/03/2023 a 29/02/2024"
+];
+
+const VIGENCIAS_K1 = [
+  "15/07/2025 Atual",
+  "20/01/2023 a 14/07/2025"
+];
+
+// Matriz de Tarifas por Vigência
+const TARIFF_DATA: Record<string, Record<string, { serviceRate: string, tiers: any[] }>> = {
+  "01/03/2025 Atual": {
+    "Residencial": {
+      serviceRate: "34,93",
+      tiers: [
+        { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
+        { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
+        { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+        { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+        { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+      ]
+    },
+    "Residencial Tarifa Social": {
+      serviceRate: "10,48",
+      tiers: [
+        { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,45" },
+        { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "4,95" },
+        { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+        { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+        { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+      ]
+    },
+    "Residencial Social Especial": {
+      serviceRate: "10,48",
+      tiers: [
+        { id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,30" },
+        { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
+        { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
+        { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
+      ]
+    },
+    "Comercial": {
+      serviceRate: "58,20",
+      tiers: [
+        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+      ]
+    },
+    "Comercial Entidade Beneficiente": {
+      serviceRate: "29,11",
+      tiers: [
+        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,00" },
+        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,03" },
+        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "6,23" },
+        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "6,36" },
+        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,44" },
+        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,50" }
+      ]
+    },
+    "Industrial": {
+      serviceRate: "58,20",
+      tiers: [
+        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+      ]
+    },
+    "Pública": {
+      serviceRate: "58,20",
+      tiers: [
+        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
+        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
+        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
+        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
+        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
+        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
+      ]
+    }
   },
-  "Pública": {
-    serviceRate: "58,20",
-    tiers: [
-      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-    ]
+  "11/12/2024 a 28/02/2025": {
+    "Residencial": { serviceRate: "31,96", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,35" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Residencial Tarifa Social": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,40" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Residencial Social Especial": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,28" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Comercial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
+    "Comercial Entidade Beneficiente": { serviceRate: "26,63", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,95" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,98" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,80" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,90" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,00" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,10" }] },
+    "Industrial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
+    "Pública": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] }
   },
-  "Residencial Tarifa Social": {
-    serviceRate: "10,48",
-    tiers: [
-      { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,45" },
-      { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "4,95" },
-      { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-      { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-      { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-    ]
+  "01/03/2024 a 10/12/2024": {
+    "Residencial": { serviceRate: "31,96", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,35" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Residencial Tarifa Social": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,40" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Residencial Social Especial": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,28" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
+    "Comercial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
+    "Comercial Entidade Beneficiente": { serviceRate: "26,63", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,95" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,98" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,80" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,90" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,00" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,10" }] },
+    "Industrial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
+    "Pública": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] }
   },
-  "Residencial Social Especial": {
-    serviceRate: "10,48",
-    tiers: [
-      { id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,30" },
-      { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-      { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-      { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-    ]
-  },
-  "Comercial": {
-    serviceRate: "58,20",
-    tiers: [
-      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-    ]
-  },
-  "Comercial Entidade Beneficiente": {
-    serviceRate: "29,11",
-    tiers: [
-      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,00" },
-      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,03" },
-      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "6,23" },
-      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "6,36" },
-      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,44" },
-      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,50" }
-    ]
-  },
-  "Industrial": {
-    serviceRate: "58,20",
-    tiers: [
-      { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-      { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-      { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-      { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-      { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-      { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-    ]
-  },
-  "Industrial Especial": {
-    serviceRate: "43,72",
-    tiers: [
-      { id: 1, min: 0, max: 5000, label: "Até 5.000 m³", value: "13,00" },
-      { id: 2, min: 5001, max: 10000, label: "5.001 a 10.000 m³", value: "10,45" },
-      { id: 3, min: 10001, max: 30000, label: "10.001 a 30.000 m³", value: "9,45" },
-      { id: 4, min: 30001, max: 60000, label: "30.001 a 60.000 m³", value: "8,35" },
-      { id: 5, min: 60001, max: 120000, label: "60.001 a 120.000 m³", value: "7,91" },
-      { id: 6, min: 120001, max: "Infinity", label: "Acima de 120.000 m³", value: "7,10" }
-    ]
+  "01/03/2023 a 29/02/2024": {
+    "Residencial": { serviceRate: "30,55", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,30" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "8,65" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
+    "Residencial Tarifa Social": { serviceRate: "9,16", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,39" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "8,65" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
+    "Residencial Social Especial": { serviceRate: "9,16", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,26" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
+    "Comercial": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] },
+    "Comercial Entidade Beneficiente": { serviceRate: "25,45", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,85" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,25" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,40" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "5,45" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "5,55" }] },
+    "Industrial": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] },
+    "Pública": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] }
   }
 };
 
 const K1_DATA = [
-  // Residencial
   { category: "Residencial", activity: "Casa", k1: "1,00" },
   { category: "Residencial", activity: "Cond. Minha Casa Minha Vida", k1: "1,00" },
   { category: "Residencial", activity: "Condomínio Fechado", k1: "1,00" },
   { category: "Residencial", activity: "Consumo por Rateio", k1: "1,00" },
   { category: "Residencial", activity: "Prédio", k1: "1,00" },
   { category: "Residencial", activity: "Residencial - diversos, não especificados", k1: "1,00" },
-  // Comercial
   { category: "Comercial", activity: "Comercial - diversos, não especificados", k1: "1,00" },
   { category: "Comercial", activity: "Esporte", k1: "1,00" },
   { category: "Comercial", activity: "Lojas, Mini-mercado e pequenos comércios", k1: "1,00" },
@@ -178,8 +303,7 @@ const K1_DATA = [
   { category: "Comercial", activity: "Lavação/Posto de Gasolina", k1: "1,53" },
   { category: "Comercial", activity: "Shopping/Centro Comercial", k1: "1,53" },
   { category: "Comercial", activity: "Bar/Restaurante/Espaço de Eventos", k1: "1,55" },
-  { category: "Comercial", activity: "Mercado e Similares (c/ açougue, padaria, etc)", k1: "1,65" },
-  // Industrial
+  { category: "Comercial", activity: "Mercado e Similares", k1: "1,65" },
   { category: "Industrial", activity: "Industrias - contribui somente esgoto doméstico", k1: "1,00" },
   { category: "Industrial", activity: "Industrias - diversos, não especificados", k1: "1,02" },
   { category: "Industrial", activity: "Ind. Borracha", k1: "1,10" },
@@ -194,82 +318,10 @@ const K1_DATA = [
   { category: "Industrial", activity: "Ind. Alimentos", k1: "1,55" },
   { category: "Industrial", activity: "Ind. Construção", k1: "1,68" },
   { category: "Industrial", activity: "Aterro Sanitário", k1: "1,68" },
-  // Público
   { category: "Público", activity: "Usos públicos (Hospitais, Escolas, Praças, etc)", k1: "1,00" },
   { category: "Público", activity: "Unidades prisionais com preparação de refeições", k1: "1,55" },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function RateTable({
-  title, icon, color, rows, onAdd, onRemove, onChange, placeholder,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  color: string;
-  rows: RateEntry[];
-  onAdd: () => void;
-  onRemove: (id: number) => void;
-  onChange: (id: number, field: keyof RateEntry, val: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <div className="flex-1 min-w-0">
-      <div className={`flex items-center gap-2 mb-3`}>
-        <span className={`${color}`}>{icon}</span>
-        <h3 className="text-sm font-semibold text-[#0b1e35]">{title}</h3>
-      </div>
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <div key={row.id} className="flex gap-2 items-center">
-            <div className="flex-1">
-              <input
-                type="month"
-                value={row.startMonth.split('/').reverse().join('-')} 
-                onChange={(e) => {
-                  const [y, m] = e.target.value.split('-');
-                  onChange(row.id, "startMonth", `${m}/${y}`);
-                }}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
-              />
-            </div>
-            <div className="flex-1">
-              <input
-                type="month"
-                value={row.endMonth.split('/').reverse().join('-')}
-                onChange={(e) => {
-                  const [y, m] = e.target.value.split('-');
-                  onChange(row.id, "endMonth", `${m}/${y}`);
-                }}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all cursor-pointer"
-              />
-            </div>
-            <div className="flex-1">
-              <input
-                value={row.value}
-                onChange={(e) => onChange(row.id, "value", maskBRL(e.target.value))}
-                placeholder={placeholder}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-              />
-            </div>
-            <button
-              onClick={() => onRemove(row.id)}
-              className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1.5 text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors mt-1"
-        >
-          <Plus size={12} /> Adicionar período
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -292,18 +344,15 @@ export function FineCalculator() {
   }, [configOpen]);
 
   // Estados de Configuração (Água)
+  const [selectedVigenciaAgua, setSelectedVigenciaAgua] = useState(VIGENCIAS_AGUA[0]);
   const [selectedTariff, setSelectedTariff] = useState("Residencial");
-  const [serviceRates, setServiceRates] = useState<RateEntry[]>([
-    { id: newId(), startMonth: "01/2026", endMonth: "12/2026", value: TARIFF_STRUCTURES["Residencial"].serviceRate },
-  ]);
-  const [m3Tiers, setM3Tiers] = useState(TARIFF_STRUCTURES["Residencial"].tiers);
 
   // Estados de Configuração (Esgoto)
+  const [selectedVigenciaK1, setSelectedVigenciaK1] = useState(VIGENCIAS_K1[0]);
   const [selectedK1Category, setSelectedK1Category] = useState("Residencial");
   const [selectedK1Activity, setSelectedK1Activity] = useState("Casa");
-  const [k1Factor, setK1Factor] = useState("1,00");
 
-  // Estado das Linhas — agora inclui irregularConsumption
+  // Estado das Linhas
   const [rows, setRows] = useState<IrregularRow[]>([
     { 
       id: newId(), monthYear: "01/2026", consumption: "20",
@@ -313,7 +362,7 @@ export function FineCalculator() {
     },
   ]);
 
-  // Gerador de período em lote
+  // Gerador de período
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
 
@@ -329,51 +378,29 @@ export function FineCalculator() {
   const [copiedWater, setCopiedWater] = useState(false);
   const [copiedSewage, setCopiedSewage] = useState(false);
 
-  // ─── Handlers de Configuração ─────────────────────────────────────────────
+  // ─── Derivando os parâmetros baseados nas seleções ──────────────────────────
+  
+  const currentTariffData = TARIFF_DATA[selectedVigenciaAgua]?.[selectedTariff] || { serviceRate: "0,00", tiers: [] };
+  const currentK1Data = K1_DATA.find(i => i.activity === selectedK1Activity && i.category === selectedK1Category);
+  const k1Factor = currentK1Data ? currentK1Data.k1 : "1,00";
 
   function handleTariffChange(tariffName: string) {
     setSelectedTariff(tariffName);
-    const preset = TARIFF_STRUCTURES[tariffName];
-    if (preset) {
-      setServiceRates(prev => prev.map(r => ({ ...r, value: preset.serviceRate })));
-      setM3Tiers(preset.tiers);
-    }
-
+    
     let k1Cat = "Residencial";
     if (tariffName.includes("Comercial")) k1Cat = "Comercial";
     else if (tariffName.includes("Industrial")) k1Cat = "Industrial";
     else if (tariffName.includes("Pública")) k1Cat = "Público";
 
     setSelectedK1Category(k1Cat);
-    
     const firstActivity = K1_DATA.find(item => item.category === k1Cat);
     if (firstActivity) {
       setSelectedK1Activity(firstActivity.activity);
-      setK1Factor(firstActivity.k1);
     }
   }
 
   function handleK1ActivityChange(activity: string) {
     setSelectedK1Activity(activity);
-    const item = K1_DATA.find(i => i.activity === activity && i.category === selectedK1Category);
-    if (item) {
-      setK1Factor(item.k1);
-    }
-  }
-
-  function addServiceRate() {
-    setServiceRates((p) => [...p, { id: newId(), startMonth: "", endMonth: "", value: "" }]);
-  }
-  function removeServiceRate(id: number) {
-    setServiceRates((p) => p.filter((r) => r.id !== id));
-  }
-  function changeServiceRate(id: number, field: keyof RateEntry, val: string) {
-    setServiceRates((p) => p.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
-  }
-  function changeM3Tier(id: number, val: string) {
-    setM3Tiers((p) =>
-      p.map((tier) => (tier.id === id ? { ...tier, value: maskBRL(val) } : tier))
-    );
   }
 
   // ─── Handlers de Linhas Irregulares ──────────────────────────────────────
@@ -435,6 +462,15 @@ export function FineCalculator() {
     setRows((p) => p.filter((r) => r.id !== id));
   }
 
+  // Campos que recebem preenchimento automático a partir da 1ª linha
+  const AUTOFILL_FIELDS: (keyof IrregularRow)[] = [
+    "consumption",
+    "irregularConsumption",
+    "chargedWater",
+    "chargedService",
+    "chargedSewage",
+  ];
+
   function changeRow(id: number, field: keyof IrregularRow, val: string) {
     setRows((p) =>
       p.map((r) => {
@@ -450,13 +486,32 @@ export function FineCalculator() {
     );
   }
 
+  // Ao sair do campo (blur) da 1ª linha, replica o valor final digitado para as
+  // linhas subsequentes que ainda estão vazias nesse campo. Linhas já preenchidas
+  // (manual ou automaticamente) não são sobrescritas, permitindo edição livre.
+  function cascadeFillFromFirstRow(field: keyof IrregularRow) {
+    if (!AUTOFILL_FIELDS.includes(field)) return;
+    setRows((p) => {
+      if (p.length === 0) return p;
+      const value = (p[0] as any)[field] as string;
+      if (!value) return p;
+      return p.map((r, i) => {
+        if (i === 0) return r;
+        if ((r as any)[field] === "") {
+          return { ...r, [field]: value };
+        }
+        return r;
+      });
+    });
+  }
+
   // ─── Integração com Back-end ──────────────────────────────────────────────
   const [apiData, setApiData] = useState<any>(null);
 
   useEffect(() => {
     const delay = setTimeout(() => fetchCalculations(), 600);
     return () => clearTimeout(delay);
-  }, [serviceRates, m3Tiers, rows, k1Factor, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
+  }, [selectedVigenciaAgua, selectedTariff, rows, k1Factor, aiNumber, removalDate, postRegM3, postRegRef, billedM3]);
 
   async function fetchCalculations() {
     try {
@@ -467,11 +522,17 @@ export function FineCalculator() {
         chargedService: "0" 
       }));
 
+      const payloadServiceRates = [
+        { id: 1, startMonth: "01/1900", endMonth: "12/2099", value: currentTariffData.serviceRate }
+      ];
+
       const response = await fetch("https://notificacao-caj.vercel.app/api/calcular_multa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          serviceRates, m3Tiers, rows, 
+          serviceRates: payloadServiceRates, 
+          m3Tiers: currentTariffData.tiers, 
+          rows, 
           sewageRows: formattedSewageRows, 
           k1Factor, aiNumber, removalDate, postRegM3, postRegRef, billedM3 
         })
@@ -495,24 +556,12 @@ export function FineCalculator() {
     };
   });
 
-  const calcSewageRows = rows.map((row) => {
-    const apiCalc = apiData?.sewageRows?.find((r: any) => r.id === row.id);
-    if (apiCalc) return { ...apiCalc, row };
-    
-    return {
-      row, hasError: false, totalCorrect: null,
-      chargedSewage: 0, chargedService: 0, totalCharged: 0, diff: null
-    };
-  });
-
-  // ─── KPIs e Totais ────────────────────────────────────────────────────────
   const validRows = calcRows.filter((r: any) => !r.hasError && r.totalCorrect !== null);
   const totalM3 = apiData?.totals?.totalM3 || 0;
   const grandCorrect = apiData?.totals?.grandCorrect || 0;
   const grandCharged = apiData?.totals?.grandCharged || 0;
   const grandDiff = apiData?.totals?.grandDiff || 0;
 
-  // ─── Geração de Texto ─────────────────────────────────────────────────────
   function handleGenerateText() {
     if (apiData?.waterReportText) setWaterReportText(apiData.waterReportText);
     if (apiData?.sewageReportText) {
@@ -563,121 +612,113 @@ export function FineCalculator() {
                 : "bg-white border-gray-200 text-gray-600 hover:border-[#1a5fa8] hover:text-[#1a5fa8]"
             }`}
           >
-            <Settings2 size={16} />
-            Parametrização de Preços
+            <Lock size={15} className="mr-1" />
+            Parâmetros de Cálculo
             {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
 
           {configOpen && (
-            <div className="absolute top-full right-0 mt-3 w-full min-w-[700px] max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl p-8 cursor-default origin-top-right z-50">
+            <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[550px] max-w-xl bg-white border border-gray-200 rounded-xl shadow-2xl cursor-default origin-top-right z-50 flex flex-col max-h-[80vh]">
               
-              <div className="mb-6 border-b border-gray-100 pb-4 flex justify-between items-center">
+              <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                 <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-base">Parâmetros Ativos do Sistema</h2>
-                  <p className="text-gray-400 text-xs mt-0.5">
-                    Edite os valores de referência. O sistema usará esses dados para calcular os meses irregulares.
+                  <h2 className="text-[#0b1e35] font-bold text-base flex items-center gap-2">
+                    <Lock size={16} className="text-[#1a5fa8]" /> Parâmetros Oficiais de Cálculo
+                  </h2>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Modo Somente Leitura. Selecione a vigência e a categoria aplicável.
                   </p>
                 </div>
               </div>
               
-              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
-                      Estrutura Tarifária (Fatura de Água)
-                    </label>
-                    <select
-                      value={selectedTariff}
-                      onChange={(e) => handleTariffChange(e.target.value)}
-                      className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer shadow-sm transition-all"
-                    >
-                      {Object.keys(TARIFF_STRUCTURES).map((key) => (
-                        <option key={key} value={key}>{key}</option>
+              <div className="flex flex-col gap-5 px-6 py-5 overflow-y-auto">
+                
+                {/* ── BLOCO 1: ÁGUA ── */}
+                <div className="bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
+                  <div className="flex items-center gap-2 border-b border-[#c3ddf8] pb-2 mb-3">
+                    <Droplets size={15} className="text-[#1a5fa8]" />
+                    <h3 className="text-xs font-bold text-[#1a5fa8] uppercase tracking-wider">1. Tarifas de Água</h3>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3 mb-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vigência (ARIS)</label>
+                      <select
+                        value={selectedVigenciaAgua}
+                        onChange={(e) => setSelectedVigenciaAgua(e.target.value)}
+                        className="w-36 px-2 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer transition-all"
+                      >
+                        {VIGENCIAS_AGUA.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Categoria da Matrícula</label>
+                      <select
+                        value={selectedTariff}
+                        onChange={(e) => handleTariffChange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer transition-all"
+                      >
+                        {Object.keys(TARIFF_DATA[VIGENCIAS_AGUA[0]]).map((key) => (
+                          <option key={key} value={key}>{key}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div className="flex justify-between items-center bg-[#eef6ff] px-4 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-[#0b1e35] uppercase tracking-wider">Tarifa Fixa Mensal</span>
+                      <span className="text-sm font-bold text-[#1a5fa8]">R$ {currentTariffData.serviceRate}</span>
+                    </div>
+                    <ul className="divide-y divide-gray-100">
+                      {currentTariffData.tiers.map((tier) => (
+                        <li key={tier.id} className="flex justify-between items-center px-4 py-2 hover:bg-gray-50 transition-colors">
+                          <span className="text-xs font-medium text-gray-600">{tier.label}</span>
+                          <span className="text-xs font-bold text-[#1a5fa8]">R$ {tier.value}</span>
+                        </li>
                       ))}
-                    </select>
+                    </ul>
                   </div>
-                </div>
-              </div>
-
-              <div className="mb-6 bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
-                <label className="block text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-4">
-                  Categoria Tarifária do Esgoto (Fator K1)
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Ramo de Atividade</label>
-                    <select
-                      value={selectedK1Activity}
-                      onChange={(e) => handleK1ActivityChange(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] bg-white cursor-pointer h-[38px]"
-                    >
-                      {K1_DATA.filter(item => item.category === selectedK1Category).map(item => (
-                        <option key={item.activity} value={item.activity}>{item.activity}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">K1 Aplicado</label>
-                    <input
-                      value={k1Factor}
-                      onChange={(e) => setK1Factor(maskBRL(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-[#1a5fa8] bg-white focus:outline-none text-center h-[38px]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div>
-                  <RateTable
-                    title="Valor do Serviço (R$/mês)"
-                    icon={<Wrench size={14} />}
-                    color="text-[#1a5fa8]"
-                    rows={serviceRates}
-                    onAdd={addServiceRate}
-                    onRemove={removeServiceRate}
-                    onChange={changeServiceRate}
-                    placeholder="Ex: 31,96"
-                  />
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Droplets size={14} className="text-[#1a5fa8]" />
-                    <h3 className="text-sm font-semibold text-[#0b1e35]">Valor do Metro Cúbico (R$/m³)</h3>
+                {/* ── BLOCO 2: ESGOTO (K1) ── */}
+                <div className="bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
+                  <div className="flex items-center gap-2 border-b border-[#c3ddf8] pb-2 mb-3">
+                    <Info size={15} className="text-[#1a5fa8]" />
+                    <h3 className="text-xs font-bold text-[#1a5fa8] uppercase tracking-wider">2. Fator de Esgoto (K1)</h3>
                   </div>
-                  <div className="space-y-2">
-                    {m3Tiers.map((tier) => (
-                      <div key={tier.id} className="flex gap-2 items-center">
-                        <div className="flex-1 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-xs font-semibold text-gray-600 flex items-center">
-                          {tier.label}
-                        </div>
-                        <div className="flex-1 relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">R$</span>
-                          <input
-                            value={tier.value}
-                            onChange={(e) => changeM3Tier(tier.id, e.target.value)}
-                            placeholder="0,00"
-                            className="w-full pl-8 pr-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Início</span>
-                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Fim</span>
-                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
-                  <span className="w-5" />
+                  <div className="flex flex-col gap-3 mb-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vigência (ARIS)</label>
+                      <select
+                        value={selectedVigenciaK1}
+                        onChange={(e) => setSelectedVigenciaK1(e.target.value)}
+                        className="w-36 px-2 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer transition-all"
+                      >
+                        {VIGENCIAS_K1.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Ramo de Atividade (K1)</label>
+                      <select
+                        value={selectedK1Activity}
+                        onChange={(e) => handleK1ActivityChange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 bg-white cursor-pointer transition-all"
+                      >
+                        {K1_DATA.filter(item => item.category === selectedK1Category).map(item => (
+                          <option key={item.activity} value={item.activity}>{item.activity}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <span className="text-xs font-bold text-[#0b1e35] uppercase tracking-wider">Fator Multiplicador (K1)</span>
+                    <span className="text-sm font-bold text-[#1a5fa8]">{k1Factor}</span>
+                  </div>
                 </div>
-                <div className="flex gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Faixa de Consumo</span>
-                  <span className="flex-1 bg-gray-50 rounded px-2 py-1.5 text-center border border-gray-100">Valor (R$)</span>
-                </div>
+
               </div>
             </div>
           )}
@@ -695,26 +736,18 @@ export function FineCalculator() {
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Água</h2>
                   <p className="text-gray-400 text-xs mt-0.5">Gere um período automático ou adicione mês a mês</p>
+                  <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
+                    <Info size={11} className="flex-shrink-0" />
+                    Preencha a 1ª linha e os valores repetem nas linhas vazias abaixo — edite qualquer uma individualmente se precisar.
+                  </p>
                 </div>
               </div>
 
               {/* Gerador de Período */}
               <div className="flex items-center gap-2 bg-[#f8fafe] p-1.5 rounded-lg border border-[#dce9f7]">
-                <input
-                  value={periodStart}
-                  onChange={(e) => setPeriodStart(maskMonthYear(e.target.value))}
-                  placeholder="Início (MM/AAAA)"
-                  maxLength={7}
-                  className="w-[115px] px-2.5 py-1.5 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8] transition-all text-center"
-                />
+                <MonthYearPicker value={periodStart} onChange={setPeriodStart} placeholder="Início" />
                 <span className="text-gray-400 text-xs font-medium">até</span>
-                <input
-                  value={periodEnd}
-                  onChange={(e) => setPeriodEnd(maskMonthYear(e.target.value))}
-                  placeholder="Fim (MM/AAAA)"
-                  maxLength={7}
-                  className="w-[115px] px-2.5 py-1.5 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8] transition-all text-center"
-                />
+                <MonthYearPicker value={periodEnd} onChange={setPeriodEnd} placeholder="Fim" />
                 <button
                   onClick={handleGeneratePeriod}
                   disabled={periodStart.length < 7 || periodEnd.length < 7}
@@ -726,7 +759,6 @@ export function FineCalculator() {
             </div>
 
             <div className="p-4">
-              {/* ── Cabeçalho da tabela — agora com 6 colunas de dados + botão ── */}
               <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 mb-2 px-1">
                 {[
                   "Mês/Ano",
@@ -749,7 +781,6 @@ export function FineCalculator() {
                   return (
                     <div key={row.id}>
                       <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 items-center">
-                        {/* Mês/Ano */}
                         <input
                           value={row.monthYear}
                           onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
@@ -761,40 +792,38 @@ export function FineCalculator() {
                               : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
                           }`}
                         />
-
-                        {/* Consumo Regular */}
                         <input
                           value={row.consumption}
                           onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
+                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("consumption")}
+                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                           placeholder="Ex: 20"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-
-                        {/* Consumo Irregular (NOVO) */}
                         <input
                           value={row.irregularConsumption}
                           onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value)}
+                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("irregularConsumption")}
+                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                           placeholder="Ex: 15"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-
-                        {/* Água Cobrada Errada */}
                         <input
                           value={row.chargedWater}
                           onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
+                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedWater")}
+                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                           placeholder="Ex: 13,60"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-
-                        {/* Serviço Cobrado Errado */}
                         <input
                           value={row.chargedService}
                           onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
+                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedService")}
+                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                           placeholder="Ex: 31,96"
                           className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                         />
-
-                        {/* Remover */}
                         <button
                           onClick={() => removeRow(row.id)}
                           className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
@@ -805,7 +834,7 @@ export function FineCalculator() {
 
                       {noRate && (
                         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
-                          <AlertCircle size={10} /> Nenhum preço cadastrado para este período.
+                          <AlertCircle size={10} /> Verifique a vigência selecionada nos Parâmetros.
                         </div>
                       )}
                       {dateError && (
@@ -843,6 +872,10 @@ export function FineCalculator() {
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
                   <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
+                  <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
+                    <Info size={11} className="flex-shrink-0" />
+                    Preencha a 1ª linha e o valor repete nas linhas vazias abaixo — edite qualquer uma individualmente se precisar.
+                  </p>
                 </div>
               </div>
             </div>
@@ -855,7 +888,7 @@ export function FineCalculator() {
               </div>
 
               <div className="space-y-2">
-                {rows.map((row) => (
+                {rows.map((row, idx) => (
                   <div key={row.id}>
                     <div className="grid grid-cols-[140px_200px] gap-4 items-center">
                       <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
@@ -864,6 +897,8 @@ export function FineCalculator() {
                       <input
                         value={row.chargedSewage}
                         onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
+                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedSewage")}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                         placeholder="Ex: 10,88"
                         className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
                       />
@@ -923,7 +958,7 @@ export function FineCalculator() {
                           <td colSpan={8} className="px-3 py-3 text-xs text-amber-600 italic">
                             <div className="flex items-center gap-1.5">
                               <AlertCircle size={11} />
-                              Aguardando dados completos ou período não encontrado na Parametrização de Preços.
+                              Aguardando dados completos.
                             </div>
                           </td>
                         </tr>

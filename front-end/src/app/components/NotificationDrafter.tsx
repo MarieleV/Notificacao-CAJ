@@ -232,6 +232,7 @@ export function NotificationDrafter() {
   // === NOVO: estados para overlay de loading e modal de resultado do upload ===
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
+  const [fileName, setFileName] = useState<string>("");
   
   // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
@@ -289,6 +290,7 @@ export function NotificationDrafter() {
     if (!file) return;
 
     setFileLoading(true);
+    setFileName(file.name);
 
     const reader = new FileReader();
 
@@ -310,7 +312,7 @@ export function NotificationDrafter() {
         } else {
           setFileModal({
             type: "success",
-            message: `${data.length} registros carregados com sucesso!`,
+            message: `${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.`,
           });
         }
       } catch (error) {
@@ -758,6 +760,12 @@ export function NotificationDrafter() {
                     disabled={fileLoading}
                     className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                  {fileName && (
+                    <p className="mt-1.5 text-[11px] text-[#1a5fa8] flex items-center gap-1 truncate max-w-[260px]">
+                      <FileText size={11} className="flex-shrink-0" />
+                      <span className="truncate">{fileName}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
