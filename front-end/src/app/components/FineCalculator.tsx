@@ -784,7 +784,7 @@ export function FineCalculator() {
                     <Lock size={16} className="text-[#1a5fa8]" /> Parâmetros Oficiais de Cálculo
                   </h2>
                   <p className="text-gray-400 text-xs mt-1">
-                    Modo Somente Leitura. Selecione a vigência e a categoria aplicável.
+                    Selecione a vigência e a categoria aplicável.
                   </p>
                 </div>
               </div>
@@ -843,7 +843,7 @@ export function FineCalculator() {
                 <div className="bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
                   <div className="flex items-center gap-2 border-b border-[#c3ddf8] pb-2 mb-3">
                     <Info size={15} className="text-[#1a5fa8]" />
-                    <h3 className="text-xs font-bold text-[#1a5fa8] uppercase tracking-wider">2. Fator de Esgoto (K1)</h3>
+                    <h3 className="text-xs font-bold text-[#1a5fa8] uppercase tracking-wider">2. Fator de Esgoto - K1</h3>
                   </div>
 
                   <div className="flex flex-col gap-3 mb-4">
@@ -875,6 +875,12 @@ export function FineCalculator() {
                     <span className="text-xs font-bold text-[#0b1e35] uppercase tracking-wider">Fator Multiplicador (K1)</span>
                     <span className="text-sm font-bold text-[#1a5fa8]">{k1Factor}</span>
                   </div>
+                    <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+                    <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-[#4a7fa5]">
+                        <strong>Fator K1</strong> - Fator de Carga Poluidora para lançamentos na rede pública de esgotos.
+                      </p>
+                    </div>
                 </div>
 
               </div>
@@ -1074,7 +1080,7 @@ export function FineCalculator() {
               <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
                 <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-[#4a7fa5]">
-                  A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong> (Fator de Carga Poluidora para lançamentos na rede pública de esgotos).
+                  A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong>.
                 </p>
               </div>
             </div>
@@ -1300,12 +1306,12 @@ export function FineCalculator() {
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Mês de Ref. Pós-Reg. (MM/AAAA)
+                      Mês de Ref. Pós-Reg.
                     </label>
                     <MonthYearPicker
                       value={postRegRef}
                       onChange={setPostRegRef}
-                      placeholder="Ex: 03/2026"
+                      placeholder="MM/AAAA"
                       size="md"
                     />
                   </div>
@@ -1341,7 +1347,7 @@ export function FineCalculator() {
                   disabled={validRows.length === 0}
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all shadow"
                 >
-                  <RefreshCw size={14} />
+                  <RefreshCw size={14} />Início (
                   Gerar / Atualizar Texto
                 </button>
               </div>
