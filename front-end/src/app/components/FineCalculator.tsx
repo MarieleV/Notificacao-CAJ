@@ -66,6 +66,27 @@ function fmtBRL(n: number) {
 }
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+function parseFullDate(s: string): Date | null {
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const year = parseInt(m[3], 10);
+  if (month < 1 || month > 12) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+function labelFullDate(s: string): string {
+  const d = parseFullDate(s);
+  if (!d) return s;
+  return d
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+    .replace(".", "");
+}
 
 // ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
 
@@ -73,10 +94,12 @@ function MonthYearPicker({
   value,
   onChange,
   placeholder,
+  size = "sm",
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  size?: "sm" | "md";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewYear, setViewYear] = useState<number>(() => {
@@ -108,17 +131,22 @@ function MonthYearPicker({
     setIsOpen(false);
   }
 
+  const buttonSizeClasses =
+    size === "md"
+      ? "w-full px-3 py-2.5 text-sm rounded-lg"
+      : "w-[128px] px-2.5 py-1.5 text-xs rounded-md";
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-[128px] px-2.5 py-1.5 border rounded-md text-xs transition-all bg-white ${
+        className={`flex items-center justify-between gap-1.5 border transition-all bg-white ${buttonSizeClasses} ${
           isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
         } ${selected ? "text-gray-700" : "text-gray-400"}`}
       >
         <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
-        <CalendarIcon size={12} className="text-[#1a5fa8] flex-shrink-0" />
+        <CalendarIcon size={size === "md" ? 14 : 12} className="text-[#1a5fa8] flex-shrink-0" />
       </button>
 
       {isOpen && (
@@ -166,6 +194,135 @@ function MonthYearPicker({
   );
 }
 
+// ─── Componente: Seletor de Data Completa (Dia/Mês/Ano) ───────────────────────
+
+function DatePicker({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState<Date>(() => {
+    const parsed = parseFullDate(value);
+    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date();
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const selected = parseFullDate(value);
+
+  function handleToggle() {
+    if (!isOpen) {
+      const parsed = parseFullDate(value);
+      setViewDate(parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date());
+    }
+    setIsOpen((v) => !v);
+  }
+
+  function changeMonth(delta: number) {
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+  }
+
+  function selectDay(day: number) {
+    const dd = String(day).padStart(2, "0");
+    const mm = String(viewDate.getMonth() + 1).padStart(2, "0");
+    const yyyy = viewDate.getFullYear();
+    onChange(`${dd}/${mm}/${yyyy}`);
+    setIsOpen(false);
+  }
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel = viewDate
+    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    .replace(/^\w/, (c) => c.toUpperCase());
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2.5 border rounded-lg text-sm transition-all bg-white ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        } ${selected ? "text-gray-700" : "text-gray-400"}`}
+      >
+        <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
+        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2.5">
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {WEEKDAYS_SHORT.map((w, i) => (
+              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
+                {w}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, i) => {
+              if (day === null) return <div key={i} />;
+              const isSelected =
+                !!selected &&
+                selected.getFullYear() === year &&
+                selected.getMonth() === month &&
+                selected.getDate() === day;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => selectDay(day)}
+                  className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
+                    isSelected
+                      ? "bg-[#1a5fa8] text-white"
+                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Base de Dados Fixa (Somente Leitura) ────────────────────────────────────
 
 const VIGENCIAS_AGUA = [
@@ -174,6 +331,7 @@ const VIGENCIAS_AGUA = [
   "01/03/2024 a 10/12/2024",
   "01/03/2023 a 29/02/2024"
 ];
+
 
 const VIGENCIAS_K1 = [
   "15/07/2025 Atual",
@@ -1123,12 +1281,10 @@ export function FineCalculator() {
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       Data de Retirada da Irregularidade
                     </label>
-                    <input
+                    <DatePicker
                       value={removalDate}
-                      onChange={(e) => setRemovalDate(maskDate(e.target.value))}
+                      onChange={setRemovalDate}
                       placeholder="DD/MM/AAAA"
-                      maxLength={10}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                     />
                   </div>
                   <div>
@@ -1146,12 +1302,11 @@ export function FineCalculator() {
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       Mês de Ref. Pós-Reg. (MM/AAAA)
                     </label>
-                    <input
+                    <MonthYearPicker
                       value={postRegRef}
-                      onChange={(e) => setPostRegRef(maskMonthYear(e.target.value))}
+                      onChange={setPostRegRef}
                       placeholder="Ex: 03/2026"
-                      maxLength={7}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      size="md"
                     />
                   </div>
                 </div>
