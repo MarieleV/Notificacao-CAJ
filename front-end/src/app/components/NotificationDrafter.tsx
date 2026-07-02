@@ -12,37 +12,42 @@ function maskDate(raw: string): string {
   return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
 }
 
-// === NOVA LISTA DE FUNCIONÁRIOS (Padronizada e em Ordem Alfabética) ===
-const FUNCIONARIOS = [
-  "Adriana Schons",
-  "Alfredino Schaldag",
-  "Anderson Vieira Marcos",
-  "Angelo Linhares Pinto",
-  "Artur Corsani Nishitani",
-  "Bernardo Theodoro Santos Dutra",
-  "Carlos Clemilton Andrade De Oliveira",
-  "Cristiano Bruch",
-  "Debora Evans Teixeira",
-  "Edir Lamin",
-  "Eduardo Limberger Netto",
-  "Elvis Gunther Dahnert",
-  "Emanuelle De Carvalho Alves",
-  "Fabiano Da Silva",
-  "Gilmar Fernandes Da Silveira",
-  "Glauber Antonio Fachin",
-  "Jonata Da Silva",
-  "Jose Moacir Fabian Junior",
-  "Larissa Welter Emidio",
-  "Leandro Buch",
-  "Maira Fuchter",
-  "Marcel Gai",
-  "Marcio Roberto Pereira",
-  "Marcio Monteiro Da Silva",
-  "Marcos Moises Muller",
-  "Matheus Simoes Gomes De Freitas",
-  "Peroaldo De Souza Santos",
-  "Valter Carlos Estephanes",
-  "Vilmar Vieira De Menes"
+// === FUNCIONÁRIOS: nome + matrícula (ordem alfabética por nome) ===
+interface Funcionario {
+  matricula: number;
+  nome: string;
+}
+
+const FUNCIONARIOS: Funcionario[] = [
+  { matricula: 769, nome: "Adriana Schons" },
+  { matricula: 864, nome: "Alfredino Schaldag" },
+  { matricula: 674, nome: "Anderson Vieira Marcos" },
+  { matricula: 633, nome: "Angelo Linhares Pinto" },
+  { matricula: 594, nome: "Artur Corsani Nishitani" },
+  { matricula: 541, nome: "Bernardo Theodoro Santos Dutra" },
+  { matricula: 751, nome: "Carlos Clemilton Andrade De Oliveira" },
+  { matricula: 763, nome: "Cristiano Bruch" },
+  { matricula: 646, nome: "Debora Evans Teixeira" },
+  { matricula: 1228, nome: "Edir Lamin" },
+  { matricula: 1559, nome: "Eduardo Limberger Netto" },
+  { matricula: 744, nome: "Elvis Gunther Dahnert" },
+  { matricula: 888, nome: "Emanuelle De Carvalho Alves" },
+  { matricula: 770, nome: "Fabiano Da Silva" },
+  { matricula: 861, nome: "Gilmar Fernandes Da Silveira" },
+  { matricula: 1324, nome: "Glauber Antonio Fachin" },
+  { matricula: 750, nome: "Jonata Da Silva" },
+  { matricula: 761, nome: "Jose Moacir Fabian Junior" },
+  { matricula: 827, nome: "Larissa Welter Emidio" },
+  { matricula: 587, nome: "Leandro Buch" },
+  { matricula: 402, nome: "Maira Fuchter" },
+  { matricula: 852, nome: "Marcel Gai" },
+  { matricula: 826, nome: "Marcio Monteiro Da Silva" },
+  { matricula: 1674, nome: "Marcio Roberto Pereira" },
+  { matricula: 635, nome: "Marcos Moises Muller" },
+  { matricula: 1723, nome: "Matheus Simoes Gomes De Freitas" },
+  { matricula: 522, nome: "Peroaldo De Souza Santos" },
+  { matricula: 314, nome: "Valter Carlos Estephanes" },
+  { matricula: 960, nome: "Vilmar Vieira De Meneses" },
 ];
 
 
@@ -213,7 +218,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type PenaltyVariant = "multa" | "multaCP";
 
-// === NOVO: tipo para o modal de resultado do upload da planilha ===
+// === tipo para o modal de resultado do upload da planilha ===
 type FileModalType = "success" | "warning" | "error";
 interface FileModalState {
   type: FileModalType;
@@ -229,7 +234,7 @@ export function NotificationDrafter() {
   // Estados da planilha
   const [excelData, setExcelData] = useState<any[]>([]);
 
-  // === NOVO: estados para overlay de loading e modal de resultado do upload ===
+  // === estados para overlay de loading e modal de resultado do upload ===
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [fileName, setFileName] = useState<string>("");
@@ -243,8 +248,11 @@ export function NotificationDrafter() {
   const [autoInfracao, setAutoInfracao] = useState("");
   const [equipe, setEquipe] = useState("");
 
-  // === NOVO ESTADO: Controle do menu de funcionários ===
+  // === Controle do menu de funcionários ===
+  // funcionario = valor final (MATRÍCULA) enviado à API e mostrado no campo após a escolha
   const [funcionario, setFuncionario] = useState("");
+  // funcionarioBusca = texto livre digitado para filtrar a lista (por nome ou matrícula)
+  const [funcionarioBusca, setFuncionarioBusca] = useState("");
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
   // Estado interno que guarda os dados encontrados na planilha
@@ -284,7 +292,21 @@ export function NotificationDrafter() {
     );
   });
 
-  // === ATUALIZADO: agora usa overlay de loading + modal central no lugar de alert() ===
+  // Lista de funcionários filtrada pelo texto de busca (nome OU matrícula)
+  const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
+    const term = funcionarioBusca.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      f.nome.toLowerCase().includes(term) ||
+      String(f.matricula).includes(term)
+    );
+  });
+
+  const funcionarioSelecionado = FUNCIONARIOS.find(
+    (f) => String(f.matricula) === funcionario
+  );
+
+  // === handleFileUpload: overlay de loading + modal central no lugar de alert() ===
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -504,7 +526,7 @@ export function NotificationDrafter() {
   return (
     <div className="h-full flex flex-col">
 
-      {/* === NOVO: Overlay de carregamento da planilha === */}
+      {/* Overlay de carregamento da planilha */}
       {fileLoading && (
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 min-w-[220px]">
@@ -514,7 +536,7 @@ export function NotificationDrafter() {
         </div>
       )}
 
-      {/* === NOVO: Modal central com o resultado do carregamento (sucesso / aviso / erro) === */}
+      {/* Modal central com o resultado do carregamento (sucesso / aviso / erro) */}
       {fileModal && (
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 flex flex-col items-center text-center gap-3">
@@ -746,7 +768,7 @@ export function NotificationDrafter() {
 
             <div className="p-6">
               
-              {/* === PAINEL DE PLANILHA (OPCIONAL E ENXUTO) === */}
+              {/* PAINEL DE PLANILHA (OPCIONAL E ENXUTO) */}
               <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
@@ -769,7 +791,7 @@ export function NotificationDrafter() {
                 </div>
               </div>
 
-              {/* === CAMPOS ENXUTOS === */}
+              {/* CAMPOS ENXUTOS */}
               <div className="mb-6">
                 
                 {/* Linha 1: Matrícula e Busca */}
@@ -817,36 +839,49 @@ export function NotificationDrafter() {
                     <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                   </div>
                   
-                  {/* === NOVO COMPONENTE: CAMPO DE FUNCIONÁRIO COM AUTOCOMPLETE === */}
+                  {/* === CAMPO DE FUNCIONÁRIO COM AUTOCOMPLETE (mostra nome + matrícula, salva só a matrícula) === */}
                   <div className="relative">
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
-                    <input 
-                      value={funcionario} 
+                    <input
+                      value={funcionario ? `Mat. ${funcionario}` : funcionarioBusca}
                       onChange={(e) => {
-                        setFuncionario(e.target.value);
+                        // Ao digitar, o usuário está pesquisando de novo — limpa a seleção final
+                        setFuncionario("");
+                        setFuncionarioBusca(e.target.value);
                         setFuncSearchOpen(true);
-                      }} 
-                      onFocus={() => setFuncSearchOpen(true)}
+                      }}
+                      onFocus={() => {
+                        // Ao focar em um campo já preenchido, começa uma nova busca do zero
+                        if (funcionario) {
+                          setFuncionarioBusca("");
+                        }
+                        setFuncSearchOpen(true);
+                      }}
                       onBlur={() => setTimeout(() => setFuncSearchOpen(false), 200)}
-                      placeholder="Pesquisar..." 
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" 
+                      placeholder="Pesquisar por nome..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
                     />
+                    {funcionarioSelecionado && !funcSearchOpen && (
+                      <p className="mt-1 text-[10px] text-gray-500 truncate">{funcionarioSelecionado.nome}</p>
+                    )}
                     {funcSearchOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {FUNCIONARIOS.filter(f => f.toLowerCase().includes(funcionario.toLowerCase())).map((f) => (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                        {filteredFuncionarios.map((f) => (
                           <div
-                            key={f}
-                            className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
+                            key={f.matricula}
+                            className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
                             onMouseDown={(e) => {
-                              e.preventDefault(); 
-                              setFuncionario(f);
+                              e.preventDefault();
+                              setFuncionario(String(f.matricula));
+                              setFuncionarioBusca("");
                               setFuncSearchOpen(false);
                             }}
                           >
-                            {f}
+                            <span className="truncate">{f.nome}</span>
+                            <span className="text-[10px] font-mono font-bold text-[#1a5fa8] flex-shrink-0">Mat. {f.matricula}</span>
                           </div>
                         ))}
-                        {FUNCIONARIOS.filter(f => f.toLowerCase().includes(funcionario.toLowerCase())).length === 0 && (
+                        {filteredFuncionarios.length === 0 && (
                           <div className="px-3 py-2 text-sm text-gray-500">Nenhum funcionário encontrado</div>
                         )}
                       </div>
