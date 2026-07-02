@@ -8,9 +8,6 @@ type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type DefesaType = "com_defesa" | "sem_defesa";
 type TipoCasoType = "leitura" | "servico" | "servico_voluntario" | "servico_involuntario" | "lacre" | "corte_cavalete" | "corte_ramal" | "hd" | "bypass" | "clandestina";
 
-// Ajuste para o endereço real do seu backend (ex: variável de ambiente)
-const API_URL = "http://localhost:3000";
-
 // Função auxiliar para mascarar a data (DD/MM/AAAA)
 function maskDate(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
@@ -126,7 +123,7 @@ export function OuvidoriaManager() {
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/gerar_parecer_ouvidoria`, {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/gerar_parecer_ouvidoria", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
