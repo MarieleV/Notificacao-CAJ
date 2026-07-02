@@ -8,6 +8,9 @@ type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type DefesaType = "com_defesa" | "sem_defesa";
 type TipoCasoType = "leitura" | "servico" | "servico_voluntario" | "servico_involuntario" | "lacre" | "corte_cavalete" | "corte_ramal" | "hd" | "bypass" | "clandestina";
 
+// Ajuste para o endereço real do seu backend (ex: variável de ambiente)
+const API_URL = "http://localhost:3000";
+
 // Função auxiliar para mascarar a data (DD/MM/AAAA)
 function maskDate(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
@@ -30,7 +33,7 @@ export function OuvidoriaManager() {
   const [tipoManifestacao, setTipoManifestacao] = useState("Recurso Administrativo");
   const [numProcesso, setNumProcesso] = useState("");
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
-  
+
   // --- CONFIGURAÇÃO DO CASO ---
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("bypass");
   const [historicoDefesa, setHistoricoDefesa] = useState<DefesaType>("com_defesa");
@@ -41,7 +44,7 @@ export function OuvidoriaManager() {
   const [recebedorCorreios, setRecebedorCorreios] = useState("");
   const [dataRecebimentoAR, setDataRecebimentoAR] = useState("");
   const [dataAplicacaoSancao, setDataAplicacaoSancao] = useState("");
-  
+
   // Específicos de Leitura
   const [mesesSemAcesso, setMesesSemAcesso] = useState("");
   // Específicos de Serviço / Lacre / Corte / Clandestina / Bypass / HD
@@ -57,7 +60,7 @@ export function OuvidoriaManager() {
   const [protDefesa, setProtDefesa] = useState("");
   const [dataIndeferimento, setDataIndeferimento] = useState("");
   const [protIndeferimento, setProtIndeferimento] = useState("");
-  
+
   // Decisão
   const [protPadronizacao, setProtPadronizacao] = useState("");
   const [dataDecisaoAnterior, setDataDecisaoAnterior] = useState("");
@@ -90,9 +93,11 @@ export function OuvidoriaManager() {
       case "clandestina": textoObjeto = "Multa por Ligação clandestina de água e Revisão do faturamento de água"; break;
     }
 
+    // Objeto único com todos os dados necessários para o backend montar o prompt
     const dadosAnalise = {
       origem: tipoManifestacao,
       tipoCaso: tipoCaso.toUpperCase(),
+      tipoCasoRaw: tipoCaso, // usado nas checagens condicionais (ex: clandestina vs bypass)
       decisaoSelecionada: decisao.toUpperCase(),
       historicoDefesa: historicoDefesa === "com_defesa" ? "COM_APRESENTACAO_DE_DEFESA" : "SEM_APRESENTACAO_DE_DEFESA",
       dadosTemplate: {
@@ -120,70 +125,25 @@ export function OuvidoriaManager() {
       }
     };
 
-    const promptTexto = `AJE/OUVIDORIA - Você deve agir estritamente como um formatador de texto jurídico invariável para a Companhia Águas de Joinville.
-
-ORIGEM DO PROCESSO: ${dadosAnalise.origem}
-TIPO DE CASO: ${dadosAnalise.tipoCaso}
-DECISÃO: ${dadosAnalise.decisaoSelecionada}
-HISTÓRICO: ${dadosAnalise.historicoDefesa}
-
-OBJETO DO PARECER:
-${dadosAnalise.dadosTemplate.textoObjeto}
-
-REGRAS ESTRUTURAIS OBRIGATÓRIAS (NÃO MUDE AS PALAVRAS, APENAS PREENCHA AS VARIÁVEIS):
-- Início: Se a "ORIGEM DO PROCESSO" for "Ouvidoria Interna", inicie o texto com "À Ouvidoria,". Se for "Recurso Administrativo", "ARIS", "PROCON" ou "Reclame Aqui", adapte a saudação inicial de acordo com a origem (ex: "Ao PROCON,", "À ARIS,", etc). Em seguida, inclua as informações de Objeto, Morador e Matrícula.
-
-- Parágrafo 01: Deve citar a Resolução Normativa nº 19, de 27 de março de 2019 (ARIS).
-- Parágrafo 02: Deve citar o AI nº ${dadosAnalise.dadosTemplate.numAutoInfracao} gerado em ${dadosAnalise.dadosTemplate.dataGeracaoAI}. 
-  > Se LEITURA (Art. 144, XII): "Meses sem acesso às leituras: ${dadosAnalise.dadosTemplate.mesesSemAcesso}."
-  > Se SERVICO, SERVICO_VOLUNTARIO ou SERVICO_INVOLUNTARIO (Art. 144, XII): "Data da constatação/impedimento para o serviço: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosAnalise.dadosTemplate.protServico}."
-  > Se LACRE (Art. 144, XV): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Constatação via leitura. Caso fosse executado a padronização da ligação em até 90 dias, não teria sido aplicado multa. Dispositivo legal infringido: Artigo 144, inciso XV... "
-  > Se CORTE_CAVALETE (Art. 144, X): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosAnalise.dadosTemplate.protServico}, originado por ocorrência de leitura. Dispositivo legal infringido: Artigo 144, inciso X... Penalidade aplicada: Multa por violação do corte cavalete e Padronização obrigatória..."
-  > Se CORTE_RAMAL (Art. 144, XXII): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosAnalise.dadosTemplate.protServico}. Dispositivo legal infringido: Artigo 144, inciso XXII... Penalidade aplicada: Multa por violação do corte de ramal e Padronização obrigatória..."
-  > Se CLANDESTINA (Art. 144, VII) ou BYPASS (Art. 144, V): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosAnalise.dadosTemplate.protServico}. Constatado pela Fiscalização. Penalidade prevista: Multa por ${tipoCaso === 'clandestina' ? 'ligação clandestina de água' : 'derivação não autorizada antes do hidrômetro (by-pass)'}. Caso após a retirada da irregularidade, a matrícula tenha variação positiva de consumo, poderá haver a Revisão do faturamento..."
-  > Se HD (Art. 144, VI): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosAnalise.dadosTemplate.protServico}. Constatação via fiscalização. Penalidades aplicadas: Multa por Danificação propositada, inversão ou supressão do hidrômetro e Padronização obrigatória da ligação de água..."
-
-- Parágrafo 03: Relatar a entrega nos Correios recebida por ${dadosAnalise.dadosTemplate.recebedorCorreios}. Se houver data de recebimento do AR, adicione: em ${dadosAnalise.dadosTemplate.dataRecebimentoAR}.
-  > Se COM DEFESA: relatar que foi apresentada em ${dadosAnalise.dadosTemplate.dataDefesa} (Prot. ${dadosAnalise.dadosTemplate.protDefesa}) e indeferida em ${dadosAnalise.dadosTemplate.dataIndeferimento} (Prot. ${dadosAnalise.dadosTemplate.protIndeferimento}). Citar o inciso correspondente (X, XV, XXII, VI, etc).
-  > Se SEM DEFESA: relatar que não foi apresentada defesa e as sanções aplicadas em ${dadosAnalise.dadosTemplate.dataAplicacaoSancao}.
-  > [REGRA EXTRA P/ CORTES (CAVALETE/RAMAL)]: Se for CORTE_CAVALETE ou CORTE_RAMAL, adicione obrigatoriamente a citação do Art. 145 no final deste parágrafo: "Resolução 19/2019 ARIS, Art. 145. Além de outras penalidades previstas nesta Resolução, o cometimento de qualquer infração enumerada no artigo anterior sujeitará o infrator ao pagamento de multa..."
-  > [REGRA EXTRA P/ HD]: Incluir neste parágrafo: "Ainda com base na Resolução 19/2019 em seu Art. 73: 'O usuário é responsável pela guarda do hidrômetro...'"
-
-- VEREDICTO E DECISÃO: 
-  > Se DEFERIDO: 
-    - Se CORTES (CAVALETE/RAMAL): "Considerando a manifestação apresentada, visto que foi identificada intervenção da CAJ antes da constatação da violação e de que em consulta aos nossos registros cliente regularizou cadastro, solicitou e pagou entrada de parcelamento e água poderia estar devidamente religada antes do fato gerador..." DECIDIMOS: RETIFICAR a decisão proferida em ${dadosAnalise.dadosTemplate.dataDecisaoAnterior}, RETIRANDO AS PENALIDADES. Fatura ref: ${dadosAnalise.dadosTemplate.faturaReferencia}.
-    - Outros Casos Deferidos: "RETIFICAR a decisão proferida em ${dadosAnalise.dadosTemplate.dataDecisaoAnterior}, RETIRANDO AS PENALIDADES". Fatura corrigida: ${dadosAnalise.dadosTemplate.faturaReferencia}.
-  > Se PARCIAL: "DEFERIR PARCIALMENTE, retirando multas mas mantendo padronização. PRORROGAR O PRAZO por mais 90 dias".
-  > Se INDEFERIDO: 
-    - Se CORTES (CAVALETE/RAMAL): "Visto que a infração foi comprovada e a moradora cadastrada na matrícula durante o período do fato gerador é o mesmo por ser o titular responsável desde ${dadosAnalise.dadosTemplate.dataTitularDesde} (Prot. ${dadosAnalise.dadosTemplate.protTitularidade}). Criar relatório de fotos contendo: Arquivo PDF. 1 - Fotos da ligação de água NÃO VIOLADA ANTERIOR ao fato e da violação... 2 - Se possível informar e ilustrar com fotos com RECORTE... 3 - Foto do comprovante de entrega do Auto de Infração. DECIDIMOS: RATIFICAR a sentença proferida em ${dadosAnalise.dadosTemplate.dataDecisaoAnterior}, MANTENDO AS PENALIDADES." Fatura ref: ${dadosAnalise.dadosTemplate.faturaReferencia}.
-    - Se HD: "Analisamos a matrícula, verificamos que houve o dano, conforme constatado pela fiscalização e o cliente poderia ter informado à Companhia sobre irregularidades na ligação de água. Segundo o Art. 73... DECIDIMOS: RATIFICAR... MANTENDO AS PENALIDADES."
-    - Outros Casos Indeferidos: "RATIFICAR a decisão proferida em ${dadosAnalise.dadosTemplate.dataDecisaoAnterior}, MANTENDO A PENALIDADE". Fatura não será corrigida (${dadosAnalise.dadosTemplate.faturaReferencia}).
-
-Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a minuta completa preenchida.`;
-
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`${API_URL}/api/gerar_parecer_ouvidoria`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: promptTexto }] }],
-          generationConfig: {
-            temperature: 0.1,
-          }
+          api_key: apiKey,
+          dadosAnalise,
         }),
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error?.message || "Erro de conexão com a IA.");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Erro de conexão com o servidor.");
       }
-      
-      const data = await response.json();
-      const textoFinal = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!textoFinal) throw new Error("A IA não retornou o texto esperado.");
 
-      setGeneratedText(textoFinal);
+      const data = await response.json();
+      if (!data.texto_gerado) throw new Error("O servidor não retornou o texto esperado.");
+
+      setGeneratedText(data.texto_gerado);
       setStep("generated");
     } catch (error) {
       console.error(error);
@@ -223,12 +183,12 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:border-[#1a5fa8] transition-colors">
             <Key size={14} className="text-gray-400 mr-2" />
-            <input 
-              type="password" 
-              placeholder="Gemini API Key..." 
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)} 
-              className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48" 
+            <input
+              type="password"
+              placeholder="Gemini API Key..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48"
             />
           </div>
         </div>
@@ -246,7 +206,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                 <p className="text-gray-500 text-xs">Insira os dados cadastrais básicos obtidos na triagem do manifesto</p>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div>
@@ -291,7 +251,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                 <p className="text-gray-500 text-xs">Selecione o enquadramento do fato gerador do auto de infração</p>
               </div>
             </div>
-            
+
             <div className="p-6">
               <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Qual foi o Fato Gerador?</label>
               <select
@@ -322,7 +282,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                 <p className="text-gray-500 text-xs">Defina o posicionamento formal de mérito da CAJ frente ao recurso</p>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <button
@@ -365,7 +325,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
               {/* ===== MÓDULO EXCLUSIVO QUE SÓ APARECE APÓS ESCOLHER UMA DECISÃO ===== */}
               {decisao && (
                 <div className="mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6">
-                  
+
                   {/* CASOS DE CORTE INDEFERIDO (Pede histórico de titularidade) */}
                   {["corte_cavalete", "corte_ramal"].includes(tipoCaso) && decisao === "indeferir" && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-amber-50/40 border border-amber-200 rounded-xl">
@@ -386,7 +346,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                       <Info size={14} className="text-gray-400" />
                       <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Houve defesa prévia?</label>
                     </div>
-                    
+
                     <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                       <button
                         type="button"
@@ -441,21 +401,21 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                 <p className="text-gray-500 text-xs">Insira os marcos temporais cronológicos exigidos pelas lacunas do modelo</p>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
                   <input value={dataGeracaoAI} onChange={(e) => setDataGeracaoAI(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
-                
+
                 {tipoCaso === "leitura" && (
                   <div>
                     <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
                     <input value={mesesSemAcesso} onChange={(e) => setMesesSemAcesso(e.target.value)} placeholder="Ex: Jan/2026 a Mar/2026" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-[#eef6ff]" />
                   </div>
                 )}
-                
+
                 {["servico", "servico_voluntario", "servico_involuntario", "lacre", "corte_cavalete", "corte_ramal", "hd", "bypass", "clandestina"].includes(tipoCaso) && (
                   <>
                     <div>
@@ -540,7 +500,7 @@ Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a
                   Gerado com sucesso
                 </span>
               </div>
-              
+
               <div className="p-6">
                 <textarea
                   ref={textAreaRef}
