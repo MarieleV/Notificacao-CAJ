@@ -6,7 +6,7 @@ import {
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type DefesaType = "com_defesa" | "sem_defesa";
-type TipoCasoType = "leitura" | "servico" | "lacre" | "corte_cavalete" | "corte_ramal" | "hd" | "bypass" | "clandestina";
+type TipoCasoType = "leitura" | "servico" | "servico_voluntario" | "servico_involuntario" | "lacre" | "corte_cavalete" | "corte_ramal" | "hd" | "bypass" | "clandestina";
 
 // Função auxiliar para mascarar a data (DD/MM/AAAA)
 function maskDate(raw: string): string {
@@ -27,11 +27,12 @@ export function OuvidoriaManager() {
   // --- ESTADOS DOS CAMPOS DO PROCESSO ---
   const [matricula, setMatricula] = useState("");
   const [morador, setMorador] = useState("");
+  const [tipoManifestacao, setTipoManifestacao] = useState("Recurso Administrativo");
   const [numProcesso, setNumProcesso] = useState("");
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
   
   // --- CONFIGURAÇÃO DO CASO ---
-  const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
+  const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("bypass");
   const [historicoDefesa, setHistoricoDefesa] = useState<DefesaType>("com_defesa");
   const [decisao, setDecisao] = useState<DecisaoType>(null);
 
@@ -79,15 +80,18 @@ export function OuvidoriaManager() {
     switch (tipoCaso) {
       case "leitura": textoObjeto = "Multa por Impossibilidade de acesso para leituras e Não padronização obrigatória da ligação de água"; break;
       case "servico": textoObjeto = "Multa por Impossibilidade de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
+      case "servico_voluntario": textoObjeto = "Multa por Impedimento voluntário de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
+      case "servico_involuntario": textoObjeto = "Multa por Impedimento involuntário de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
       case "lacre": textoObjeto = "Multa por Violação do Lacre Cavalete"; break;
       case "corte_cavalete": textoObjeto = (decisao === "indeferir") ? "Multa por Violação do corte cavalete e Não padronização obrigatória da ligação de água" : "Multa por Violação do corte cavalete;"; break;
-      case "corte_ramal": textoObjeto = (decisao === "indeferir") ? "Multa por Violação do corte cavalete e Não padronização obrigatória da ligação de água" : "Multa por Violação do corte ramal"; break;
+      case "corte_ramal": textoObjeto = (decisao === "indeferir") ? "Multa por Violação do corte ramal e Não padronização obrigatória da ligação de água" : "Multa por Violação do corte ramal"; break;
       case "hd": textoObjeto = "Multa por Danificação, inversão ou supressão do hidrômetro e Padronização obrigatória da ligação de água"; break;
       case "bypass": textoObjeto = "Multa por derivação do ramal predial antes do hidrômetro (by-pass) e Revisão do faturamento de água e esgoto"; break;
       case "clandestina": textoObjeto = "Multa por Ligação clandestina de água e Revisão do faturamento de água"; break;
     }
 
     const dadosAnalise = {
+      origem: tipoManifestacao,
       tipoCaso: tipoCaso.toUpperCase(),
       decisaoSelecionada: decisao.toUpperCase(),
       historicoDefesa: historicoDefesa === "com_defesa" ? "COM_APRESENTACAO_DE_DEFESA" : "SEM_APRESENTACAO_DE_DEFESA",
@@ -117,7 +121,8 @@ export function OuvidoriaManager() {
     };
 
     const promptTexto = `AJE/OUVIDORIA - Você deve agir estritamente como um formatador de texto jurídico invariável para a Companhia Águas de Joinville.
-             
+
+ORIGEM DO PROCESSO: ${dadosAnalise.origem}
 TIPO DE CASO: ${dadosAnalise.tipoCaso}
 DECISÃO: ${dadosAnalise.decisaoSelecionada}
 HISTÓRICO: ${dadosAnalise.historicoDefesa}
@@ -126,10 +131,12 @@ OBJETO DO PARECER:
 ${dadosAnalise.dadosTemplate.textoObjeto}
 
 REGRAS ESTRUTURAIS OBRIGATÓRIAS (NÃO MUDE AS PALAVRAS, APENAS PREENCHA AS VARIÁVEIS):
+- Início: Se a "ORIGEM DO PROCESSO" for "Ouvidoria Interna", inicie o texto com "À Ouvidoria,". Se for "Recurso Administrativo", "ARIS", "PROCON" ou "Reclame Aqui", adapte a saudação inicial de acordo com a origem (ex: "Ao PROCON,", "À ARIS,", etc). Em seguida, inclua as informações de Objeto, Morador e Matrícula.
+
 - Parágrafo 01: Deve citar a Resolução Normativa nº 19, de 27 de março de 2019 (ARIS).
 - Parágrafo 02: Deve citar o AI nº ${dadosAnalise.dadosTemplate.numAutoInfracao} gerado em ${dadosAnalise.dadosTemplate.dataGeracaoAI}. 
   > Se LEITURA (Art. 144, XII): "Meses sem acesso às leituras: ${dadosAnalise.dadosTemplate.mesesSemAcesso}."
-  > Se SERVICO (Art. 144, XII): "Data da constatação/impedimento para o serviço: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosAnalise.dadosTemplate.protServico}."
+  > Se SERVICO, SERVICO_VOLUNTARIO ou SERVICO_INVOLUNTARIO (Art. 144, XII): "Data da constatação/impedimento para o serviço: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosAnalise.dadosTemplate.protServico}."
   > Se LACRE (Art. 144, XV): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}. Constatação via leitura. Caso fosse executado a padronização da ligação em até 90 dias, não teria sido aplicado multa. Dispositivo legal infringido: Artigo 144, inciso XV... "
   > Se CORTE_CAVALETE (Art. 144, X): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosAnalise.dadosTemplate.protServico}, originado por ocorrência de leitura. Dispositivo legal infringido: Artigo 144, inciso X... Penalidade aplicada: Multa por violação do corte cavalete e Padronização obrigatória..."
   > Se CORTE_RAMAL (Art. 144, XXII): "Data da constatação: ${dadosAnalise.dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosAnalise.dadosTemplate.protServico}. Dispositivo legal infringido: Artigo 144, inciso XXII... Penalidade aplicada: Multa por violação do corte de ramal e Padronização obrigatória..."
@@ -152,7 +159,7 @@ REGRAS ESTRUTURAIS OBRIGATÓRIAS (NÃO MUDE AS PALAVRAS, APENAS PREENCHA AS VARI
     - Se HD: "Analisamos a matrícula, verificamos que houve o dano, conforme constatado pela fiscalização e o cliente poderia ter informado à Companhia sobre irregularidades na ligação de água. Segundo o Art. 73... DECIDIMOS: RATIFICAR... MANTENDO AS PENALIDADES."
     - Outros Casos Indeferidos: "RATIFICAR a decisão proferida em ${dadosAnalise.dadosTemplate.dataDecisaoAnterior}, MANTENDO A PENALIDADE". Fatura não será corrigida (${dadosAnalise.dadosTemplate.faturaReferencia}).
 
-Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a minuta completa preenchida.`;
+Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a minuta completa preenchida.`;
 
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -196,7 +203,7 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
     const element = document.createElement("a");
     const file = new Blob([generatedText], { type: "text/plain;charset=utf-8" });
     element.href = URL.createObjectURL(file);
-    element.download = `Parecer_Ouvidoria_${tipoCaso}_Proc_${numProcesso || matricula}.txt`;
+    element.download = `Parecer_${tipoManifestacao}_${tipoCaso}_Proc_${numProcesso || matricula}.txt`;
     document.body.appendChild(element);
     element.click();
     element.remove();
@@ -204,7 +211,7 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top Bar */}
+      {/* Top Bar IDÊNTICO À NOTIFICAÇÃO */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
@@ -224,10 +231,6 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
               className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48" 
             />
           </div>
-          <div className="flex items-center gap-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-1.5">
-            <Sparkles size={13} className="text-[#1a5fa8]" />
-            <span className="text-[#1a5fa8] text-xs font-medium">Powered by Gemini Direct</span>
-          </div>
         </div>
       </div>
 
@@ -245,7 +248,7 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
             </div>
             
             <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
                   <input value={morador} onChange={(e) => setMorador(e.target.value)} placeholder="Ex: Nome Completo do Usuário" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -253,6 +256,16 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
                   <input value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Origem do Processo</label>
+                  <select value={tipoManifestacao} onChange={(e) => setTipoManifestacao(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#1a5fa8]">
+                    <option value="Recurso Administrativo">Recurso (Sansys)</option>
+                    <option value="Ouvidoria Interna">Ouvidoria CAJ</option>
+                    <option value="ARIS">ARIS</option>
+                    <option value="PROCON">PROCON</option>
+                    <option value="Reclame Aqui">Reclame Aqui</option>
+                  </select>
                 </div>
               </div>
 
@@ -286,14 +299,16 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
                 onChange={(e) => setTipoCaso(e.target.value as TipoCasoType)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] focus:bg-[#eef6ff] transition-all cursor-pointer"
               >
-                <option value="leitura">1. Impedimento de Leituras</option>
-                <option value="servico">2. Impedimento de Serviços de Manutenção</option>
-                <option value="lacre">3. Violação de Lacre do Cavalete/HD</option>
-                <option value="corte_cavalete">4. Violação de Corte no Cavalete</option>
-                <option value="corte_ramal">5. Violação de Corte no Ramal</option>
-                <option value="hd">6. Danificação / Retirada / Inversão do HD</option>
-                <option value="bypass">7. By-pass (Derivação Clandestina)</option>
-                <option value="clandestina">8. Ligação Clandestina de Água/Esgoto</option>
+                <option value="bypass">By-pass (Derivação Clandestina)</option>
+                <option value="hd">Danificação / Retirada / Inversão do HD</option>
+                <option value="leitura">Impedimento de Leituras</option>
+                <option value="servico">Impedimento de Serviços (Geral)</option>
+                <option value="servico_involuntario">Impedimento Involuntário de Serviços</option>
+                <option value="servico_voluntario">Impedimento Voluntário de Serviços</option>
+                <option value="clandestina">Ligação Clandestina de Água/Esgoto</option>
+                <option value="corte_cavalete">Violação de Corte no Cavalete</option>
+                <option value="corte_ramal">Violação de Corte no Ramal</option>
+                <option value="lacre">Violação de Lacre do Cavalete/HD</option>
               </select>
             </div>
           </div>
@@ -441,7 +456,7 @@ Mantenha as seções "À Ouvidoria,", "Objeto:", "Morador:", "Matrícula:" e os 
                   </div>
                 )}
                 
-                {["servico", "lacre", "corte_cavalete", "corte_ramal", "hd", "bypass", "clandestina"].includes(tipoCaso) && (
+                {["servico", "servico_voluntario", "servico_involuntario", "lacre", "corte_cavalete", "corte_ramal", "hd", "bypass", "clandestina"].includes(tipoCaso) && (
                   <>
                     <div>
                       <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
