@@ -902,7 +902,7 @@ export function FineCalculator() {
                   <p className="text-gray-400 text-xs mt-0.5">Gere um período automático ou adicione mês a mês</p>
                   <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
                     <Info size={11} className="flex-shrink-0" />
-                    Preencha a 1ª linha e os valores repetem nas linhas vazias abaixo — edite qualquer uma individualmente se precisar.
+                    Preencha a 1ª linha e os valores repetem nas linhas vazias abaixo | edite qualquer uma individualmente se precisar.
                   </p>
                 </div>
               </div>
@@ -1038,7 +1038,7 @@ export function FineCalculator() {
                   <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
                   <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
                     <Info size={11} className="flex-shrink-0" />
-                    Preencha a 1ª linha e o valor repete nas linhas vazias abaixo — edite qualquer uma individualmente se precisar.
+                    Preencha a 1ª linha e o valor repete nas linhas vazias abaixo | edite qualquer uma individualmente se precisar.
                   </p>
                 </div>
               </div>
@@ -1264,7 +1264,7 @@ export function FineCalculator() {
               <FileText size={18} className="text-[#1a5fa8]" />
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos — editável e copiável</p>
+                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos | editável e copiável</p>
               </div>
             </div>
 
@@ -1347,7 +1347,7 @@ export function FineCalculator() {
                   disabled={validRows.length === 0}
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all shadow"
                 >
-                  <RefreshCw size={14} />Início (
+                  <RefreshCw size={14} />
                   Gerar / Atualizar Texto
                 </button>
               </div>
