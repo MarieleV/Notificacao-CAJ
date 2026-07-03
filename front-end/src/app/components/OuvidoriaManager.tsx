@@ -1,14 +1,13 @@
 import { useState, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2,
-  Loader2, Info, Key, Scale, FileCheck, FileX, Clock, Wrench, FileText, HelpCircle
+  Scale, FileCheck, FileX, Clock, HelpCircle, FileText
 } from "lucide-react";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
-type DefesaType = "com_defesa" | "sem_defesa";
-type TipoCasoType = "leitura" | "servico" | "servico_voluntario" | "servico_involuntario" | "lacre" | "corte_cavalete" | "corte_ramal" | "hd" | "bypass" | "clandestina";
+type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "la_padronizada" | "la_cadastral" | "prorrogacao";
 
-// Função auxiliar para mascarar a data (DD/MM/AAAA)
+// Função para formatar as datas visuais
 function maskDate(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
@@ -16,13 +15,31 @@ function maskDate(raw: string): string {
   return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
 }
 
+// Calculadora Matemática de 60 Dias Úteis
+function get60BusinessDaysFromToday(): string {
+  const d = new Date();
+  let added = 0;
+  while (added < 60) {
+    d.setDate(d.getDate() + 1);
+    // Ignora Sábados (6) e Domingos (0)
+    if (d.getDay() !== 0 && d.getDay() !== 6) {
+      added++;
+    }
+  }
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export function OuvidoriaManager() {
-  const [apiKey, setApiKey] = useState("");
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<"idle" | "generated">("idle");
   const [generatedText, setGeneratedText] = useState("");
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // --- CONTROLE DE FLUXO ---
+  const [isRecurso, setIsRecurso] = useState<boolean>(true);
 
   // --- ESTADOS DOS CAMPOS DO PROCESSO ---
   const [matricula, setMatricula] = useState("");
@@ -32,122 +49,126 @@ export function OuvidoriaManager() {
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
 
   // --- CONFIGURAÇÃO DO CASO ---
-  const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("bypass");
-  const [historicoDefesa, setHistoricoDefesa] = useState<DefesaType>("com_defesa");
+  const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
   const [decisao, setDecisao] = useState<DecisaoType>(null);
 
-  // --- VARIÁVEIS DOS TEMPLATES ---
+  // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente) ---
   const [dataGeracaoAI, setDataGeracaoAI] = useState("");
+  const [mesesSemAcesso, setMesesSemAcesso] = useState("");
+  const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useState("");
+  const [protServico, setProtServico] = useState("");
   const [recebedorCorreios, setRecebedorCorreios] = useState("");
   const [dataRecebimentoAR, setDataRecebimentoAR] = useState("");
   const [dataAplicacaoSancao, setDataAplicacaoSancao] = useState("");
-
-  // Específicos de Leitura
-  const [mesesSemAcesso, setMesesSemAcesso] = useState("");
-  // Específicos de Serviço / Lacre / Corte / Clandestina / Bypass / HD
-  const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useState("");
-  const [protServico, setProtServico] = useState("");
-
-  // Específicos para Veredictos de Corte (Cavalete e Ramal)
-  const [dataTitularDesde, setDataTitularDesde] = useState("");
-  const [protTitularidade, setProtTitularidade] = useState("");
-
-  // Histórico de Defesa
-  const [dataDefesa, setDataDefesa] = useState("");
-  const [protDefesa, setProtDefesa] = useState("");
-  const [dataIndeferimento, setDataIndeferimento] = useState("");
-  const [protIndeferimento, setProtIndeferimento] = useState("");
-
-  // Decisão
-  const [protPadronizacao, setProtPadronizacao] = useState("");
   const [dataDecisaoAnterior, setDataDecisaoAnterior] = useState("");
   const [faturaReferencia, setFaturaReferencia] = useState("");
 
-  const handleGenerateParecer = async () => {
+  // Lógica para esconder campos inúteis dependendo do tipo do caso
+  const isLeitura = tipoCaso === "leitura";
+  const isServico = tipoCaso === "servico";
+  const isCorte = tipoCaso === "corte_cavalete";
+  const isHd = tipoCaso === "hd";
+  const isPadronizada = tipoCaso === "la_padronizada";
+  const isCadastral = tipoCaso === "la_cadastral";
+  const isProrrogacao = tipoCaso === "prorrogacao";
+
+  const isSimples = isPadronizada || isCadastral || isProrrogacao;
+  const isRecursoEnxuto = isRecurso && (isLeitura || isServico) && (decisao === "deferir" || decisao === "parcial");
+
+  // Regras de renderização das variáveis
+  const showDataGeracaoAI = !isSimples && !isRecursoEnxuto;
+  const showMesesSemAcesso = isLeitura && !isRecursoEnxuto;
+  const showDataConstatacao = (isServico || isCorte || isHd) && !isRecursoEnxuto;
+  const showProtServico = isServico && !isRecursoEnxuto;
+  const showRecebedorAR = !isSimples && !isRecursoEnxuto;
+  const showDataRecebimentoAR = isHd || isProrrogacao;
+  const showDataAplicacaoSancao = !isSimples && !isRecursoEnxuto;
+  const showDataDecisaoAnterior = !isRecurso && decisao === "indeferir" && !isSimples;
+  const showFaturaReferencia = !isProrrogacao;
+
+  // Lidar com a troca de opções do tipo de caso
+  const handleTipoCasoChange = (val: TipoCasoType) => {
+    setTipoCaso(val);
+    if (val === "la_padronizada" || val === "la_cadastral" || val === "prorrogacao") {
+      setDecisao("deferir"); // Auto-seleciona para simplificar, já que só possuem uma resposta positiva
+    } else {
+      setDecisao(null);
+    }
+  };
+
+  // 100% GERAÇÃO LOCAL
+  const handleGenerateParecer = () => {
     if (!matricula || !numProcesso || !decisao) {
       alert("Por favor, preencha a Matrícula, o Número do Processo e selecione uma Decisão de Mérito.");
       return;
     }
-    if (!apiKey) {
-      alert("Por favor, insira sua Chave de API do Gemini no topo da tela.");
-      return;
-    }
 
-    setLoading(true);
-    setStep("idle");
+    const tplMorador = morador || "[NOME DO MORADOR]";
+    const tplMatricula = matricula || "[MATRÍCULA]";
+    const tplProc = numProcesso || "[Nº DO PROCESSO]";
+    const tplAI = numAutoInfracao || "[AUTO INFRAÇÃO]";
+    const tplFatura = faturaReferencia || "[FATURA]";
+    const tplGeracao = dataGeracaoAI || "[DATA GERAÇÃO AI]";
+    const tplAplicacao = dataAplicacaoSancao || "[DATA APLICAÇÃO SANÇÃO]";
+    const tplConstatacao = dataConstatacaoInfracao || "[DATA CONSTATAÇÃO]";
+    const tplRecebedor = recebedorCorreios || "[RECEBEDOR AR]";
+    const tplRecebimentoAR = dataRecebimentoAR || "[DATA RECEBIMENTO AR]";
+    const tplMeses = mesesSemAcesso || "[MESES SEM ACESSO]";
+    const tplProtServico = protServico || "[PROTOCOLO SERVIÇO]";
+    const tplDecisaoAnterior = dataDecisaoAnterior || "[DATA DECISÃO ANTERIOR]";
+    const tplPrazo = get60BusinessDaysFromToday();
 
-    let textoObjeto = "";
-    switch (tipoCaso) {
-      case "leitura": textoObjeto = "Multa por Impossibilidade de acesso para leituras e Não padronização obrigatória da ligação de água"; break;
-      case "servico": textoObjeto = "Multa por Impossibilidade de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
-      case "servico_voluntario": textoObjeto = "Multa por Impedimento voluntário de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
-      case "servico_involuntario": textoObjeto = "Multa por Impedimento involuntário de execução de serviços de manutenção ao cavalete/hidrômetro e Não padronização obrigatória da ligação de água"; break;
-      case "lacre": textoObjeto = "Multa por Violação do Lacre Cavalete"; break;
-      case "corte_cavalete": textoObjeto = (decisao === "indeferir") ? "Multa por Violação do corte cavalete e Não padronização obrigatória da ligação de água" : "Multa por Violação do corte cavalete;"; break;
-      case "corte_ramal": textoObjeto = (decisao === "indeferir") ? "Multa por Violação do corte ramal e Não padronização obrigatória da ligação de água" : "Multa por Violação do corte ramal"; break;
-      case "hd": textoObjeto = "Multa por Danificação, inversão ou supressão do hidrômetro e Padronização obrigatória da ligação de água"; break;
-      case "bypass": textoObjeto = "Multa por derivação do ramal predial antes do hidrômetro (by-pass) e Revisão do faturamento de água e esgoto"; break;
-      case "clandestina": textoObjeto = "Multa por Ligação clandestina de água e Revisão do faturamento de água"; break;
-    }
+    let tpl = "";
 
-    // Objeto único com todos os dados necessários para o backend montar o prompt
-    const dadosAnalise = {
-      origem: tipoManifestacao,
-      tipoCaso: tipoCaso.toUpperCase(),
-      tipoCasoRaw: tipoCaso, // usado nas checagens condicionais (ex: clandestina vs bypass)
-      decisaoSelecionada: decisao.toUpperCase(),
-      historicoDefesa: historicoDefesa === "com_defesa" ? "COM_APRESENTACAO_DE_DEFESA" : "SEM_APRESENTACAO_DE_DEFESA",
-      dadosTemplate: {
-        morador: morador || "[NOME COMPLETO DO MORADOR]",
-        matricula,
-        numProcesso,
-        numAutoInfracao,
-        textoObjeto,
-        dataGeracaoAI: dataGeracaoAI || "[DATA GERACAO AI]",
-        mesesSemAcesso: mesesSemAcesso || "[MESES SEM ACESSO]",
-        dataConstatacaoInfracao: dataConstatacaoInfracao || "[DATA DA CONSTATAÇÃO/IMPEDIMENTO]",
-        protServico: protServico || "[PROTOCOLO DA CONSTATAÇÃO/SERVIÇO]",
-        recebedorCorreios: recebedorCorreios || "[NOME RECEBEDOR CORREIOS]",
-        dataRecebimentoAR: dataRecebimentoAR || "[DATA RECEBIMENTO AR]",
-        dataTitularDesde: dataTitularDesde || "[DATA TITULAR RESPONSAVEL]",
-        protTitularidade: protTitularidade || "[PROTOCOLO TITULARIDADE]",
-        dataDefesa: dataDefesa || "[DATA DA DEFESA]",
-        protDefesa: protDefesa || "[PROTOCOLO DEFESA]",
-        dataIndeferimento: dataIndeferimento || "[DATA INDEFERIMENTO]",
-        protIndeferimento: protIndeferimento || "[PROTOCOLO INDEFERIMENTO]",
-        dataAplicacaoSancao: dataAplicacaoSancao || "[DATA APLICACAO SANCAO]",
-        protPadronizacao: protPadronizacao || "[PROTOCOLO PADRONIZACAO]",
-        dataDecisaoAnterior: dataDecisaoAnterior || "[DATA DECISAO ANTERIOR]",
-        faturaReferencia: faturaReferencia || "[FATURA COMPETENCIA REF]"
+    // =======================================================
+    // TEXTOS: É RECURSO? -> SIM
+    // =======================================================
+    if (isRecurso) {
+      if (tipoCaso === "leitura") {
+        if (decisao === "deferir" || decisao === "parcial") {
+          tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: Aplicação de multas referente à impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI}.\nComo não houve apresentação de defesa, nem a padronização obrigatória da ligação de água, as sanções foram aplicadas e constam na FAT ${tplFatura}.\nAcatamos o exposto pelo(a) cliente e concedemos novo prazo para padronização da ligação de água.\n02. DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.\n03. PRORROGAÇÃO: Fica o prazo de padronização prorrogado por 60 (sessenta) dias úteis a contar da data desta decisão.\nNovo prazo para padronizar a ligação de água vence em ${tplPrazo}.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de sanções independentemente de nova notificação.\nPara viabilizar a padronização, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\nCitamos algumas das vantagens em instalar a caixa padrão:\n· Facilidade de leitura, sem a necessidade de adentrar o imóvel.\n· Segurança, com proteção contra vandalismo.\n· Prevenção de desgaste precoce dos materiais do cavalete e proteção do medidor de água.\n· Redução dos riscos de vazamento.\n· Facilidade na realização de manutenções.\n· Preservação da qualidade da água tratada.\n· Melhoria na estética do imóvel.\n· Conformidade com as normas regulamentares, prevenindo eventuais penalidades.`;
+        } else {
+          tpl = `Recurso protocolo ${tplProc}\nMorador: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: Aplicação de multas referente à impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso XII da Resolução 19/2019 - ARIS.\nFato Gerador: Impedimento involuntário para execução de leituras.\nMeses sem acesso: ${tplMeses}\nO Auto de Infração foi entregue, pelos Correios, no endereço do imóvel, e recebido por ${tplRecebedor}.\nComo não houve apresentação de defesa nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.\nRevisando os fatos, [MANTEMOS A APLICAÇÃO POIS NÃO HÁ COMPROVAÇÃO DE IMPOSSIBILIDADE TÉCNICA].\n02. DECISÃO:\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de leitura e pela adequação da ligação de água aos padrões técnicos exigidos.\nA previsão legal ou normativa que autoriza o cancelamento das multas regularmente aplicadas por não padronização da ligação de água, é regido pela Instrução Normativa CAJ nº 83/2025.\nNesta, consta o prazo de 30 dias úteis, contados da data de emissão da fatura, para solicitar revisão.\nO recurso para revisão da fatura foi solicitado fora do prazo.\nDiante do exposto, ratifica-se integralmente a decisão proferida pelo Prestador de Serviços, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.\n\nCitamos algumas das vantagens em instalar a caixa padrão:\n· Facilidade de leitura, sem a necessidade de adentrar o imóvel.\n· Segurança, com proteção contra vandalismo.\n· Prevenção de desgaste precoce dos materiais do cavalete e proteção do medidor de água.\n· Redução dos riscos de vazamento.\n· Facilidade na realização de manutenções.\n· Preservação da qualidade da água tratada.\n· Melhoria na estética do imóvel.\n· Conformidade com as normas regulamentares, prevenindo eventuais penalidades.`;
+        }
+      } else if (tipoCaso === "servico") {
+        if (decisao === "deferir" || decisao === "parcial") {
+          tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. Objeto: Aplicação de multas referente à Impedimento involuntário de acesso a ligação de água para realização de serviços e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI}.\nComo não houve apresentação de defesa, nem a padronização obrigatória da ligação de água, as sanções foram aplicadas e constam na FAT ${tplFatura}.\nAcatamos o exposto pelo(a) cliente e concedemos novo prazo para padronização da ligação de água.\n02. DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.\n03. PRORROGAÇÃO: Fica o prazo de padronização prorrogado por 60 (sessenta) dias úteis a contar da data desta decisão.\nNovo prazo para padronizar a ligação de água vence em ${tplPrazo}.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de sanções independentemente de nova notificação.\nPara poder viabilizar a padronização, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\nCitamos algumas das vantagens em instalar a caixa padrão:\n· Facilidade de leitura, sem a necessidade de adentrar o imóvel.\n· Segurança, com proteção contra vandalismo.\n· Prevenção de desgaste precoce dos materiais do cavalete e proteção do medidor de água.\n· Redução dos riscos de vazamento.\n· Facilidade na realização de manutenções.\n· Preservação da qualidade da água tratada.\n· Melhoria na estética do imóvel.\n· Conformidade com as normas regulamentares, prevenindo eventuais penalidades.`;
+        } else {
+          tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: Aplicação de multas referente à Impedimento involuntário de acesso a ligação de água para realização de serviços e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS.\nFato gerador: Impedimento Involuntário para execução do serviço.\nData da constatação: ${tplConstatacao}\nProtocolo de serviço: ${tplProtServico}\nO Auto de Infração foi entregue, pelos Correios, no endereço do imóvel, e recebido por ${tplRecebedor}.\nComo não houve apresentação de defesa, nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.\nRevisando os fatos, [NÃO IDENTIFICAMOS EXCLUDENTE DE RESPONSABILIDADE QUE JUSTIFIQUE A RETIRADA].\n02. DECISÃO:\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nA previsão legal ou normativa que autoriza o cancelamento das multas regularmente aplicadas por não padronização da ligação de água, é regido pela Instrução Normativa CAJ nº 83/2025.\nNesta, consta o prazo de 30 dias úteis, contados da data de emissão da fatura, para solicitar revisão.\nO recurso para revisão da fatura foi solicitado fora do prazo.\nDiante do exposto, ratifica-se integralmente a decisão proferida Pelo Prestador de Serviços, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.\n\nCitamos algumas das vantagens em instalar a caixa padrão:\n· Facilidade de leitura, sem a necessidade de adentrar o imóvel.\n· Segurança, com proteção contra vandalismo.\n· Prevenção de desgaste precoce dos materiais do cavalete e proteção do medidor de água.\n· Redução dos riscos de vazamento.\n· Facilidade na realização de manutenções.\n· Preservação da qualidade da água tratada.\n· Melhoria na estética do imóvel.\n· Conformidade com as normas regulamentares, prevenindo eventuais penalidades.`;
+        }
+      } else if (tipoCaso === "corte_cavalete") {
+        tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. Objeto : Multa por Violação do corte cavalete\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso X da Resolução 019/2019 - ARIS.\nFato gerador: Violação do corte de cavalete\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, pelos Correios, no endereço do imóvel, e recebido por ${tplRecebedor}.\nComo não houve apresentação de defesa nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.\nAnalisando os fatos, há registro de que foi confirmado a violação do corte conforme imagens.\n[INSERIR AQUI ESPAÇO PARA AS IMAGENS: Imagem 1 e Imagem 2]\n02.DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão da multa aplicada por não padronização obrigatória da ligação de água, em estrita observância à Instrução Normativa nº 83/2025.\nQuanto à multa por violação do corte, não é possível, pois foi constatado a violação.\nA FAT ${tplFatura} foi corrigida e está anexa, com a exclusão da multa por não execução da padronização obrigatória da ligação de água.\n03.PRORROGAÇÃO: Fica o prazo de padronização prorrogado por 60 (sessenta) dias úteis a contar da data desta decisão.\nNovo prazo para padronizar a ligação de água vence em ${tplPrazo}.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação de padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de multa independentemente de nova notificação.\n\nPara padronizar, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)`;
+      } else if (tipoCaso === "hd") {
+        tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. Objeto : Multa por Danificação do hidrômetro.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso VI da Resolução 019/2019 - ARIS.\nFato gerador: Danificação do hidrômetro.\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, pelos Correios, no endereço do imóvel, e recebido por ${tplRecebedor} em ${tplRecebimentoAR}.\nComo não houve apresentação de defesa, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.\nAnalisando os fatos, [DESCREVER O DANO COM BASE NOS FATOS], conforme imagens abaixo.\n[INSERIR AQUI ESPAÇO PARA AS IMAGENS: Imagem 1 e Imagem 2]\nDECIDIMOS\nMANTER a aplicação de penalidades referente ao Auto de Infração nº ${tplAI}:\n- Multa por Danificação, inversão e/ou supressão do hidrômetro, no valor correspondente;\n\n(Se houver Consumo estimado):\nVisto ter havido retenção de consumo pelo fato, conforme Resolução ARIS 19/2019, o prestador de serviço pode cobrar o consumo estimado de água e esgoto retido, ao primeiro consumo do ciclo completo após a regularização da ligação de água, tendo sido então cobrados a Revisão do faturamento.`;
       }
-    };
-
-    try {
-      const response = await fetch("https://notificacao-caj.vercel.app/api/gerar_parecer_ouvidoria", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: apiKey,
-          dadosAnalise,
-        }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || "Erro de conexão com o servidor.");
+    } 
+    // =======================================================
+    // TEXTOS: É RECURSO? -> NÃO
+    // =======================================================
+    else {
+      if (tipoCaso === "leitura") {
+        if (decisao === "deferir" || decisao === "parcial") {
+          tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de leituras e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nAuto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
+        } else {
+          tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de leituras e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água, conforme disposto.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor}, conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de leitura e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que autorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
+        }
+      } else if (tipoCaso === "servico") {
+        if (decisao === "deferir" || decisao === "parcial") {
+          tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nApós a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
+        } else {
+          tpl = `À ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que autorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
+        }
+      } else if (tipoCaso === "la_padronizada") {
+        tpl = `Recurso prot. ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: AUTO DE INFRAÇÃO Nº ${tplAI}\nCliente viabilizou a padronização da ligação de água e solicita cancelamento das multas.\n02. DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.`;
+      } else if (tipoCaso === "la_cadastral") {
+        tpl = `Recurso prot. ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: AUTO DE INFRAÇÃO Nº ${tplAI}\nCliente atualizou o cadastro e solicita o cancelamento da multa.\nTendo o cliente atendido as exigências contidas na notificação recebida,\n02. DECISÃO:\nRETIFICAR, a decisão proferida, retirando a multa aplicada. A FAT ${tplFatura} foi corrigida e está anexa.`;
+      } else if (tipoCaso === "prorrogacao") {
+        tpl = `Recurso protocolo ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: AUTO DE INFRAÇÃO Nº ${tplAI}\nCliente solicita prazo para atender à padronização obrigatória referente notificação recebida em ${tplRecebimentoAR}.\nConsiderando que cliente nos comunicou antes da aplicação das sanções e que a necessidade de prorrogação foi justificada,\n02.DECISÃO:\nPRORROGAR o prazo de padronização em mais 60 (sessenta) dias úteis, a contar do prazo de vencimento constante no Auto de Infração lavrado. Novo prazo expira em ${tplPrazo} .\nA não padronização da ligação de água dentro do novo prazo poderá acarretar aplicação de sanções, independentemente de nova notificação.\nApós cliente solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal, deve adquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão. Após instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço. A caixa padrão CAJ deve estar aprovada dentro do novo prazo acordado. O serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\nPadronize sua ligação de água.\nCitamos algumas das vantagens em instalar a caixa padrão:\n· Facilidade de leitura, sem a necessidade de adentrar o imóvel.\n· Segurança, com proteção contra vandalismo.\n· Prevenção de desgaste precoce dos materiais do cavalete e proteção do medidor de água.\n· Redução dos riscos de vazamento.\n· Facilidade na realização de manutenções.\n· Preservação da qualidade da água tratada.\n· Melhoria na estética do imóvel.\n· Conformidade com as normas regulamentares, prevenindo eventuais penalidades.`;
       }
-
-      const data = await response.json();
-      if (!data.texto_gerado) throw new Error("O servidor não retornou o texto esperado.");
-
-      setGeneratedText(data.texto_gerado);
-      setStep("generated");
-    } catch (error) {
-      console.error(error);
-      alert(`Falha ao gerar o parecer. Erro: ${(error as Error).message}`);
-    } finally {
-      setLoading(false);
     }
+
+    setGeneratedText(tpl);
+    setStep("generated");
   };
 
   const handleCopy = async () => {
@@ -156,38 +177,32 @@ export function OuvidoriaManager() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
-    const element = document.createElement("a");
-    const file = new Blob([generatedText], { type: "text/plain;charset=utf-8" });
-    element.href = URL.createObjectURL(file);
-    element.download = `Parecer_${tipoManifestacao}_${tipoCaso}_Proc_${numProcesso || matricula}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    element.remove();
+  const handleDownloadWord = () => {
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Parecer Exportado</title></head><body>";
+    const footer = "</body></html>";
+    const html = header + generatedText.replace(/\n/g, "<br>") + footer;
+    
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Parecer_${tipoCaso}_Proc_${numProcesso || matricula}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top Bar IDÊNTICO À NOTIFICAÇÃO */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <Scale size={18} className="text-[#1a5fa8]" />
             <h1 className="text-[#0b1e35] font-semibold text-lg">Análise de Processos e Ouvidoria</h1>
           </div>
-          <p className="text-gray-500 text-sm mt-0.5">Gestão de Pareceres Automatizados — Resolução 019/2019-ARIS</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:border-[#1a5fa8] transition-colors">
-            <Key size={14} className="text-gray-400 mr-2" />
-            <input
-              type="password"
-              placeholder="Gemini API Key..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="bg-transparent border-none focus:outline-none text-sm text-gray-700 w-48"
-            />
-          </div>
+          <p className="text-gray-500 text-sm mt-0.5">Gestão de Pareceres Locais e Determinísticos</p>
         </div>
       </div>
 
@@ -250,237 +265,198 @@ export function OuvidoriaManager() {
             </div>
 
             <div className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 mb-5">
+                <div className="flex items-center gap-2">
+                  <HelpCircle size={14} className="text-[#1a5fa8]" />
+                  <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">É recurso?</label>
+                </div>
+                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => { setIsRecurso(true); handleTipoCasoChange("leitura"); }}
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                  >
+                    Sim
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsRecurso(false); handleTipoCasoChange("leitura"); }}
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${!isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                  >
+                    Não
+                  </button>
+                </div>
+              </div>
+
               <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Qual foi o Fato Gerador?</label>
               <select
                 value={tipoCaso}
-                onChange={(e) => setTipoCaso(e.target.value as TipoCasoType)}
+                onChange={(e) => handleTipoCasoChange(e.target.value as TipoCasoType)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] focus:bg-[#eef6ff] transition-all cursor-pointer"
               >
-                <option value="bypass">By-pass (Derivação Clandestina)</option>
-                <option value="hd">Danificação / Retirada / Inversão do HD</option>
-                <option value="leitura">Impedimento de Leituras</option>
-                <option value="servico">Impedimento de Serviços (Geral)</option>
-                <option value="servico_involuntario">Impedimento Involuntário de Serviços</option>
-                <option value="servico_voluntario">Impedimento Voluntário de Serviços</option>
-                <option value="clandestina">Ligação Clandestina de Água/Esgoto</option>
-                <option value="corte_cavalete">Violação de Corte no Cavalete</option>
-                <option value="corte_ramal">Violação de Corte no Ramal</option>
-                <option value="lacre">Violação de Lacre do Cavalete/HD</option>
+                {isRecurso ? (
+                  <>
+                    <option value="leitura">Leitura</option>
+                    <option value="servico">Serviço</option>
+                    <option value="corte_cavalete">Violação de corte de cavalete</option>
+                    <option value="hd">Hidrômetro danificado</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="leitura">Leitura</option>
+                    <option value="servico">Serviços</option>
+                    <option value="la_padronizada">LA Padronizada</option>
+                    <option value="la_cadastral">Atualização Cadastral (LA)</option>
+                    <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
 
-          {/* SESSÃO 3: VEREDICTO DE MÉRITO E DEFESA */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Veredicto Final e Conclusão</h2>
-                <p className="text-gray-500 text-xs">Defina o posicionamento formal de mérito da CAJ frente ao recurso</p>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setDecisao("deferir")}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
-                    <span className="font-bold text-sm">1. Deferir (Retificar)</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDecisao("parcial")}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
-                    <span className="font-bold text-sm">2. Deferir Parcialmente</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDecisao("indeferir")}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
-                    <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
-                </button>
-              </div>
-
-              {/* ===== MÓDULO EXCLUSIVO QUE SÓ APARECE APÓS ESCOLHER UMA DECISÃO ===== */}
-              {decisao && (
-                <div className="mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6">
-
-                  {/* CASOS DE CORTE INDEFERIDO (Pede histórico de titularidade) */}
-                  {["corte_cavalete", "corte_ramal"].includes(tipoCaso) && decisao === "indeferir" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-amber-50/40 border border-amber-200 rounded-xl">
-                      <div>
-                        <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Titular Responsável Desde</label>
-                        <input value={dataTitularDesde} onChange={(e) => setDataTitularDesde(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:border-amber-600 bg-white" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Protocolo da Titularidade</label>
-                        <input value={protTitularidade} onChange={(e) => setProtTitularidade(e.target.value)} placeholder="Ex: 9876543" className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:border-amber-600 bg-white" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SELETOR DE HISTÓRICO DE DEFESA - COMPACTO (Estilo Toggle) */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
-                    <div className="flex items-center gap-2">
-                      <Info size={14} className="text-gray-400" />
-                      <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Houve defesa prévia?</label>
-                    </div>
-
-                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setHistoricoDefesa("com_defesa")}
-                        className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "com_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                      >
-                        Sim
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setHistoricoDefesa("sem_defesa")}
-                        className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "sem_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                      >
-                        Não
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CAMPOS DINÂMICOS DA DEFESA */}
-                  {historicoDefesa === "com_defesa" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-[#f8fafe] border border-[#c3ddf8] rounded-xl animate-fadeIn">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider mb-1">Data Protocolo Defesa</label>
-                        <input value={dataDefesa} onChange={(e) => setDataDefesa(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider mb-1">Nº Prot. Defesa</label>
-                        <input value={protDefesa} onChange={(e) => setProtDefesa(e.target.value)} placeholder="Ex: Prot. Defesa" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider mb-1">Data Indeferimento</label>
-                        <input value={dataIndeferimento} onChange={(e) => setDataIndeferimento(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider mb-1">Nº Prot. Indeferimento</label>
-                        <input value={protIndeferimento} onChange={(e) => setProtIndeferimento(e.target.value)} placeholder="Ex: Prot. Indeferimento" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                      </div>
-                    </div>
-                  )}
-
+          {/* SESSÃO 3: VEREDICTO DE MÉRITO (Escondida nos casos Simples) */}
+          {!isSimples && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible animate-fadeIn">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+                <div>
+                  <h2 className="text-[#0b1e35] font-semibold text-sm">Veredicto Final e Conclusão</h2>
+                  <p className="text-gray-500 text-xs">Defina o posicionamento formal de mérito da CAJ frente ao recurso</p>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* SESSÃO 4: REQUISITOS VARIÁVEIS DA IRREGULARIDADE */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("deferir")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">1. Deferir (Retificar)</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("parcial")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">2. Deferir Parcialmente</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("indeferir")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SESSÃO 4: REQUISITOS VARIÁVEIS (Apenas os relevantes aparecem) */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
               <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Variáveis e Datas da Irregularidade</h2>
-                <p className="text-gray-500 text-xs">Insira os marcos temporais cronológicos exigidos pelas lacunas do modelo</p>
+                <p className="text-gray-500 text-xs">Apenas os campos pertinentes a esta infração estão sendo exibidos abaixo</p>
               </div>
             </div>
 
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
-                  <input value={dataGeracaoAI} onChange={(e) => setDataGeracaoAI(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
+                
+                {showDataGeracaoAI && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
+                    <input value={dataGeracaoAI} onChange={(e) => setDataGeracaoAI(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
 
-                {tipoCaso === "leitura" && (
+                {showMesesSemAcesso && (
                   <div>
                     <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
                     <input value={mesesSemAcesso} onChange={(e) => setMesesSemAcesso(e.target.value)} placeholder="Ex: Jan/2026 a Mar/2026" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-[#eef6ff]" />
                   </div>
                 )}
 
-                {["servico", "servico_voluntario", "servico_involuntario", "lacre", "corte_cavalete", "corte_ramal", "hd", "bypass", "clandestina"].includes(tipoCaso) && (
-                  <>
-                    <div>
-                      <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
-                      <input value={dataConstatacaoInfracao} onChange={(e) => setDataConstatacaoInfracao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
-                    </div>
-                    {tipoCaso !== "lacre" && (
-                      <div>
-                        <label className="block text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-1">Nº Prot. Origem/Fiscaliz.</label>
-                        <input value={protServico} onChange={(e) => setProtServico(e.target.value)} placeholder="Ex: 1234567" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
-                      </div>
-                    )}
-                  </>
+                {showDataConstatacao && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
+                    <input value={dataConstatacaoInfracao} onChange={(e) => setDataConstatacaoInfracao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
+                  </div>
                 )}
-              </div>
+                
+                {showProtServico && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-1">Nº Prot. Serviço</label>
+                    <input value={protServico} onChange={(e) => setProtServico(e.target.value)} placeholder="Ex: 1234567" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
+                  </div>
+                )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Recebedor do A.I. (AR)</label>
-                  <input value={recebedorCorreios} onChange={(e) => setRecebedorCorreios(e.target.value)} placeholder="Nome de quem assinou o AR" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data de Recebimento AR</label>
-                  <input value={dataRecebimentoAR} onChange={(e) => setDataRecebimentoAR(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Aplicação Sanções</label>
-                  <input value={dataAplicacaoSancao} onChange={(e) => setDataAplicacaoSancao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-              </div>
+                {showRecebedorAR && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Recebedor do A.I. (AR)</label>
+                    <input value={recebedorCorreios} onChange={(e) => setRecebedorCorreios(e.target.value)} placeholder="Nome de quem assinou" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Nº Prot. Exec. Padronização</label>
-                  <input value={protPadronizacao} onChange={(e) => setProtPadronizacao(e.target.value)} placeholder="Obrigatório p/ Deferidos" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior (Ratificar)</label>
-                  <input value={dataDecisaoAnterior} onChange={(e) => setDataDecisaoAnterior(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Fatura de Competência Corrigida</label>
-                  <input value={faturaReferencia} onChange={(e) => setFaturaReferencia(e.target.value)} placeholder="Ex: MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
+                {showDataRecebimentoAR && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento AR</label>
+                    <input value={dataRecebimentoAR} onChange={(e) => setDataRecebimentoAR(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
+
+                {showDataAplicacaoSancao && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Aplicação Sanções</label>
+                    <input value={dataAplicacaoSancao} onChange={(e) => setDataAplicacaoSancao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
+
+                {showDataDecisaoAnterior && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior (Ratificar)</label>
+                    <input value={dataDecisaoAnterior} onChange={(e) => setDataDecisaoAnterior(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
+
+                {showFaturaReferencia && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Fatura (Competência)</label>
+                    <input value={faturaReferencia} onChange={(e) => setFaturaReferencia(e.target.value)} placeholder="Ex: MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
+
               </div>
             </div>
           </div>
 
-          {/* BOTÃO DISPARADOR DE GERAÇÃO */}
           <button
             onClick={handleGenerateParecer}
-            disabled={loading || !decisao || !matricula}
+            disabled={!decisao || !matricula}
             className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg"
           >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Formatando Parecer Diretamente na IA...
-              </>
-            ) : (
-              <>
-                <Sparkles size={18} />
-                Emitir Minuta de Parecer Oficial
-              </>
-            )}
+            <Sparkles size={18} />
+            Emitir Minuta de Parecer Oficial
           </button>
 
-          {/* ÁREA DE EXIBIÇÃO DA MINUTA GERADA */}
+          {/* ÁREA DE EXIBIÇÃO E EXPORTAÇÃO DA MINUTA */}
           {step === "generated" && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible animate-fadeIn">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-emerald-50/30 rounded-t-xl">
@@ -494,7 +470,7 @@ export function OuvidoriaManager() {
                   </div>
                 </div>
                 <span className="text-[10px] bg-emerald-100 border border-emerald-300 text-emerald-800 px-2 py-1 rounded-full font-medium">
-                  Gerado com sucesso
+                  Gerado localmente e sem custos
                 </span>
               </div>
 
@@ -511,21 +487,21 @@ export function OuvidoriaManager() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">5</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Copie para a área de transferência ou baixe o arquivo de texto formatado</p>
+                  <p className="text-gray-500 text-xs">Copie para a área de transferência ou baixe o arquivo formatado em Microsoft Word</p>
                 </div>
               </div>
               <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 border-2 border-[#1a5fa8] text-[#1a5fa8] rounded-xl font-semibold text-sm hover:bg-[#eef6ff] transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-[#1a5fa8] text-[#1a5fa8] rounded-xl font-semibold text-sm hover:bg-[#eef6ff] transition-all"
                 >
                   {copied ? "Copiado para Área de Transferência!" : "Copiar Texto"}
                 </button>
                 <button
-                  onClick={handleDownload}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                  onClick={handleDownloadWord}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
                 >
-                  <Download size={16} /> Exportar Parecer (.txt)
+                  <FileText size={16} /> Baixar como Word (.doc)
                 </button>
               </div>
             </div>

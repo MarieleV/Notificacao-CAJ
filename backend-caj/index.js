@@ -7,7 +7,6 @@ const {
   Document, Packer, Paragraph, AlignmentType, TextRun, 
   Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun 
 } = require("docx");
-// Importação do módulo PDFKit
 const PDFDocument = require("pdfkit");
 
 const app = express();
@@ -56,84 +55,6 @@ app.post("/api/gerar", async (req, res) => {
     res.json({ texto_gerado: response.text().trim() });
   } catch (error) {
     res.status(500).json({ detail: error.message });
-  }
-});
-
-// ==============================================================================
-// 1B. ROTA: GERAR PARECER DE OUVIDORIA/RECURSO COM IA
-// ==============================================================================
-app.post("/api/gerar_parecer_ouvidoria", async (req, res) => {
-  const { api_key, dadosAnalise } = req.body;
-
-  if (!api_key) {
-    return res.status(400).json({ detail: "API Key é obrigatória." });
-  }
-  if (!dadosAnalise) {
-    return res.status(400).json({ detail: "Os dados do parecer não foram enviados." });
-  }
-
-  try {
-    const genAI = new GoogleGenerativeAI(api_key);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const { origem, tipoCaso, tipoCasoRaw, decisaoSelecionada, historicoDefesa, dadosTemplate } = dadosAnalise;
-
-    const promptTexto = `AJE/OUVIDORIA - Você deve agir estritamente como um formatador de texto jurídico invariável para a Companhia Águas de Joinville.
-
-ORIGEM DO PROCESSO: ${origem}
-TIPO DE CASO: ${tipoCaso}
-DECISÃO: ${decisaoSelecionada}
-HISTÓRICO: ${historicoDefesa}
-
-OBJETO DO PARECER:
-${dadosTemplate.textoObjeto}
-
-REGRAS ESTRUTURAIS OBRIGATÓRIAS (NÃO MUDE AS PALAVRAS, APENAS PREENCHA AS VARIÁVEIS):
-- Início: Se a "ORIGEM DO PROCESSO" for "Ouvidoria Interna", inicie o texto com "À Ouvidoria,". Se for "Recurso Administrativo", "ARIS", "PROCON" ou "Reclame Aqui", adapte a saudação inicial de acordo com a origem (ex: "Ao PROCON,", "À ARIS,", etc). Em seguida, inclua as informações de Objeto, Morador e Matrícula.
-
-- Parágrafo 01: Deve citar a Resolução Normativa nº 19, de 27 de março de 2019 (ARIS).
-- Parágrafo 02: Deve citar o AI nº ${dadosTemplate.numAutoInfracao} gerado em ${dadosTemplate.dataGeracaoAI}. 
-  > Se LEITURA (Art. 144, XII): "Meses sem acesso às leituras: ${dadosTemplate.mesesSemAcesso}."
-  > Se SERVICO, SERVICO_VOLUNTARIO ou SERVICO_INVOLUNTARIO (Art. 144, XII): "Data da constatação/impedimento para o serviço: ${dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosTemplate.protServico}."
-  > Se LACRE (Art. 144, XV): "Data da constatação: ${dadosTemplate.dataConstatacaoInfracao}. Constatação via leitura. Caso fosse executado a padronização da ligação em até 90 dias, não teria sido aplicado multa. Dispositivo legal infringido: Artigo 144, inciso XV... "
-  > Se CORTE_CAVALETE (Art. 144, X): "Data da constatação: ${dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosTemplate.protServico}, originado por ocorrência de leitura. Dispositivo legal infringido: Artigo 144, inciso X... Penalidade aplicada: Multa por violação do corte cavalete e Padronização obrigatória..."
-  > Se CORTE_RAMAL (Art. 144, XXII): "Data da constatação: ${dadosTemplate.dataConstatacaoInfracao}, através de fiscalização, Prot. ${dadosTemplate.protServico}. Dispositivo legal infringido: Artigo 144, inciso XXII... Penalidade aplicada: Multa por violação do corte de ramal e Padronização obrigatória..."
-  > Se CLANDESTINA (Art. 144, VII) ou BYPASS (Art. 144, V): "Data da constatação: ${dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosTemplate.protServico}. Constatado pela Fiscalização. Penalidade prevista: Multa por ${tipoCasoRaw === 'clandestina' ? 'ligação clandestina de água' : 'derivação não autorizada antes do hidrômetro (by-pass)'}. Caso após a retirada da irregularidade, a matrícula tenha variação positiva de consumo, poderá haver a Revisão do faturamento..."
-  > Se HD (Art. 144, VI): "Data da constatação: ${dadosTemplate.dataConstatacaoInfracao}. Protocolo: ${dadosTemplate.protServico}. Constatação via fiscalização. Penalidades aplicadas: Multa por Danificação propositada, inversão ou supressão do hidrômetro e Padronização obrigatória da ligação de água..."
-
-- Parágrafo 03: Relatar a entrega nos Correios recebida por ${dadosTemplate.recebedorCorreios}. Se houver data de recebimento do AR, adicione: em ${dadosTemplate.dataRecebimentoAR}.
-  > Se COM DEFESA: relatar que foi apresentada em ${dadosTemplate.dataDefesa} (Prot. ${dadosTemplate.protDefesa}) e indeferida em ${dadosTemplate.dataIndeferimento} (Prot. ${dadosTemplate.protIndeferimento}). Citar o inciso correspondente (X, XV, XXII, VI, etc).
-  > Se SEM DEFESA: relatar que não foi apresentada defesa e as sanções aplicadas em ${dadosTemplate.dataAplicacaoSancao}.
-  > [REGRA EXTRA P/ CORTES (CAVALETE/RAMAL)]: Se for CORTE_CAVALETE ou CORTE_RAMAL, adicione obrigatoriamente a citação do Art. 145 no final deste parágrafo: "Resolução 19/2019 ARIS, Art. 145. Além de outras penalidades previstas nesta Resolução, o cometimento de qualquer infração enumerada no artigo anterior sujeitará o infrator ao pagamento de multa..."
-  > [REGRA EXTRA P/ HD]: Incluir neste parágrafo: "Ainda com base na Resolução 19/2019 em seu Art. 73: 'O usuário é responsável pela guarda do hidrômetro...'"
-
-- VEREDICTO E DECISÃO: 
-  > Se DEFERIDO: 
-    - Se CORTES (CAVALETE/RAMAL): "Considerando a manifestação apresentada, visto que foi identificada intervenção da CAJ antes da constatação da violação e de que em consulta aos nossos registros cliente regularizou cadastro, solicitou e pagou entrada de parcelamento e água poderia estar devidamente religada antes do fato gerador..." DECIDIMOS: RETIFICAR a decisão proferida em ${dadosTemplate.dataDecisaoAnterior}, RETIRANDO AS PENALIDADES. Fatura ref: ${dadosTemplate.faturaReferencia}.
-    - Outros Casos Deferidos: "RETIFICAR a decisão proferida em ${dadosTemplate.dataDecisaoAnterior}, RETIRANDO AS PENALIDADES". Fatura corrigida: ${dadosTemplate.faturaReferencia}.
-  > Se PARCIAL: "DEFERIR PARCIALMENTE, retirando multas mas mantendo padronização. PRORROGAR O PRAZO por mais 90 dias".
-  > Se INDEFERIDO: 
-    - Se CORTES (CAVALETE/RAMAL): "Visto que a infração foi comprovada e a moradora cadastrada na matrícula durante o período do fato gerador é o mesmo por ser o titular responsável desde ${dadosTemplate.dataTitularDesde} (Prot. ${dadosTemplate.protTitularidade}). Criar relatório de fotos contendo: Arquivo PDF. 1 - Fotos da ligação de água NÃO VIOLADA ANTERIOR ao fato e da violação... 2 - Se possível informar e ilustrar com fotos com RECORTE... 3 - Foto do comprovante de entrega do Auto de Infração. DECIDIMOS: RATIFICAR a sentença proferida em ${dadosTemplate.dataDecisaoAnterior}, MANTENDO AS PENALIDADES." Fatura ref: ${dadosTemplate.faturaReferencia}.
-    - Se HD: "Analisamos a matrícula, verificamos que houve o dano, conforme constatado pela fiscalização e o cliente poderia ter informado à Companhia sobre irregularidades na ligação de água. Segundo o Art. 73... DECIDIMOS: RATIFICAR... MANTENDO AS PENALIDADES."
-    - Outros Casos Indeferidos: "RATIFICAR a decisão proferida em ${dadosTemplate.dataDecisaoAnterior}, MANTENDO A PENALIDADE". Fatura não será corrigida (${dadosTemplate.faturaReferencia}).
-
-Mantenha os números dos parágrafos (01, 02, 03, 04) intactos. Retorne APENAS a minuta completa preenchida.`;
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: promptTexto }] }],
-      generationConfig: { temperature: 0.1 },
-    });
-    const response = await result.response;
-    const texto_gerado = response.text().trim();
-
-    if (!texto_gerado) {
-      return res.status(502).json({ detail: "A IA não retornou o texto esperado." });
-    }
-
-    res.json({ texto_gerado });
-  } catch (error) {
-    console.error("ERRO AO GERAR PARECER DE OUVIDORIA:", error);
-    res.status(500).json({ detail: error.message || "Erro interno ao gerar o parecer." });
   }
 });
 
