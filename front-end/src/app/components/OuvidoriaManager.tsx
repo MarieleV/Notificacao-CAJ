@@ -3,6 +3,7 @@ import {
   Sparkles, Copy, Download, CheckCircle2,
   Scale, FileCheck, FileX, Clock, HelpCircle, FileText
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "la_padronizada" | "la_cadastral" | "prorrogacao";
@@ -177,6 +178,14 @@ export function OuvidoriaManager() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+      // Formato PDF do parecer gerado
+    const handleDownloadPDF = () => {
+        const doc = new jsPDF();
+        doc.text(generatedText, 10, 10, { maxWidth: 190 });
+        doc.save(`Parecer_${tipoCaso}_${numProcesso}.pdf`);
+      };
+
+      // Formato Word do parecer gerado
   const handleDownloadWord = () => {
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Parecer Exportado</title></head><body>";
     const footer = "</body></html>";
@@ -469,9 +478,25 @@ export function OuvidoriaManager() {
                     <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
                   </div>
                 </div>
-                <span className="text-[10px] bg-emerald-100 border border-emerald-300 text-emerald-800 px-2 py-1 rounded-full font-medium">
-                  Gerado localmente e sem custos
+                <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
+                  Parecer criado!
                 </span>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all"
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle2 size={14} className="text-emerald-500" />
+                        <span className="text-emerald-600">Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        Copiar Texto
+                      </>
+                    )}
+                  </button>
               </div>
 
               <div className="p-6">
@@ -492,11 +517,13 @@ export function OuvidoriaManager() {
               </div>
               <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
                 <button
-                  onClick={handleCopy}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-[#1a5fa8] text-[#1a5fa8] rounded-xl font-semibold text-sm hover:bg-[#eef6ff] transition-all"
+                  onClick={handleDownloadPDF}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
-                  {copied ? "Copiado para Área de Transferência!" : "Copiar Texto"}
+                  <FileText size={17} />
+                  Baixar em PDF
                 </button>
+
                 <button
                   onClick={handleDownloadWord}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"

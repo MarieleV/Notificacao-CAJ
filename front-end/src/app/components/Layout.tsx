@@ -113,7 +113,7 @@ export function Layout() {
           <div className="mt-3 px-2">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-[#4a7fa5] text-[10px]">IA conectada — Gemini Pro</span>
+              <span className="text-[#4a7fa5] text-[10px]">IA conectada | Gemini Pro</span>
             </div>
           </div>
         </div>

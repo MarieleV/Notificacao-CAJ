@@ -946,7 +946,7 @@ export function NotificationDrafter() {
                 
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                    Gerado com sucesso
+                    Gerado com sucesso!
                   </span>
                   <button
                     onClick={handleCopy}

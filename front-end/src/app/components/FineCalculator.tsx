@@ -757,7 +757,7 @@ export function FineCalculator() {
             <h1 className="text-[#0b1e35] font-semibold text-lg">Cálculo de Consumo Irregular</h1>
           </div>
           <p className="text-gray-500 text-sm mt-0.5">
-            Apuração do valor correto vs. cobrado antes da regularização — base para notificação e lançamento
+            Apuração do valor correto vs. cobrado antes da regularização | base para notificação e lançamento
           </p>
         </div>
         
