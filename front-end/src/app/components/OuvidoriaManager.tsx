@@ -453,23 +453,34 @@ export function OuvidoriaManager() {
     doc.save(`Parecer_${tipoCaso}_${numProcesso}.pdf`);
   };
 
-  const handleDownloadWord = () => {
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Parecer Exportado</title></head><body>";
-    const footer = "</body></html>";
-    const html = header + generatedText.replace(/\n/g, "<br>") + footer;
-    
-    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-    
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Parecer_${tipoCaso}_Proc_${numProcesso || matricula}.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  const handleDownloadWord = async () => {
+    try {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_parecer_word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          texto_final: generatedText,
+          numeroProcesso: numProcesso || matricula 
+        }),
+      });
 
+      if (!response.ok) throw new Error("Erro ao gerar Word no servidor.");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Parecer_${tipoCaso}_${numProcesso || matricula}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao baixar o arquivo Word pelo servidor. Certifique-se de que o backend foi atualizado.");
+    }
+  };
+  
   return (
     <div className="h-full flex flex-col">
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">

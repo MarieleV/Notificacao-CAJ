@@ -273,7 +273,6 @@ app.post("/api/exportar_word", async (req, res) => {
 // ==============================================================================
 // 3. NOVA ROTA: EXPORTAR PARA PDF(Otimizado para 1 folha A4 com Tabela Unificada)
 // ==============================================================================
-
 app.post("/api/exportar_pdf", async (req, res) => {
   const { 
     texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
@@ -501,7 +500,7 @@ app.post("/api/calcular_multa", (req, res) => {
 
   for (const r of rows) {
     const targetDtNum = parseMY(r.monthYear);
-    const consumption = parseBRL(r.consumption);
+    const consumo = parseBRL(r.consumo);
     const cWater = parseBRL(r.chargedWater);
     const cService = parseBRL(r.chargedService);
     const tCharged = cWater + cService;
@@ -516,9 +515,9 @@ app.post("/api/calcular_multa", (req, res) => {
           break;
         }
       }
-      if (m3Tiers.length > 0 && consumption > 0) {
+      if (m3Tiers.length > 0 && consumo > 0) {
         correctWater = 0;
-        let remainingConsumption = consumption;
+        let remainingConsumption = consumo;
         const sortedTiers = [...m3Tiers].sort((a, b) => a.min - b.min);
 
         for (const tier of sortedTiers) {
@@ -539,7 +538,7 @@ app.post("/api/calcular_multa", (req, res) => {
     if (!hasError) validDates.push(r.monthYear);
 
     calcRows.push({
-      id: r.id, monthYear: r.monthYear, hasError, consumption, correctWater, correctService,
+      id: r.id, monthYear: r.monthYear, hasError, consumo, correctWater, correctService,
       totalCorrect, chargedWater: cWater, chargedService: cService, totalCharged: tCharged, diff
     });
   }
@@ -568,7 +567,7 @@ app.post("/api/calcular_multa", (req, res) => {
   }
 
   const validRows = calcRows.filter((cr) => !cr.hasError && cr.totalCorrect !== null);
-  const totalM3 = validRows.reduce((acc, cr) => acc + cr.consumption, 0);
+  const totalM3 = validRows.reduce((acc, cr) => acc + cr.consumo, 0);
   const grandCorrect = validRows.reduce((acc, cr) => acc + cr.totalCorrect, 0);
   const grandCharged = validRows.reduce((acc, cr) => acc + cr.totalCharged, 0);
   const grandDiff = grandCorrect - grandCharged;
@@ -593,9 +592,9 @@ app.post("/api/calcular_multa", (req, res) => {
 
   const waterReportText = `Cálculo do consumo estimado de água ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
-${numMonths} ${mesStr}, com consumption impactado pela violação: ${firstMonth} até ${lastMonth}.
-Maior consumption mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
-Valor total do consumption estimado no período: ${fmtBRL(grandCorrect)}.
+${numMonths} ${mesStr}, com consumo impactado pela violação: ${firstMonth} até ${lastMonth}.
+Maior consumo mês cheio lido após a regularização: ${postM3} m³ REF. ${postRef}.
+Valor total do consumo estimado no período: ${fmtBRL(grandCorrect)}.
 Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandCharged)}.
 Valor a ser lançado ${fmtBRL(grandDiff)}.
 Volume faturado no mês impactado pela violação: ${billedVol} m³.
@@ -603,11 +602,11 @@ Volume total recuperado: ${totalM3} m³.`;
 
   let sewageReportText = "";
   if (validSewageRows.length > 0) {
-    sewageReportText = `Cálculo do consumption estimado de esgoto ref. ${aiRef}.
+    sewageReportText = `Cálculo do consumo estimado de esgoto ref. ${aiRef}.
 Data da retirada da irregularidade: ${dateLine}.
-${numMonths} ${mesStr}, anterior à retirada, com consumption irregular ${firstMonth} até ${lastMonth}.
-Maior consumption mês cheio sem cortes de água da unidade antes da regularização: ${postM3} m³ REF. ${postRef}.
-Valor total do consumption estimado no período: ${fmtBRL(grandSewageCorrect)}.
+${numMonths} ${mesStr}, anterior à retirada, com consumo irregular ${firstMonth} até ${lastMonth}.
+Maior consumo mês cheio sem cortes de água da unidade antes da regularização: ${postM3} m³ REF. ${postRef}.
+Valor total do consumo estimado no período: ${fmtBRL(grandSewageCorrect)}.
 Valor pago pelo cliente no período da irregularidade: ${fmtBRL(grandSewageCharged)}.
 Valor a ser lançado ${fmtBRL(grandSewageDiff)}.
 Volume total recuperado: ${totalM3} m³.`;
@@ -619,6 +618,52 @@ Volume total recuperado: ${totalM3} m³.`;
     waterReportText, sewageReportText
   });
 });
+
+// ==============================================================================
+// 5. NOVA ROTA: EXPORTAR PARECER DE OUVIDORIA PARA WORD (Formatação Oficial)
+// ==============================================================================
+app.post("/api/exportar_parecer_word", async (req, res) => {
+  const { texto_final, numeroProcesso, tipoCaso, decisao } = req.body;
+
+  try {
+    const doc = new Document({
+      sections: [{
+        properties: { margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 } },
+        children: formatarTextoParaDocx(texto_final)
+      }]
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    res.setHeader("Content-Disposition", `attachment; filename=Parecer_${tipoCaso || 'Ouvidoria'}.docx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ detail: "Erro ao gerar docx." });
+  }
+});
+
+// Função de formatação que aplica negrito conforme seus padrões (ex: "01. OBJETO:")
+function formatarTextoParaDocx(texto) {
+  const lines = texto.split('\n');
+  return lines.map(line => {
+    // Detecta títulos e prefixes para aplicar bold
+    const isBoldLine = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i.test(line);
+    
+    return new Paragraph({
+      children: [
+        new TextRun({
+          text: line,
+          bold: isBoldLine,
+          font: "Arial",
+          size: 22
+        })
+      ],
+      spacing: { after: 120 },
+      alignment: AlignmentType.JUSTIFY
+    });
+  });
+}
+
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
