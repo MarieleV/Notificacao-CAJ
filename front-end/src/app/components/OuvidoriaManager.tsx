@@ -1,28 +1,21 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  Sparkles, Copy, Download, CheckCircle2,
-  Scale, FileCheck, FileX, Clock, HelpCircle, FileText
+  Sparkles, Copy, CheckCircle2,
+  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File, FileDown,
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "la_padronizada" | "la_cadastral" | "prorrogacao";
 
-// Função para formatar as datas visuais
-function maskDate(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return digits.slice(0, 2) + "/" + digits.slice(2);
-  return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
-}
+// ─── Helpers de Data ──────────────────────────────────────────────────────────
 
-// Calculadora Matemática de 60 Dias Úteis
 function get60BusinessDaysFromToday(): string {
   const d = new Date();
   let added = 0;
   while (added < 60) {
     d.setDate(d.getDate() + 1);
-    // Ignora Sábados (6) e Domingos (0)
     if (d.getDay() !== 0 && d.getDay() !== 6) {
       added++;
     }
@@ -32,6 +25,282 @@ function get60BusinessDaysFromToday(): string {
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
 }
+
+const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+function parseMonthYear(s: string): Date | null {
+  const m = s.match(/^(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const month = parseInt(m[1], 10);
+  const year = parseInt(m[2], 10);
+  if (month < 1 || month > 12) return null;
+  return new Date(year, month - 1, 1);
+}
+
+function labelMonth(mmyyyy: string): string {
+  const d = parseMonthYear(mmyyyy);
+  if (!d) return mmyyyy;
+  return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
+    .replace(".", "").replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function parseFullDate(s: string): Date | null {
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const year = parseInt(m[3], 10);
+  if (month < 1 || month > 12) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+function labelFullDate(s: string): string {
+  const d = parseFullDate(s);
+  if (!d) return s;
+  return d
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+    .replace(".", "");
+}
+
+// ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
+
+function MonthYearPicker({
+  value,
+  onChange,
+  placeholder,
+  size = "sm",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  size?: "sm" | "md";
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState<number>(() => {
+    const parsed = parseMonthYear(value);
+    return parsed ? parsed.getFullYear() : new Date().getFullYear();
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const selected = parseMonthYear(value);
+
+  function handleToggle() {
+    if (!isOpen) {
+      setViewYear(selected ? selected.getFullYear() : new Date().getFullYear());
+    }
+    setIsOpen((v) => !v);
+  }
+
+  function selectMonth(monthIndex: number) {
+    const mm = String(monthIndex + 1).padStart(2, "0");
+    onChange(`${mm}/${viewYear}`);
+    setIsOpen(false);
+  }
+
+  const buttonSizeClasses =
+    size === "md"
+      ? "w-full px-3 py-2.5 text-sm rounded-lg"
+      : "w-[128px] px-2.5 py-1.5 text-xs rounded-md";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 border transition-all bg-white ${buttonSizeClasses} ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        } ${selected ? "text-gray-700" : "text-gray-400"}`}
+      >
+        <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
+        <CalendarIcon size={size === "md" ? 14 : 12} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2.5">
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y - 1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-bold text-[#0b1e35] tabular-nums">{viewYear}</span>
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y + 1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MONTHS_SHORT.map((m, idx) => {
+              const isSelected =
+                !!selected && selected.getFullYear() === viewYear && selected.getMonth() === idx;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => selectMonth(idx)}
+                  className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    isSelected
+                      ? "bg-[#1a5fa8] text-white"
+                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                  }`}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componente: Seletor de Data Completa (Dia/Mês/Ano) ───────────────────────
+
+function DatePicker({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState<Date>(() => {
+    const parsed = parseFullDate(value);
+    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date();
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const selected = parseFullDate(value);
+
+  function handleToggle() {
+    if (!isOpen) {
+      const parsed = parseFullDate(value);
+      setViewDate(parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date());
+    }
+    setIsOpen((v) => !v);
+  }
+
+  function changeMonth(delta: number) {
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+  }
+
+  function selectDay(day: number) {
+    const dd = String(day).padStart(2, "0");
+    const mm = String(viewDate.getMonth() + 1).padStart(2, "0");
+    const yyyy = viewDate.getFullYear();
+    onChange(`${dd}/${mm}/${yyyy}`);
+    setIsOpen(false);
+  }
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel = viewDate
+    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    .replace(/^\w/, (c) => c.toUpperCase());
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all bg-white ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        } ${selected ? "text-gray-700" : "text-gray-400"}`}
+      >
+        <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
+        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2.5">
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {WEEKDAYS_SHORT.map((w, i) => (
+              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
+                {w}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, i) => {
+              if (day === null) return <div key={i} />;
+              const isSelected =
+                !!selected &&
+                selected.getFullYear() === year &&
+                selected.getMonth() === month &&
+                selected.getDate() === day;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => selectDay(day)}
+                  className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
+                    isSelected
+                      ? "bg-[#1a5fa8] text-white"
+                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export function OuvidoriaManager() {
   const [copied, setCopied] = useState(false);
@@ -178,14 +447,12 @@ export function OuvidoriaManager() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-      // Formato PDF do parecer gerado
-    const handleDownloadPDF = () => {
-        const doc = new jsPDF();
-        doc.text(generatedText, 10, 10, { maxWidth: 190 });
-        doc.save(`Parecer_${tipoCaso}_${numProcesso}.pdf`);
-      };
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.text(generatedText, 10, 10, { maxWidth: 190 });
+    doc.save(`Parecer_${tipoCaso}_${numProcesso}.pdf`);
+  };
 
-      // Formato Word do parecer gerado
   const handleDownloadWord = () => {
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Parecer Exportado</title></head><body>";
     const footer = "</body></html>";
@@ -392,63 +659,103 @@ export function OuvidoriaManager() {
                 {showDataGeracaoAI && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
-                    <input value={dataGeracaoAI} onChange={(e) => setDataGeracaoAI(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <DatePicker 
+                      value={dataGeracaoAI} 
+                      onChange={setDataGeracaoAI} 
+                      placeholder="DD/MM/AAAA" 
+                    />
                   </div>
                 )}
 
                 {showMesesSemAcesso && (
                   <div>
                     <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
-                    <input value={mesesSemAcesso} onChange={(e) => setMesesSemAcesso(e.target.value)} placeholder="Ex: Jan/2026 a Mar/2026" className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-[#eef6ff]" />
+                    <input 
+                      value={mesesSemAcesso} 
+                      onChange={(e) => setMesesSemAcesso(e.target.value)} 
+                      placeholder="Ex: Jan/2026 a Mar/2026" 
+                      className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-[#eef6ff] transition-all" 
+                    />
                   </div>
                 )}
 
                 {showDataConstatacao && (
                   <div>
                     <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
-                    <input value={dataConstatacaoInfracao} onChange={(e) => setDataConstatacaoInfracao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
+                    <DatePicker 
+                      value={dataConstatacaoInfracao} 
+                      onChange={setDataConstatacaoInfracao} 
+                      placeholder="DD/MM/AAAA" 
+                    />
                   </div>
                 )}
                 
                 {showProtServico && (
                   <div>
                     <label className="block text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-1">Nº Prot. Serviço</label>
-                    <input value={protServico} onChange={(e) => setProtServico(e.target.value)} placeholder="Ex: 1234567" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30" />
+                    <input 
+                      value={protServico} 
+                      onChange={(e) => setProtServico(e.target.value)} 
+                      placeholder="Ex: 1234567" 
+                      className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30 transition-all" 
+                    />
                   </div>
                 )}
 
                 {showRecebedorAR && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Recebedor do A.I. (AR)</label>
-                    <input value={recebedorCorreios} onChange={(e) => setRecebedorCorreios(e.target.value)} placeholder="Nome de quem assinou" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <input 
+                      value={recebedorCorreios} 
+                      onChange={(e) => setRecebedorCorreios(e.target.value)} 
+                      placeholder="Nome de quem assinou" 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all" 
+                    />
                   </div>
                 )}
 
                 {showDataRecebimentoAR && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento AR</label>
-                    <input value={dataRecebimentoAR} onChange={(e) => setDataRecebimentoAR(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <DatePicker 
+                      value={dataRecebimentoAR} 
+                      onChange={setDataRecebimentoAR} 
+                      placeholder="DD/MM/AAAA" 
+                    />
                   </div>
                 )}
 
                 {showDataAplicacaoSancao && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Aplicação Sanções</label>
-                    <input value={dataAplicacaoSancao} onChange={(e) => setDataAplicacaoSancao(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <DatePicker 
+                      value={dataAplicacaoSancao} 
+                      onChange={setDataAplicacaoSancao} 
+                      placeholder="DD/MM/AAAA" 
+                    />
                   </div>
                 )}
 
                 {showDataDecisaoAnterior && (
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior (Ratificar)</label>
-                    <input value={dataDecisaoAnterior} onChange={(e) => setDataDecisaoAnterior(maskDate(e.target.value))} placeholder="DD/MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior</label>
+                    <DatePicker 
+                      value={dataDecisaoAnterior} 
+                      onChange={setDataDecisaoAnterior} 
+                      placeholder="DD/MM/AAAA" 
+                    />
                   </div>
                 )}
 
                 {showFaturaReferencia && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Fatura (Competência)</label>
-                    <input value={faturaReferencia} onChange={(e) => setFaturaReferencia(e.target.value)} placeholder="Ex: MM/AAAA" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                    <MonthYearPicker 
+                      value={faturaReferencia} 
+                      onChange={setFaturaReferencia} 
+                      placeholder="MM/AAAA" 
+                      size="md" 
+                    />
                   </div>
                 )}
 
@@ -478,25 +785,23 @@ export function OuvidoriaManager() {
                     <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
                   </div>
                 </div>
-                <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                  Parecer criado!
-                </span>
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle2 size={14} className="text-emerald-500" />
-                        <span className="text-emerald-600">Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        Copiar Texto
-                      </>
-                    )}
-                  </button>
+                
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all bg-white"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      <span className="text-emerald-600">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copiar Texto
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="p-6">
@@ -512,16 +817,15 @@ export function OuvidoriaManager() {
                 <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">5</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Copie para a área de transferência ou baixe o arquivo formatado em Microsoft Word</p>
+                  <p className="text-gray-500 text-xs">Baixe o arquivo formatado em Microsoft Word ou PDF</p>
                 </div>
               </div>
               <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleDownloadPDF}
-                  className="flex-1 flex items-center justify-center gap-2.5 py-3 px-5 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all"
                 >
-                  <FileText size={17} />
-                  Baixar em PDF
+                  <File size={17} /> Baixar em PDF
                 </button>
 
                 <button

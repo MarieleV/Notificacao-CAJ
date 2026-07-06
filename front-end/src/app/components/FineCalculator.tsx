@@ -889,8 +889,8 @@ export function FineCalculator() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-[1400px] mx-auto space-y-8 w-full">
+      <div className="flex-1 overflow-auto bg-[#f8fafe]">
+        <div className="p-8 max-w-5xl mx-auto space-y-8 w-full">
 
           {/* ── Bloco 2A: Lançamento Água ───────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -900,10 +900,6 @@ export function FineCalculator() {
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Água</h2>
                   <p className="text-gray-400 text-xs mt-0.5">Gere um período automático ou adicione mês a mês</p>
-                  <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
-                    <Info size={11} className="flex-shrink-0" />
-                    Preencha a 1ª linha e os valores repetem nas linhas vazias abaixo | edite qualquer uma individualmente se precisar.
-                  </p>
                 </div>
               </div>
 
@@ -1025,6 +1021,12 @@ export function FineCalculator() {
                   <Plus size={12} /> Adicionar mês avulso manualmente
                 </button>
               </div>
+              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-[#4a7fa5]">
+                  Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo; <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1036,10 +1038,6 @@ export function FineCalculator() {
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
                   <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
-                  <p className="text-[#4a7fa5] text-[11px] mt-1 flex items-center gap-1">
-                    <Info size={11} className="flex-shrink-0" />
-                    Preencha a 1ª linha e o valor repete nas linhas vazias abaixo | edite qualquer uma individualmente se precisar.
-                  </p>
                 </div>
               </div>
             </div>
