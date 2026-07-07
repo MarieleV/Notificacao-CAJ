@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Copy, CheckCircle2,
-  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info
+  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File, Info,
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 
@@ -324,7 +324,7 @@ export function OuvidoriaManager() {
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
   const [decisao, setDecisao] = useState<DecisaoType>(null);
 
-  // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente) ---
+  // --- VARIÁVEIS DOS TEMPLATES ---
   const [dataGeracaoAI, setDataGeracaoAI] = useState("");
   const [mesesSemAcesso, setMesesSemAcesso] = useState("");
   const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useState("");
@@ -338,11 +338,10 @@ export function OuvidoriaManager() {
   const [protDefesa, setProtDefesa] = useState("");
   const [dataIndeferimento, setDataIndeferimento] = useState("");
 
-  // NOVOS ESTADOS ADICIONADOS
   const [dataRecebimentoAI, setDataRecebimentoAI] = useState("");
   const [tipoRecebimentoAI, setTipoRecebimentoAI] = useState("Correios");
 
-  // Lógica para esconder campos inúteis dependendo do tipo do caso
+  // ─── LÓGICA DE CONDICIONAIS DE EXIBIÇÃO ───
   const isLeitura = tipoCaso === "leitura";
   const isServico = tipoCaso === "servico";
   const isCorte = tipoCaso === "corte_cavalete";
@@ -356,7 +355,17 @@ export function OuvidoriaManager() {
   const isSimples = isPadronizada || isCadastral || isProrrogacao;
   const isRecursoEnxuto = isRecurso && (isLeitura || isServico) && (decisao === "deferir" || decisao === "parcial");
 
-  // Regras de renderização das variáveis
+  // Controla se a Sessão 3 inteira aparece e se tem botões de decisão
+  const hasDecisaoButtons = isLeitura || isServico;
+  const hasDefesaToggle = isRecurso && (isBypass || isClandestina);
+  const showSessao3 = hasDecisaoButtons || hasDefesaToggle;
+
+  // Numeração Dinâmica baseada em SESSÃO 3
+  const numSessao3 = showSessao3 ? "3" : null;
+  const numSessao4 = showSessao3 ? "4" : "3";
+  const numSessao5 = showSessao3 ? "5" : "4";
+
+  // Regras de renderização das variáveis (Sessão 4)
   const showDataGeracaoAI = !isSimples && !isRecursoEnxuto;
   const showMesesSemAcesso = isLeitura && !isRecursoEnxuto;
   const showDataConstatacao = (isServico || isCorte || isHd || isBypass || isClandestina) && !isRecursoEnxuto;
@@ -366,24 +375,21 @@ export function OuvidoriaManager() {
   const showDataAplicacaoSancao = !isSimples && !isRecursoEnxuto && !isBypass && !isClandestina;
   const showDataDecisaoAnterior = !isRecurso && decisao === "indeferir" && !isSimples;
   const showFaturaReferencia = !isProrrogacao && !isBypass && !isClandestina;
-
-  // Mostra campos de defesa se for Bypass ou Clandestina E o usuário marcou "Com Defesa"
   const showDefesaCampos = (isBypass || isClandestina) && historicoDefesa === "com_defesa";
 
   // Lidar com a troca de opções do tipo de caso
   const handleTipoCasoChange = (val: TipoCasoType) => {
     setTipoCaso(val);
-    if (val === "la_padronizada" || val === "la_cadastral" || val === "prorrogacao") {
-      setDecisao("deferir");
+    if (val === "leitura" || val === "servico") {
+      setDecisao(null); 
     } else {
-      setDecisao(null);
+      setDecisao("deferir"); // Auto-seta apenas para desativar a trava do botão de Gerar
     }
   };
 
-  // 100% GERAÇÃO LOCAL
   const handleGenerateParecer = () => {
-    if (!matricula || !numProcesso || !decisao) {
-      alert("Por favor, preencha a Matrícula, o Número do Processo e selecione uma Decisão de Mérito.");
+    if (!matricula || !numProcesso || (hasDecisaoButtons && !decisao)) {
+      alert("Por favor, preencha os dados e a decisão de mérito (se aplicável).");
       return;
     }
 
@@ -453,7 +459,7 @@ export function OuvidoriaManager() {
     else {
       if (tipoCaso === "leitura") {
         if (decisao === "deferir" || decisao === "parcial") {
-          tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execution de leituras e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nAuto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
+          tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de leituras e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nAuto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
         } else {
           tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de leituras e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água, conforme disposto.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor}, conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de leitura e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que autorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
         }
@@ -461,7 +467,7 @@ export function OuvidoriaManager() {
         if (decisao === "deferir" || decisao === "parcial") {
           tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nApós a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
         } else {
-          tpl = `À ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que autorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
+          tpl = `À ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que authorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
         }
       } else if (tipoCaso === "la_padronizada") {
         tpl = `Recurso prot. ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: AUTO DE INFRAÇÃO Nº ${tplAI}\nCliente viabilizou a padronização da ligação de água e solicita cancelamento das multas.\n02. DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.`;
@@ -622,78 +628,84 @@ export function OuvidoriaManager() {
               >
                 {isRecurso ? (
                   <>
+                    <option value="bypass">By-pass/Derivação Clandestina</option>
+                    <option value="hd">Hidrômetro danificado</option>
                     <option value="leitura">Leitura</option>
+                    <option value="clandestina">Ligação Clandestina</option>
                     <option value="servico">Serviço</option>
                     <option value="corte_cavalete">Violação de corte de cavalete</option>
-                    <option value="hd">Hidrômetro danificado</option>
-                    <option value="bypass">By-pass/Derivação Clandestina</option>
-                    <option value="clandestina">Ligação Clandestina</option>
                   </>
                 ) : (
                   <>
-                    <option value="leitura">Leitura</option>
-                    <option value="servico">Serviços</option>
-                    <option value="la_padronizada">LA Padronizada</option>
                     <option value="la_cadastral">Atualização Cadastral</option>
+                    <option value="la_padronizada">LA Padronizada</option>
+                    <option value="leitura">Leitura</option>
                     <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
+                    <option value="servico">Serviços</option>
                   </>
                 )}
               </select>
             </div>
           </div>
 
-          {/* SESSÃO 3: VEREDICTO DE MÉRITO (Escondida nos casos Simples) */}
-          {!isSimples && (
+          {/* SESSÃO 3: VEREDICTO DE MÉRITO / ANÁLISE DE DEFESA */}
+          {showSessao3 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible animate-fadeIn">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao3}</span>
                 <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Veredicto Final e Conclusão</h2>
-                  <p className="text-gray-500 text-xs">Defina o posicionamento formal de mérito da CAJ frente ao recurso</p>
+                  <h2 className="text-[#0b1e35] font-semibold text-sm">
+                    {hasDecisaoButtons ? "Veredicto Final e Conclusão" : "Análise de Defesa"}
+                  </h2>
+                  <p className="text-gray-500 text-xs">
+                    {hasDecisaoButtons ? "Defina o posicionamento formal de mérito da CAJ frente ao recurso" : "Informe se houve apresentação de defesa prévia pelo cliente"}
+                  </p>
                 </div>
               </div>
 
               <div className="p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setDecisao("deferir")}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
-                      <span className="font-bold text-sm">1. Deferir (Retificar)</span>
-                    </div>
-                    <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
-                  </button>
+                {hasDecisaoButtons && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setDecisao("deferir")}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
+                        <span className="font-bold text-sm">1. Deferir (Retificar)</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setDecisao("parcial")}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
-                      <span className="font-bold text-sm">2. Deferir Parcialmente</span>
-                    </div>
-                    <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setDecisao("parcial")}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
+                        <span className="font-bold text-sm">2. Deferir Parcialmente</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setDecisao("indeferir")}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
-                      <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
-                    </div>
-                    <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setDecisao("indeferir")}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
+                        <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
+                    </button>
+                  </div>
+                )}
                 
-                {decisao && (
-                  <div className="mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6">
+                {hasDefesaToggle && (
+                  <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6" : "space-y-6"}>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
                       <div className="flex items-center gap-2">
                         <Info size={14} className="text-gray-400" />
@@ -723,10 +735,10 @@ export function OuvidoriaManager() {
             </div>
           )}
 
-          {/* SESSÃO 4: REQUISITOS VARIÁVEIS (Apenas os relevantes aparecem) */}
+          {/* SESSÃO 4: REQUISITOS VARIÁVEIS */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
+              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao4}</span>
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Variáveis e Datas da Irregularidade</h2>
                 <p className="text-gray-500 text-xs">Apenas os campos pertinentes a esta infração estão sendo exibidos abaixo</p>
@@ -896,7 +908,7 @@ export function OuvidoriaManager() {
 
           <button
             onClick={handleGenerateParecer}
-            disabled={!decisao || !matricula}
+            disabled={(hasDecisaoButtons && !decisao) || !matricula}
             className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg"
           >
             <Sparkles size={18} />
@@ -945,7 +957,7 @@ export function OuvidoriaManager() {
               </div>
 
               <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">5</span>
+                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao5}</span>
                 <div>
                   <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
                   <p className="text-gray-500 text-xs">Baixe o arquivo formatado em Microsoft Word ou PDF</p>
