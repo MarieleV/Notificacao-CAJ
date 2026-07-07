@@ -5,10 +5,14 @@ const routes = require("./routes/indexRoutes");
 
 const app = express();
 
-// Middlewares Globais
-app.use(cors({ origin: "*" })); 
-app.use(express.json()); 
+// Deixa o CORS super permissivo para evitar bloqueios
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
+app.use(express.json());
 // Pluga todas as rotas (O /api indica que todas as rotas em indexRoutes terão esse prefixo)
 app.use("/api", routes);
 
