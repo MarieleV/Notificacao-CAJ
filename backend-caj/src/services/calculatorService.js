@@ -1,3 +1,4 @@
+// src/services/calculatorService.js
 const { parseMonthYear, isWithinRange, parseBRL, formatBRL } = require("../utils/formatters");
 
 const calculatePenalty = (payload) => {
@@ -13,7 +14,10 @@ const calculatePenalty = (payload) => {
   // 1. Processamento de Água
   for (const row of rows) {
     const targetDateNum = parseMonthYear(row.monthYear);
-    const consumption = parseBRL(row.consumo);
+    
+    // CORREÇÃO: Lendo a chave 'consumption' em inglês conforme o Front-end envia
+    const consumption = parseBRL(row.consumption); 
+    
     const chargedWater = parseBRL(row.chargedWater);
     const chargedService = parseBRL(row.chargedService);
     const totalCharged = chargedWater + chargedService;
@@ -33,7 +37,6 @@ const calculatePenalty = (payload) => {
         for (const tier of sortedTiers) {
           if (remainingConsumption <= 0) break;
           
-          // TRAVA: Garante que os limites sejam números ou Infinity nativo
           const min = Number(tier.min);
           const max = (tier.max === "Infinity" || tier.max === Infinity) ? Infinity : Number(tier.max);
           
@@ -53,8 +56,10 @@ const calculatePenalty = (payload) => {
     if (!hasError) validDates.push(row.monthYear);
 
     calcRows.push({
-      id: row.id, monthYear: row.monthYear, hasError, consumo: consumption, correctWater, 
-      correctService: serviceRateValue, totalCorrect, chargedWater, chargedService, totalCharged, diff: difference
+      id: row.id, monthYear: row.monthYear, hasError, 
+      consumption, // CORREÇÃO: Devolvendo a chave 'consumption' para o Front-end exibir
+      correctWater, correctService: serviceRateValue, totalCorrect, 
+      chargedWater, chargedService, totalCharged, diff: difference
     });
   }
 
@@ -86,7 +91,7 @@ const calculatePenalty = (payload) => {
   const validSewageRows = calcSewageRows.filter((sr) => !sr.hasError && sr.totalCorrect !== null);
   
   const totals = {
-    totalM3: validRows.reduce((acc, cr) => acc + cr.consumo, 0),
+    totalM3: validRows.reduce((acc, cr) => acc + cr.consumption, 0), // CORREÇÃO: Somando a chave 'consumption'
     grandCorrect: validRows.reduce((acc, cr) => acc + cr.totalCorrect, 0),
     grandCharged: validRows.reduce((acc, cr) => acc + cr.totalCharged, 0),
     grandSewageCorrect: validSewageRows.reduce((acc, sr) => acc + sr.totalCorrect, 0),
