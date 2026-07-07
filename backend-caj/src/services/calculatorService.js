@@ -32,8 +32,14 @@ const calculatePenalty = (payload) => {
 
         for (const tier of sortedTiers) {
           if (remainingConsumption <= 0) break;
-          const capacity = tier.max === "Infinity" ? Infinity : (tier.max - tier.min + 1);
+          
+          // TRAVA: Garante que os limites sejam números ou Infinity nativo
+          const min = Number(tier.min);
+          const max = (tier.max === "Infinity" || tier.max === Infinity) ? Infinity : Number(tier.max);
+          
+          const capacity = max === Infinity ? Infinity : (max - min + 1);
           const volumeInTier = Math.min(remainingConsumption, capacity);
+          
           correctWater += volumeInTier * parseBRL(tier.value);
           remainingConsumption -= volumeInTier;
         }
