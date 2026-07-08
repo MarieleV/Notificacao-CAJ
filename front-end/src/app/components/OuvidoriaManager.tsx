@@ -12,6 +12,26 @@ type DefesaType = "com_defesa" | "sem_defesa";
 
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 
+// Apagar se der errado
+function getBusinessDaysDifference(date1: string, date2: string): number {
+  const d1 = parseFullDate(date1);
+  const d2 = parseFullDate(date2);
+  if (!d1 || !d2) return 0;
+
+  let count = 0;
+  const start = new Date(Math.min(d1.getTime(), d2.getTime()));
+  const end = new Date(Math.max(d1.getTime(), d2.getTime()));
+  
+  let current = new Date(start);
+  while (current < end) {
+    current.setDate(current.getDate() + 1);
+    if (current.getDay() !== 0 && current.getDay() !== 6) { // Ignora Sábado e Domingo
+      count++;
+    }
+  }
+  return count;
+}
+// -------------------------------------
 function get60BusinessDaysFromToday(): string {
   const d = new Date();
   let added = 0;
@@ -339,6 +359,9 @@ export function OuvidoriaManager() {
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
   const [dataManifestacao, setDataManifestacao] = useState("");
   const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
+  // Cálculo da diferença 
+  const diasUteisDif = getBusinessDaysDifference(dataManifestacao, dataEmissaoFatura);
+  const isForaDoPrazo = dataManifestacao && dataEmissaoFatura && diasUteisDif > 30;
 
   // --- CONFIGURAÇÃO DO CASO ---
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
@@ -935,7 +958,7 @@ export function OuvidoriaManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
                   <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Ex: protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -944,7 +967,24 @@ export function OuvidoriaManager() {
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>
                   <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data da Manifestação</label>
+                  <DatePicker value={dataManifestacao} onChange={setDataManifestacao} placeholder="DD/MM/AAAA" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Emissão Fatura</label>
+                  <DatePicker value={dataEmissaoFatura} onChange={setDataEmissaoFatura} placeholder="DD/MM/AAAA" />
+                </div>
               </div>
+
+              {isForaDoPrazo && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                  <Info size={14} className="text-red-600" />
+                  <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                    INCONSISTÊNCIA: Prazo de 30 dias úteis excedido ({diasUteisDif} dias úteis).
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
