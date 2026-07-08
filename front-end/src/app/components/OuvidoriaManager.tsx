@@ -703,6 +703,16 @@ export function OuvidoriaManager() {
                   </span>
                 </div>
               )}
+              {/* Alerta de Dentro do Prazo */}
+              {dataManifestacao && dataEmissaoFatura && !isForaDoPrazo && (
+                <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                    PROCESSO DENTRO DO PRAZO ({diasUteisDif} dias úteis).
+                  </span>
+                </div>
+              )}
+
             </div>
           </div>
 
