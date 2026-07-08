@@ -644,288 +644,6 @@ export function OuvidoriaManager() {
       <div className="flex-1 overflow-auto bg-[#f8fafe]">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
 
-          {/* SESSÃO 0: GUIA DE TRATATIVAS SANSYS */}
-          <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
-            <button 
-              onClick={() => setGuiaSansysOpen(!guiaSansysOpen)}
-              className="w-full px-6 py-4 flex items-center justify-between bg-[#eef6ff] hover:bg-[#dce9f7] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <MessageSquare size={18} className="text-[#1a5fa8]" />
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Tratativas de Resposta - Guia Sansys</h2>
-              </div>
-              {guiaSansysOpen ? <ChevronUp size={18} className="text-[#1a5fa8]" /> : <ChevronDown size={18} className="text-[#1a5fa8]" />}
-            </button>
-
-            {guiaSansysOpen && (
-              <div className="p-6 space-y-6 border-t border-blue-100">
-                
-                {/* Controles do Guia */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Canal de Resposta</label>
-                    <select 
-                      value={canalResposta} 
-                      onChange={(e) => setCanalResposta(e.target.value)} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
-                    >
-                      <option value="email">Apenas E-mail</option>
-                      <option value="telefone">Apenas Telefone</option>
-                      <option value="ambos">E-mail e Telefone</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">E-mail do Cliente</label>
-                    <input 
-                      value={clienteEmail} 
-                      onChange={(e) => setClienteEmail(e.target.value)} 
-                      placeholder="email@exemplo.com" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
-                      disabled={canalResposta === "telefone"}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Telefone do Cliente</label>
-                    <input 
-                      value={clienteTelefone} 
-                      onChange={(e) => setClienteTelefone(e.target.value)} 
-                      placeholder="(47) 99999-9999" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
-                      disabled={canalResposta === "email"}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Aplica IN 83/2025?</label>
-                    <select 
-                      value={aplicaIN83 ? "sim" : "nao"} 
-                      onChange={(e) => setAplicaIN83(e.target.value === "sim")} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
-                    >
-                      <option value="sim">Sim</option>
-                      <option value="nao">Não</option>
-                    </select>
-                  </div>
-                  {(decisao === "deferir" || decisao === "parcial") && (
-                    <div>
-                      <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Restituição de Multa?</label>
-                      <select 
-                        value={temRestituicao ? "sim" : "nao"} 
-                        onChange={(e) => setTemRestituicao(e.target.value === "sim")} 
-                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="nao">Não</option>
-                        <option value="sim">Sim (Solicitar restituição)</option>
-                      </select>
-                    </div>
-                  )}
-                  {decisao === "indeferir" && (
-                    <div>
-                      <label className="block text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1.5">Motivo Indeferimento</label>
-                      <select 
-                        value={tipoIndeferido} 
-                        onChange={(e) => setTipoIndeferido(e.target.value)} 
-                        className="w-full px-3 py-2 border border-red-300 rounded-lg text-xs bg-red-50 focus:outline-none focus:border-red-500"
-                      >
-                        <option value="padrao">Padrão (Fatura inalterada)</option>
-                        <option value="in83_aceite">IN83 - Aceite padronizar</option>
-                        <option value="in83_expirado">IN83 - Prazo expirado</option>
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Status (Para Cód 426)</label>
-                    <select 
-                      value={statusMulta426} 
-                      onChange={(e) => setStatusMulta426(e.target.value)} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
-                    >
-                      <option value="aplicada">Multa Aplicada</option>
-                      <option value="notificacao">Em processo de notificação</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  
-                  {/* Passo 1 - Alteração de Fatura */}
-                  {(decisao === "deferir" || decisao === "parcial") && (
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">1. Alteração de Fatura - Cód 10024 / 10082</span>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div>
-                          <span className="text-[10px] font-bold text-gray-500 mb-1 block">Para geração do cód 10082 (ou cancelamento 10024):</span>
-                          
-                          {/* Container cinza com o botão posicionado no topo à direita */}
-                          <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
-                            <div className="flex justify-end mb-2">
-                              <button 
-                                onClick={() => {
-                                  copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${getParte2Text(false)}`);
-                                  setCopied10082(true);
-                                  setTimeout(() => setCopied10082(false), 2000);
-                                }} 
-                                className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                              >
-                                {copied10082 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                                {copied10082 ? "Copiado!" : "Copiar"}
-                              </button>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
-                              <div className="pt-1"><strong>Descrição:</strong> {getParte2Text(false)}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Passo 2 - Anexos */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700">2. Anexos ao Prot. de Recurso no Sansys - 3773</span>
-                    </div>
-                    <div className="p-4">
-                      <ul className="list-disc pl-4 text-xs text-gray-600 space-y-1">
-                        <li>Anexar pdf da resposta do Recurso; <strong className="text-red-600">Sempre!</strong></li>
-                        <li>Anexar pdf da fatura corrigida; <strong className="text-red-600">Apenas casos com retorno por Telefone/Whatsapp</strong></li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Passo 3 - Encerramento do 3773 */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700">3. Encerramento no Sansys - 3773</span>
-                    </div>
-                    <div className="p-4">
-                      <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
-                      
-                      {/* Botão posicionado DENTRO da div cinza usando flex */}
-                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
-                        <div className="flex justify-end mb-2">
-                          <button 
-                              onClick={() => {
-                              copyToClipboardSansys(`${getParte1Text()}\n${getParte2Text(true)}`);
-                              setCopied3773(true);
-                              setTimeout(() => setCopied3773(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copied3773 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copied3773 ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>
-                        {getParte1Text()}{'\n'}{getParte2Text(true)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Passo 4 - Geração Cód 426 */}
-                  {tipoCaso !== "la_cadastral" && (
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                        <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
-                      </div>
-                      <div className="p-4">
-                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
-                        {/* Div flex para separar Solicitante (esquerda) e Botão (direita) */}
-                        <div className="flex justify-between items-start">
-                          <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
-                          <button 
-                            onClick={() => {
-                              copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`);
-                              setCopied426(true);
-                              setTimeout(() => setCopied426(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copied426 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copied426 ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>                     
-                        <div className="pt-1">
-                          <strong>Descrição:</strong><br/>
-                          Cliente notificado{statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. {numAutoInfracao || "[A.I.]"}.<br/>
-                          Novo prazo para padronização vence em: {get60BusinessDaysFromToday()}.
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
-                    </div>
-                    </div>
-                  )}
-
-                  {/* Passo 5 - E-mail */}
-                  {(canalResposta === "email" || canalResposta === "ambos") && (
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
-                      </div>
-                      <div className="p-4">
-                        <div className="flex justify-between items-center mb-1"></div>
-                        
-                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
-                          <div className="flex justify-end mb-2">
-                          <button 
-                            onClick={() => {
-                              copyToClipboardSansys(
-                                `TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${generatedText || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`
-                              );
-                              setCopiedEmail(true);
-                              setTimeout(() => setCopiedEmail(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copiedEmail ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copiedEmail ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>
-                          <strong>TÍTULO:</strong> Retorno de Recurso<br/><br/>
-                          Bom dia/Boa tarde {morador || "[CLIENTE]"},<br/><br/>
-                          Encaminhamos retorno referente recurso apresentado, conforme segue:<br/><br/>
-                          <span className="text-amber-600 italic">{generatedText ? generatedText : '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}</span>
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-2">Lembre-se de anexar a fatura (se houver alteração).</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Passo 6 - Abertura Cód 1073 */}
-                  {(canalResposta === "telefone" || canalResposta === "ambos") && (
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 (Atenção ao setor de atendimento)</span>
-                      </div>
-                      <div className="p-4">
-                        <div className="mb-2">
-                          <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nº Prot. Contato Ativo</label>
-                          <input 
-                            value={protContatoAtivo} 
-                            onChange={(e) => setProtContatoAtivo(e.target.value)} 
-                            placeholder="Ex: 112233" 
-                            className="w-1/3 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8]"
-                          />
-                        </div>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[10px] font-bold text-gray-500">Texto para abertura:</span>
-                          <button onClick={() => copyToClipboardSansys(`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`)} className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"><Copy size={10}/> Copiar</button>
-                        </div>
-                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
-                          <div><strong>Solicitante:</strong> Contato Ativo Prot {protContatoAtivo || "[PROT CONTATO]"}</div>
-                          <div className="pt-1"><strong>Descrição:</strong> Por gentileza, efetuar o Contato Ativo, prot. {protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso {numProcesso || "[RECURSO]"}.</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* SESSÃO 1: IDENTIFICAÇÃO DO PROCESSO */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -1382,6 +1100,288 @@ export function OuvidoriaManager() {
               </div>
             </div>
           )}
+
+          {/* SESSÃO 0: GUIA DE TRATATIVAS SANSYS */}
+          <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+            <button 
+              onClick={() => setGuiaSansysOpen(!guiaSansysOpen)}
+              className="w-full px-6 py-4 flex items-center justify-between bg-[#eef6ff] hover:bg-[#dce9f7] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare size={18} className="text-[#1a5fa8]" />
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Tratativas de Resposta - Guia Sansys</h2>
+              </div>
+              {guiaSansysOpen ? <ChevronUp size={18} className="text-[#1a5fa8]" /> : <ChevronDown size={18} className="text-[#1a5fa8]" />}
+            </button>
+
+            {guiaSansysOpen && (
+              <div className="p-6 space-y-6 border-t border-blue-100">
+                
+                {/* Controles do Guia */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Canal de Resposta</label>
+                    <select 
+                      value={canalResposta} 
+                      onChange={(e) => setCanalResposta(e.target.value)} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="email">Apenas E-mail</option>
+                      <option value="telefone">Apenas Telefone</option>
+                      <option value="ambos">E-mail e Telefone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">E-mail do Cliente</label>
+                    <input 
+                      value={clienteEmail} 
+                      onChange={(e) => setClienteEmail(e.target.value)} 
+                      placeholder="email@exemplo.com" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                      disabled={canalResposta === "telefone"}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Telefone do Cliente</label>
+                    <input 
+                      value={clienteTelefone} 
+                      onChange={(e) => setClienteTelefone(e.target.value)} 
+                      placeholder="(47) 99999-9999" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                      disabled={canalResposta === "email"}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Aplica IN 83/2025?</label>
+                    <select 
+                      value={aplicaIN83 ? "sim" : "nao"} 
+                      onChange={(e) => setAplicaIN83(e.target.value === "sim")} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="sim">Sim</option>
+                      <option value="nao">Não</option>
+                    </select>
+                  </div>
+                  {(decisao === "deferir" || decisao === "parcial") && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Restituição de Multa?</label>
+                      <select 
+                        value={temRestituicao ? "sim" : "nao"} 
+                        onChange={(e) => setTemRestituicao(e.target.value === "sim")} 
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim (Solicitar restituição)</option>
+                      </select>
+                    </div>
+                  )}
+                  {decisao === "indeferir" && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1.5">Motivo Indeferimento</label>
+                      <select 
+                        value={tipoIndeferido} 
+                        onChange={(e) => setTipoIndeferido(e.target.value)} 
+                        className="w-full px-3 py-2 border border-red-300 rounded-lg text-xs bg-red-50 focus:outline-none focus:border-red-500"
+                      >
+                        <option value="padrao">Padrão (Fatura inalterada)</option>
+                        <option value="in83_aceite">IN83 - Aceite padronizar</option>
+                        <option value="in83_expirado">IN83 - Prazo expirado</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Status (Para Cód 426)</label>
+                    <select 
+                      value={statusMulta426} 
+                      onChange={(e) => setStatusMulta426(e.target.value)} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="aplicada">Multa Aplicada</option>
+                      <option value="notificacao">Em processo de notificação</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  
+                  {/* Passo 1 - Alteração de Fatura */}
+                  {(decisao === "deferir" || decisao === "parcial") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">1. Alteração de Fatura - Cód 10024 / 10082</span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-500 mb-1 block">Para geração do cód 10082 (ou cancelamento 10024):</span>
+                          
+                          {/* Container cinza com o botão posicionado no topo à direita */}
+                          <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
+                            <div className="flex justify-end mb-2">
+                              <button 
+                                onClick={() => {
+                                  copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${getParte2Text(false)}`);
+                                  setCopied10082(true);
+                                  setTimeout(() => setCopied10082(false), 2000);
+                                }} 
+                                className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                              >
+                                {copied10082 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                                {copied10082 ? "Copiado!" : "Copiar"}
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
+                              <div className="pt-1"><strong>Descrição:</strong> {getParte2Text(false)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Passo 2 - Anexos */}
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700">2. Anexos ao Prot. de Recurso no Sansys - 3773</span>
+                    </div>
+                    <div className="p-4">
+                      <ul className="list-disc pl-4 text-xs text-gray-600 space-y-1">
+                        <li>Anexar pdf da resposta do Recurso; <strong className="text-red-600">Sempre!</strong></li>
+                        <li>Anexar pdf da fatura corrigida; <strong className="text-red-600">Apenas casos com retorno por Telefone/Whatsapp</strong></li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Passo 3 - Encerramento do 3773 */}
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700">3. Encerramento no Sansys - 3773</span>
+                    </div>
+                    <div className="p-4">
+                      <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
+                      
+                      {/* Botão posicionado DENTRO da div cinza usando flex */}
+                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
+                        <div className="flex justify-end mb-2">
+                          <button 
+                              onClick={() => {
+                              copyToClipboardSansys(`${getParte1Text()}\n${getParte2Text(true)}`);
+                              setCopied3773(true);
+                              setTimeout(() => setCopied3773(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copied3773 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copied3773 ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>
+                        {getParte1Text()}{'\n'}{getParte2Text(true)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Passo 4 - Geração Cód 426 */}
+                  {tipoCaso !== "la_cadastral" && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                        <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
+                      </div>
+                      <div className="p-4">
+                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
+                        {/* Div flex para separar Solicitante (esquerda) e Botão (direita) */}
+                        <div className="flex justify-between items-start">
+                          <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
+                          <button 
+                            onClick={() => {
+                              copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`);
+                              setCopied426(true);
+                              setTimeout(() => setCopied426(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copied426 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copied426 ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>                     
+                        <div className="pt-1">
+                          <strong>Descrição:</strong><br/>
+                          Cliente notificado{statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. {numAutoInfracao || "[A.I.]"}.<br/>
+                          Novo prazo para padronização vence em: {get60BusinessDaysFromToday()}.
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
+                    </div>
+                    </div>
+                  )}
+
+                  {/* Passo 5 - E-mail */}
+                  {(canalResposta === "email" || canalResposta === "ambos") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex justify-between items-center mb-1"></div>
+                        
+                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
+                          <div className="flex justify-end mb-2">
+                          <button 
+                            onClick={() => {
+                              copyToClipboardSansys(
+                                `TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${generatedText || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`
+                              );
+                              setCopiedEmail(true);
+                              setTimeout(() => setCopiedEmail(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copiedEmail ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copiedEmail ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>
+                          <strong>TÍTULO:</strong> Retorno de Recurso<br/><br/>
+                          Bom dia/Boa tarde {morador || "[CLIENTE]"},<br/><br/>
+                          Encaminhamos retorno referente recurso apresentado, conforme segue:<br/><br/>
+                          <span className="text-amber-600 italic">{generatedText ? generatedText : '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-2">Lembre-se de anexar a fatura (se houver alteração).</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Passo 6 - Abertura Cód 1073 */}
+                  {(canalResposta === "telefone" || canalResposta === "ambos") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 (Atenção ao setor de atendimento)</span>
+                      </div>
+                      <div className="p-4">
+                        <div className="mb-2">
+                          <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nº Prot. Contato Ativo</label>
+                          <input 
+                            value={protContatoAtivo} 
+                            onChange={(e) => setProtContatoAtivo(e.target.value)} 
+                            placeholder="Ex: 112233" 
+                            className="w-1/3 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8]"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-gray-500">Texto para abertura:</span>
+                          <button onClick={() => copyToClipboardSansys(`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`)} className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"><Copy size={10}/> Copiar</button>
+                        </div>
+                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
+                          <div><strong>Solicitante:</strong> Contato Ativo Prot {protContatoAtivo || "[PROT CONTATO]"}</div>
+                          <div className="pt-1"><strong>Descrição:</strong> Por gentileza, efetuar o Contato Ativo, prot. {protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso {numProcesso || "[RECURSO]"}.</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
