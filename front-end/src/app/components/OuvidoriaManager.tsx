@@ -357,11 +357,12 @@ export function OuvidoriaManager() {
   const [tipoManifestacao, setTipoManifestacao] = useState("Recurso Administrativo");
   const [numProcesso, setNumProcesso] = useState("");
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
-  const [dataManifestacao, setDataManifestacao] = useState("");
   const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
+  const [dataManifestacao, setDataManifestacao] = useState("");
+  
   // Cálculo da diferença 
-  const diasUteisDif = getBusinessDaysDifference(dataManifestacao, dataEmissaoFatura);
-  const isForaDoPrazo = dataManifestacao && dataEmissaoFatura && diasUteisDif > 30;
+  const diasUteisDif = getBusinessDaysDifference(dataEmissaoFatura, dataManifestacao);
+  const isForaDoPrazo = dataEmissaoFatura && dataManifestacao &&  diasUteisDif > 30;
 
   // --- CONFIGURAÇÃO DO CASO ---
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
@@ -686,12 +687,12 @@ export function OuvidoriaManager() {
                   <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data da Manifestação</label>
-                  <DatePicker value={dataManifestacao} onChange={setDataManifestacao} placeholder="DD/MM/AAAA" />
-                </div>
-                <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Emissão Fatura</label>
                   <DatePicker value={dataEmissaoFatura} onChange={setDataEmissaoFatura} placeholder="DD/MM/AAAA" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data da Manifestação</label>
+                  <DatePicker value={dataManifestacao} onChange={setDataManifestacao} placeholder="DD/MM/AAAA" />
                 </div>
               </div>
 
