@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Copy, CheckCircle2,
-  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File, Info,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon
+  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File,
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, ChevronDown, ChevronUp, MessageSquare
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 
@@ -64,6 +64,24 @@ function labelFullDate(s: string): string {
   return d
     .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
     .replace(".", "");
+}
+
+function businessDaysBetween(start: Date, end: Date): number {
+  let count = 0;
+  const current = new Date(start);
+
+  while (current <= end) {
+    const day = current.getDay();
+
+    // ignora sábado e domingo
+    if (day !== 0 && day !== 6) {
+      count++;
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
 }
 
 // ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
@@ -319,12 +337,14 @@ export function OuvidoriaManager() {
   const [tipoManifestacao, setTipoManifestacao] = useState("Recurso Administrativo");
   const [numProcesso, setNumProcesso] = useState("");
   const [numAutoInfracao, setNumAutoInfracao] = useState("");
+  const [dataManifestacao, setDataManifestacao] = useState("");
+  const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
 
   // --- CONFIGURAÇÃO DO CASO ---
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
   const [decisao, setDecisao] = useState<DecisaoType>(null);
 
-  // --- VARIÁVEIS DOS TEMPLATES ---
+  // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente) ---
   const [dataGeracaoAI, setDataGeracaoAI] = useState("");
   const [mesesSemAcesso, setMesesSemAcesso] = useState("");
   const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useState("");
@@ -340,6 +360,17 @@ export function OuvidoriaManager() {
 
   const [dataRecebimentoAI, setDataRecebimentoAI] = useState("");
   const [tipoRecebimentoAI, setTipoRecebimentoAI] = useState("Correios");
+
+  // --- ESTADOS: TRATATIVAS SANSYS ---
+  const [guiaSansysOpen, setGuiaSansysOpen] = useState(false);
+  const [canalResposta, setCanalResposta] = useState("email");
+  const [clienteEmail, setClienteEmail] = useState("");
+  const [clienteTelefone, setClienteTelefone] = useState("");
+  const [aplicaIN83, setAplicaIN83] = useState(true);
+  const [temRestituicao, setTemRestituicao] = useState(false);
+  const [statusMulta426, setStatusMulta426] = useState("aplicada");
+  const [tipoIndeferido, setTipoIndeferido] = useState("padrao");
+  const [protContatoAtivo, setProtContatoAtivo] = useState("");
 
   // ─── LÓGICA DE CONDICIONAIS DE EXIBIÇÃO ───
   const isLeitura = tipoCaso === "leitura";
@@ -377,6 +408,12 @@ export function OuvidoriaManager() {
   const showFaturaReferencia = !isProrrogacao && !isBypass && !isClandestina;
   const showDefesaCampos = (isBypass || isClandestina) && historicoDefesa === "com_defesa";
 
+  // Componentes de cópia para clipboard (Sessão 5)
+  const [copied10082, setCopied10082] = useState(false);
+  const [copied3773, setCopied3773] = useState(false);
+  const [copied426, setCopied426] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+
   // Lidar com a troca de opções do tipo de caso
   const handleTipoCasoChange = (val: TipoCasoType) => {
     setTipoCaso(val);
@@ -387,6 +424,47 @@ export function OuvidoriaManager() {
     }
   };
 
+  // ─── FUNÇÕES DE AUXÍLIO: TRATATIVAS SANSYS ───
+  const getParte2Text = (withRestituicao = true) => {
+    const prazoStr = get60BusinessDaysFromToday();
+    const fat = faturaReferencia || "[FATURA]";
+    
+    if (decisao === "deferir") {
+      let t = "Processo Deferido";
+      if (aplicaIN83) t += ", em atendimento a IN 83/2025";
+      if (withRestituicao && temRestituicao) t += ". Solicitar restituição das multas pagas pelo e-mail atendimento@aguasdejoinville.com.br";
+      else t += `. FAT ${fat} corrigida.`;
+      return t;
+    }
+    if (decisao === "parcial") {
+      let t = "Processo Deferido parcialmente";
+      if (aplicaIN83) t += " em atendimento a IN 83/2025,";
+      else t += ",";
+      t += ` prorrogado prazo da padronização até ${prazoStr}.`;
+      if (withRestituicao && temRestituicao) t += " Solicitar restituição das multas pagas pelo e-mail atendimento@aguasdejoinville.com.br";
+      else t += ` FAT ${fat} corrigida.`;
+      return t;
+    }
+    if (decisao === "indeferir") {
+      if (tipoIndeferido === "in83_aceite") return `Processo Indeferido. Caso cliente aceite padronizar a ligação de água, pode solicitar prazo para a execução e revisão da fatura em atendimento a IN 83/2025. Nova solicitação expira em ${prazoStr}. FAT ${fat} inalterada.`;
+      if (tipoIndeferido === "in83_expirado") return `Processo Indeferido. Prazo para padronização conforme IN 83/2025 expirado. FAT ${fat} inalterada.`;
+      return `Processo Indeferido. FAT ${fat} inalterada.`;
+    }
+    return "Decisão não definida";
+  };
+
+  const getParte1Text = () => {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    if (canalResposta === "email") return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"}, em ${hoje} sobre teor do docto anexado neste protocolo.`;
+    if (canalResposta === "telefone") return `Informar cliente pelo Telefone: ${clienteTelefone || "[TELEFONE]"}, sobre teor do docto anexado neste protocolo.`;
+    return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"} em ${hoje} e Telefone: ${clienteTelefone || "[TELEFONE]"} sobre teor do docto anexado neste protocolo.`;
+  };
+
+  const copyToClipboardSansys = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  // ─── GERAÇÃO DA MINUTA JURÍDICA ───
   const handleGenerateParecer = () => {
     if (!matricula || !numProcesso || (hasDecisaoButtons && !decisao)) {
       alert("Por favor, preencha os dados e a decisão de mérito (se aplicável).");
@@ -467,7 +545,7 @@ export function OuvidoriaManager() {
         if (decisao === "deferir" || decisao === "parcial") {
           tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nApós a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o Processo Administrativo de Fiscalização para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por 60 (sessenta) dias úteis, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da Resolução ARIS nº 019/2019.\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
         } else {
-          tpl = `À ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que authorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
+          tpl = `À ouvidoria,\nRecurso Administrativo nº ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\nObjeto: Aplicação de multas por impedimento de acesso à ligação de água para execução de serviços e ausência de padronização obrigatória da ligação de água.\nI – DOS FATOS\nA presente demanda decorre da manifestação apresentada pelo usuário em razão da aplicação de penalidades administrativas ao impedimento involuntário de acesso à ligação de água para execução de serviços, bem como da não padronização obrigatória da ligação de água.\nII – DO PROCESSO ADMINISTRATIVO\nO Auto de Infração ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram enquadradas no artigo 144, inciso XII, da Resolução ARIS nº 019/2019, tendo como fato gerador o impedimento involuntário para a execução do serviço de substituição do cavalete de água, constatado em ${tplConstatacao}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\nDiante da ausência de apresentação de defesa administrativa e da não adequação da ligação de água às normas vigentes, as penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nIII – DO DIREITO\nAs sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de execução de serviços e pela adequação da ligação de água aos padrões técnicos exigidos.\nNão há previsão legal ou normativa que autorize o cancelamento das multas regularmente aplicadas quando comprovada a infração e respeitado o devido processo administrativo, sob pena de violação aos princípios da legalidade e da vinculação da Administração à norma.\nIV – DA DECISÃO ADMINISTRATIVA\nDiante do exposto, ratifica-se integralmente a decisão proferida em ${tplDecisaoAnterior}, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br.`;
         }
       } else if (tipoCaso === "la_padronizada") {
         tpl = `Recurso prot. ${tplProc}\nMorador cadastrado: ${tplMorador}\nMatrícula: ${tplMatricula}\n01. OBJETO: AUTO DE INFRAÇÃO Nº ${tplAI}\nCliente viabilizou a padronização da ligação de água e solicita cancelamento das multas.\n02. DECISÃO:\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.`;
@@ -505,7 +583,9 @@ export function OuvidoriaManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           texto_final: generatedText,
-          numeroProcesso: numProcesso || matricula 
+          numeroProcesso: numProcesso || matricula,
+          tipoCaso: tipoCaso,
+          decisao: decisao 
         }),
       });
 
@@ -540,6 +620,288 @@ export function OuvidoriaManager() {
 
       <div className="flex-1 overflow-auto bg-[#f8fafe]">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
+
+          {/* SESSÃO 0: GUIA DE TRATATIVAS SANSYS */}
+          <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+            <button 
+              onClick={() => setGuiaSansysOpen(!guiaSansysOpen)}
+              className="w-full px-6 py-4 flex items-center justify-between bg-[#eef6ff] hover:bg-[#dce9f7] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare size={18} className="text-[#1a5fa8]" />
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Tratativas de Resposta - Guia Sansys</h2>
+              </div>
+              {guiaSansysOpen ? <ChevronUp size={18} className="text-[#1a5fa8]" /> : <ChevronDown size={18} className="text-[#1a5fa8]" />}
+            </button>
+
+            {guiaSansysOpen && (
+              <div className="p-6 space-y-6 border-t border-blue-100">
+                
+                {/* Controles do Guia */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Canal de Resposta</label>
+                    <select 
+                      value={canalResposta} 
+                      onChange={(e) => setCanalResposta(e.target.value)} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="email">Apenas E-mail</option>
+                      <option value="telefone">Apenas Telefone</option>
+                      <option value="ambos">E-mail e Telefone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">E-mail do Cliente</label>
+                    <input 
+                      value={clienteEmail} 
+                      onChange={(e) => setClienteEmail(e.target.value)} 
+                      placeholder="email@exemplo.com" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                      disabled={canalResposta === "telefone"}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Telefone do Cliente</label>
+                    <input 
+                      value={clienteTelefone} 
+                      onChange={(e) => setClienteTelefone(e.target.value)} 
+                      placeholder="(47) 99999-9999" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                      disabled={canalResposta === "email"}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Aplica IN 83/2025?</label>
+                    <select 
+                      value={aplicaIN83 ? "sim" : "nao"} 
+                      onChange={(e) => setAplicaIN83(e.target.value === "sim")} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="sim">Sim</option>
+                      <option value="nao">Não</option>
+                    </select>
+                  </div>
+                  {(decisao === "deferir" || decisao === "parcial") && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Restituição de Multa?</label>
+                      <select 
+                        value={temRestituicao ? "sim" : "nao"} 
+                        onChange={(e) => setTemRestituicao(e.target.value === "sim")} 
+                        className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim (Solicitar restituição)</option>
+                      </select>
+                    </div>
+                  )}
+                  {decisao === "indeferir" && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1.5">Motivo Indeferimento</label>
+                      <select 
+                        value={tipoIndeferido} 
+                        onChange={(e) => setTipoIndeferido(e.target.value)} 
+                        className="w-full px-3 py-2 border border-red-300 rounded-lg text-xs bg-red-50 focus:outline-none focus:border-red-500"
+                      >
+                        <option value="padrao">Padrão (Fatura inalterada)</option>
+                        <option value="in83_aceite">IN83 - Aceite padronizar</option>
+                        <option value="in83_expirado">IN83 - Prazo expirado</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">Status (Para Cód 426)</label>
+                    <select 
+                      value={statusMulta426} 
+                      onChange={(e) => setStatusMulta426(e.target.value)} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-[#1a5fa8]"
+                    >
+                      <option value="aplicada">Multa Aplicada</option>
+                      <option value="notificacao">Em processo de notificação</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  
+                  {/* Passo 1 - Alteração de Fatura */}
+                  {(decisao === "deferir" || decisao === "parcial") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">1. Alteração de Fatura - Cód 10024 / 10082</span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-500 mb-1 block">Para geração do cód 10082 (ou cancelamento 10024):</span>
+                          
+                          {/* Container cinza com o botão posicionado no topo à direita */}
+                          <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
+                            <div className="flex justify-end mb-2">
+                              <button 
+                                onClick={() => {
+                                  copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${getParte2Text(false)}`);
+                                  setCopied10082(true);
+                                  setTimeout(() => setCopied10082(false), 2000);
+                                }} 
+                                className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                              >
+                                {copied10082 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                                {copied10082 ? "Copiado!" : "Copiar"}
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
+                              <div className="pt-1"><strong>Descrição:</strong> {getParte2Text(false)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Passo 2 - Anexos */}
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700">2. Anexos ao Prot. de Recurso no Sansys - 3773</span>
+                    </div>
+                    <div className="p-4">
+                      <ul className="list-disc pl-4 text-xs text-gray-600 space-y-1">
+                        <li>Anexar pdf da resposta do Recurso; <strong className="text-red-600">Sempre!</strong></li>
+                        <li>Anexar pdf da fatura corrigida; <strong className="text-red-600">Apenas casos com retorno por Telefone/Whatsapp</strong></li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Passo 3 - Encerramento do 3773 */}
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-700">3. Encerramento no Sansys - 3773</span>
+                    </div>
+                    <div className="p-4">
+                      <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
+                      
+                      {/* Botão posicionado DENTRO da div cinza usando flex */}
+                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
+                        <div className="flex justify-end mb-2">
+                          <button 
+                              onClick={() => {
+                              copyToClipboardSansys(`${getParte1Text()}\n${getParte2Text(true)}`);
+                              setCopied3773(true);
+                              setTimeout(() => setCopied3773(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copied3773 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copied3773 ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>
+                        {getParte1Text()}{'\n'}{getParte2Text(true)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Passo 4 - Geração Cód 426 */}
+                  {tipoCaso !== "la_cadastral" && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                        <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
+                      </div>
+                      <div className="p-4">
+                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
+                        {/* Div flex para separar Solicitante (esquerda) e Botão (direita) */}
+                        <div className="flex justify-between items-start">
+                          <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
+                          <button 
+                            onClick={() => {
+                              copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`);
+                              setCopied426(true);
+                              setTimeout(() => setCopied426(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copied426 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copied426 ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>                     
+                        <div className="pt-1">
+                          <strong>Descrição:</strong><br/>
+                          Cliente notificado{statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. {numAutoInfracao || "[A.I.]"}.<br/>
+                          Novo prazo para padronização vence em: {get60BusinessDaysFromToday()}.
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
+                    </div>
+                    </div>
+                  )}
+
+                  {/* Passo 5 - E-mail */}
+                  {(canalResposta === "email" || canalResposta === "ambos") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex justify-between items-center mb-1"></div>
+                        
+                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
+                          <div className="flex justify-end mb-2">
+                          <button 
+                            onClick={() => {
+                              copyToClipboardSansys(
+                                `TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${generatedText || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`
+                              );
+                              setCopiedEmail(true);
+                              setTimeout(() => setCopiedEmail(false), 2000);
+                            }} 
+                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
+                          >
+                            {copiedEmail ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
+                            {copiedEmail ? "Copiado!" : "Copiar"}
+                          </button>
+                        </div>
+                          <strong>TÍTULO:</strong> Retorno de Recurso<br/><br/>
+                          Bom dia/Boa tarde {morador || "[CLIENTE]"},<br/><br/>
+                          Encaminhamos retorno referente recurso apresentado, conforme segue:<br/><br/>
+                          <span className="text-amber-600 italic">{generatedText ? generatedText : '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-2">Lembre-se de anexar a fatura (se houver alteração).</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Passo 6 - Abertura Cód 1073 */}
+                  {(canalResposta === "telefone" || canalResposta === "ambos") && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 (Atenção ao setor de atendimento)</span>
+                      </div>
+                      <div className="p-4">
+                        <div className="mb-2">
+                          <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nº Prot. Contato Ativo</label>
+                          <input 
+                            value={protContatoAtivo} 
+                            onChange={(e) => setProtContatoAtivo(e.target.value)} 
+                            placeholder="Ex: 112233" 
+                            className="w-1/3 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8]"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-gray-500">Texto para abertura:</span>
+                          <button onClick={() => copyToClipboardSansys(`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`)} className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"><Copy size={10}/> Copiar</button>
+                        </div>
+                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
+                          <div><strong>Solicitante:</strong> Contato Ativo Prot {protContatoAtivo || "[PROT CONTATO]"}</div>
+                          <div className="pt-1"><strong>Descrição:</strong> Por gentileza, efetuar o Contato Ativo, prot. {protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso {numProcesso || "[RECURSO]"}.</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* SESSÃO 1: IDENTIFICAÇÃO DO PROCESSO */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
@@ -628,20 +990,20 @@ export function OuvidoriaManager() {
               >
                 {isRecurso ? (
                   <>
-                    <option value="bypass">By-pass/Derivação Clandestina</option>
-                    <option value="hd">Hidrômetro danificado</option>
                     <option value="leitura">Leitura</option>
-                    <option value="clandestina">Ligação Clandestina</option>
                     <option value="servico">Serviço</option>
                     <option value="corte_cavalete">Violação de corte de cavalete</option>
+                    <option value="hd">Hidrômetro danificado</option>
+                    <option value="bypass">By-pass/Derivação Clandestina</option>
+                    <option value="clandestina">Ligação Clandestina</option>
                   </>
                 ) : (
                   <>
-                    <option value="la_cadastral">Atualização Cadastral</option>
-                    <option value="la_padronizada">LA Padronizada</option>
                     <option value="leitura">Leitura</option>
-                    <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
                     <option value="servico">Serviços</option>
+                    <option value="la_padronizada">LA Padronizada</option>
+                    <option value="la_cadastral">Atualização Cadastral</option>
+                    <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
                   </>
                 )}
               </select>
