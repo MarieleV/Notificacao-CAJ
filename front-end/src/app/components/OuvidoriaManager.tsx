@@ -699,7 +699,7 @@ export function OuvidoriaManager() {
                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                   <Info size={14} className="text-red-600" />
                   <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
-                    INCONSISTÊNCIA: Prazo de 30 dias úteis excedido ({diasUteisDif} dias úteis).
+                    O cliente está entrando com processo fora do prazo - <strong>30 dias úteis excedido</strong> ({diasUteisDif} dias úteis).
                   </span>
                 </div>
               )}
