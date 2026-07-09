@@ -15,6 +15,21 @@ const exportParecerWord = async (req, res) => {
   }
 };
 
+const exportParecerPdf = async (req, res) => {
+  const { texto_final, tipoCaso } = req.body;
+  if (!texto_final) return res.status(400).json({ detail: "Texto final obrigatório." });
+
+  try {
+    const buffer = await documentService.buildParecerPdf(texto_final);
+    res.setHeader("Content-Disposition", `attachment; filename=Parecer_${tipoCaso || 'Ouvidoria'}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.send(buffer);
+  } catch (error) {
+    console.error("Erro Parecer PDF:", error);
+    res.status(500).json({ detail: "Erro ao gerar PDF." });
+  }
+};
+
 const exportInfracaoWord = async (req, res) => {
   if (!req.body.texto_final) return res.status(400).json({ detail: "O texto final não foi enviado." });
 
@@ -47,6 +62,7 @@ const exportInfracaoPdf = async (req, res) => {
 
 module.exports = {
   exportParecerWord,
+  exportParecerPdf,
   exportInfracaoWord,
   exportInfracaoPdf
 };

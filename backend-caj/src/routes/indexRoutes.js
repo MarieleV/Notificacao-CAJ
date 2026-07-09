@@ -14,6 +14,7 @@ router.post("/calcular_multa", calculatorController.calculate);
 
 // Rotas de Documentos
 router.post("/exportar_parecer_word", documentController.exportParecerWord);
+router.post("/exportar_parecer_pdf", documentController.exportParecerPdf);
 router.post("/exportar_word", documentController.exportInfracaoWord);
 router.post("/exportar_pdf", documentController.exportInfracaoPdf);
 

@@ -12,65 +12,16 @@ const PDFDocument = require("pdfkit");
 // ==============================================================================
 const formatTextToDocx = (text) => {
   const lines = text.split('\n');
-
-  // 1. Linhas que devem ficar INTEIRAS em negrito (Tópicos Principais)
-  const fullLineBoldRegex = /^(I\s–|II\s–|III\s–|IV\s–|V\s–|DECIDIMOS|01\.\sOBJETO|01\.\s*Objeto|Recurso\nAdministrativo\nn°)/i;
-
-  // 2. Palavras que devem ficar em negrito no INÍCIO, mas o resto da linha normal
-  const prefixBoldRegex = /^(02\.\s*DECISÃO\s?:|03\.\s*PRORROGAÇÃO\s?:|PRORROGAÇÃO\s?:|Recurso prot\.|Recurso protocolo|Morador(?: cadastrado)?:|Matrícula:|Dispositivo legal infringido:|Fato gerador:|Fato Gerador:|Data da constatação:|Meses sem acesso:|Objeto:|Padronize sua ligação de água)/i;
-
   return lines.map(line => {
-    
-    // REGRA 1: É um tópico principal? (Deixa a linha toda em negrito)
-    if (fullLineBoldRegex.test(line)) {
-      const cleanLine = line.replace(/\*\*/g, ''); // Remove asteriscos se houver
-      return new Paragraph({
-        children: [new TextRun({ text: cleanLine, bold: true, font: "Arial", size: 22 })],
-        spacing: { after: 120 },
-        alignment: AlignmentType.JUSTIFY
-      });
-    }
-
-    // REGRA 2: Tem um prefixo automático? (Deixa só o prefixo negrito)
-    const prefixMatch = line.match(prefixBoldRegex);
-    if (prefixMatch) {
-      const prefix = prefixMatch[0]; // Ex: "01. OBJETO: "
-      const restOfLine = line.substring(prefix.length); // Ex: "Aplicação de multas..."
-      
-      let runs = [new TextRun({ text: prefix, bold: true, font: "Arial", size: 22 })];
-      
-      // Avalia se no resto da linha o usuário digitou algum **asterisco** manual
-      if (restOfLine) {
-        const parts = restOfLine.split(/\*\*(.*?)\*\*/g);
-        parts.forEach((part, index) => {
-          if (part) {
-            runs.push(new TextRun({ text: part, bold: index % 2 !== 0, font: "Arial", size: 22 }));
-          }
-        });
-      }
-
-      return new Paragraph({
-        children: runs,
-        spacing: { after: 120 },
-        alignment: AlignmentType.JUSTIFY
-      });
-    }
-
-    // REGRA 3: Linha comum (Respeita apenas se você usar **palavra**)
-    const parts = line.split(/\*\*(.*?)\*\*/g);
-    const childrenRuns = parts.map((part, index) => {
-      const isBold = index % 2 !== 0; 
-      return new TextRun({ text: part, bold: isBold, font: "Arial", size: 22 });
-    });
-
+    const isBoldLine = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i.test(line);
     return new Paragraph({
-      children: childrenRuns,
+      children: [new TextRun({ text: line, bold: isBoldLine, font: "Arial", size: 22 })],
       spacing: { after: 120 },
       alignment: AlignmentType.JUSTIFY
     });
   });
 };
-// ================================ TO MEXENDO AQUI ENCIMA ==============================================
+
 const getCurrentTimeStrings = () => {
   const now = new Date();
   const dataStr = now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
