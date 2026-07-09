@@ -1277,7 +1277,8 @@ export function OuvidoriaManager() {
                         <div className="flex justify-end mb-2">
                           <button 
                               onClick={() => {
-                              copyToClipboardSansys(`${getParte1Text()}\n${getParte2Text(true)}`);
+                              // Alterado para \n\n para dar o espaço de uma linha na cópia
+                              copyToClipboardSansys(`${getParte1Text()}\n\n${getParte2Text(true)}`);
                               setCopied3773(true);
                               setTimeout(() => setCopied3773(false), 2000);
                             }} 
@@ -1287,7 +1288,8 @@ export function OuvidoriaManager() {
                             {copied3773 ? "Copiado!" : "Copiar"}
                           </button>
                         </div>
-                        {getParte1Text()}{'\n'}{getParte2Text(true)}
+                        {/* Alterado para '\n\n' para mostrar o espaço de uma linha na tela */}
+                        {getParte1Text()}{'\n\n'}{getParte2Text(true)}
                       </div>
                     </div>
                   </div>
@@ -1365,7 +1367,7 @@ export function OuvidoriaManager() {
                   {(canalResposta === "telefone" || canalResposta === "ambos") && (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 (Atenção ao setor de atendimento)</span>
+                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 - <strong className="text-red-600">Para atenção ao setor de atendimento</strong></span>
                       </div>
                       <div className="p-4">
                         <div className="mb-2">
@@ -1385,6 +1387,7 @@ export function OuvidoriaManager() {
                           <div><strong>Solicitante:</strong> Contato Ativo Prot {protContatoAtivo || "[PROT CONTATO]"}</div>
                           <div className="pt-1"><strong>Descrição:</strong> Por gentileza, efetuar o Contato Ativo, prot. {protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso {numProcesso || "[RECURSO]"}.</div>
                         </div>
+                        <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Serve para priorizar cód. 1170: para contato ativo do Retorno de Recurso (quando canal de retorno por Telefone/Whatsapp)</p>
                       </div>
                     </div>
                   )}
