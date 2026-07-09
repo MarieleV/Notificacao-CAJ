@@ -46,6 +46,44 @@ const buildParecerWord = async (textoFinal) => {
   return await Packer.toBuffer(doc);
 };
 
+// Mesma regra de negrito usada no formatTextToDocx (Word), reaproveitada aqui
+// para que o PDF do Parecer siga exatamente a mesma formatação.
+const fullLineBoldRegex = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
+
+const buildParecerPdf = (textoFinal) => {
+  return new Promise((resolve, reject) => {
+    // Margem equivalente aos 1134 twips usados no Word (1134 / 20 = 56.7pt)
+    const doc = new PDFDocument({ margin: 56.7, size: "A4" });
+    const buffers = [];
+
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const lines = textoFinal.split('\n');
+
+    lines.forEach(line => {
+      const isBoldLine = fullLineBoldRegex.test(line);
+      // Linha vazia vira espaço para preservar o espaçamento entre parágrafos
+      const safeLine = line.trim() === "" ? " " : line;
+
+      doc
+        .font(isBoldLine ? "Helvetica-Bold" : "Helvetica")
+        // Fonte 22 (meio-pontos) no docx = 11pt
+        .fontSize(11)
+        .text(safeLine, {
+          align: "justify",
+          lineGap: 2,
+        });
+
+      // Espaçamento equivalente ao spacing: { after: 120 } (twips) do Word
+      doc.moveDown(0.4);
+    });
+
+    doc.end();
+  });
+};
+
 const buildInfracaoWord = async (dados) => {
   const { 
     texto_final, protocolo, autoInfracao, matricula, nomeCliente, 
@@ -396,6 +434,7 @@ const buildInfracaoPdf = (dados) => {
 
 module.exports = {
   buildParecerWord,
+  buildParecerPdf,
   buildInfracaoWord,
   buildInfracaoPdf
 };
