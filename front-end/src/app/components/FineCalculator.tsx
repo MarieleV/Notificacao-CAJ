@@ -1159,7 +1159,7 @@ export function FineCalculator() {
               <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
                 <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-[#4a7fa5]">
-                  Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo; <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
+                  Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo - <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
                 </p>
               </div>
             </div>
@@ -1397,7 +1397,7 @@ export function FineCalculator() {
               <FileText size={18} className="text-[#1a5fa8]" />
               <div>
                 <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos | editável e copiável</p>
+                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos - editável e copiável</p>
               </div>
             </div>
 
