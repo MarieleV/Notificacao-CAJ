@@ -7,15 +7,34 @@ const {
 } = require("docx");
 const PDFDocument = require("pdfkit");
 
+// Mesma regra de negrito de linha inteira reaproveitada para Word e PDF
+const fullLineBoldRegex = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
+
 // ==============================================================================
 // FUNÇÕES UTILITÁRIAS INTERNAS
 // ==============================================================================
+
 const formatTextToDocx = (text) => {
   const lines = text.split('\n');
   return lines.map(line => {
-    const isBoldLine = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i.test(line);
+    const isBoldLine = fullLineBoldRegex.test(line);
+    
+    // Suporte para **negrito** inline (ex: texto **forte** texto)
+    const parts = line.split(/\*\*(.*?)\*\*/g);
+    const textRuns = parts.map((part, index) => {
+      if (part === "") return null;
+      // Índices ímpares são as palavras que estavam dentro dos **
+      const isPartBold = isBoldLine || (index % 2 !== 0);
+      return new TextRun({ text: part, bold: isPartBold, font: "Arial", size: 22 });
+    }).filter(Boolean);
+
+    // Garante espaçamento caso a linha seja vazia
+    if (textRuns.length === 0) {
+      textRuns.push(new TextRun({ text: " ", font: "Arial", size: 22 }));
+    }
+
     return new Paragraph({
-      children: [new TextRun({ text: line, bold: isBoldLine, font: "Arial", size: 22 })],
+      children: textRuns,
       spacing: { after: 120 },
       alignment: AlignmentType.JUSTIFY
     });
@@ -46,10 +65,6 @@ const buildParecerWord = async (textoFinal) => {
   return await Packer.toBuffer(doc);
 };
 
-// Mesma regra de negrito usada no formatTextToDocx (Word), reaproveitada aqui
-// para que o PDF do Parecer siga exatamente a mesma formatação.
-const fullLineBoldRegex = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
-
 const buildParecerPdf = (textoFinal) => {
   return new Promise((resolve, reject) => {
     // Margem equivalente aos 1134 twips usados no Word (1134 / 20 = 56.7pt)
@@ -64,17 +79,31 @@ const buildParecerPdf = (textoFinal) => {
 
     lines.forEach(line => {
       const isBoldLine = fullLineBoldRegex.test(line);
-      // Linha vazia vira espaço para preservar o espaçamento entre parágrafos
       const safeLine = line.trim() === "" ? " " : line;
 
-      doc
-        .font(isBoldLine ? "Helvetica-Bold" : "Helvetica")
-        // Fonte 22 (meio-pontos) no docx = 11pt
-        .fontSize(11)
-        .text(safeLine, {
-          align: "justify",
-          lineGap: 2,
+      if (safeLine === " ") {
+        doc.font("Helvetica").fontSize(11).text(" ", { lineGap: 2 });
+      } else {
+        // Separa partes normais de partes em **negrito**
+        const parts = safeLine.split(/\*\*(.*?)\*\*/g);
+        const validParts = parts.map((part, index) => ({
+          text: part,
+          bold: isBoldLine || (index % 2 !== 0)
+        })).filter(p => p.text !== "");
+
+        // Desenha os pedaços na mesma linha (continued: true)
+        validParts.forEach((partObj, idx) => {
+          const isLast = idx === validParts.length - 1;
+          
+          doc.font(partObj.bold ? "Helvetica-Bold" : "Helvetica")
+             .fontSize(11)
+             .text(partObj.text, {
+               continued: !isLast,
+               align: "justify",
+               lineGap: isLast ? 2 : 0
+             });
         });
+      }
 
       // Espaçamento equivalente ao spacing: { after: 120 } (twips) do Word
       doc.moveDown(0.4);
@@ -141,9 +170,20 @@ const buildInfracaoWord = async (dados) => {
     ]
   });
 
+  // Aplica o parse de **negrito** nas Infrações em DOCX também
   const processedTextParagraphs = texto_final.split('\n').map(line => {
     const safeLine = line.trim() === "" ? " " : line;
-    return new Paragraph({ children: [new TextRun(safeLine)], alignment: AlignmentType.JUSTIFY, spacing: { after: 60 } });
+    const parts = safeLine.split(/\*\*(.*?)\*\*/g);
+    const textRuns = parts.map((part, index) => {
+      if (part === "") return null;
+      return new TextRun({ text: part, bold: index % 2 !== 0 });
+    }).filter(Boolean);
+
+    return new Paragraph({ 
+      children: textRuns.length > 0 ? textRuns : [new TextRun(" ")], 
+      alignment: AlignmentType.JUSTIFY, 
+      spacing: { after: 60 } 
+    });
   });
 
   const defaultMargin = { top: 40, bottom: 40, left: 80, right: 80 };
@@ -295,7 +335,6 @@ const buildInfracaoPdf = (dados) => {
     const doc = new PDFDocument({ margin: 35, size: "A4" });
     const buffers = [];
     
-    // Captura os pedaços do arquivo sendo gerado na memória
     doc.on('data', buffers.push.bind(buffers));
     doc.on('end', () => resolve(Buffer.concat(buffers)));
     doc.on('error', reject);
@@ -313,7 +352,7 @@ const buildInfracaoPdf = (dados) => {
     doc.font("Helvetica").text(`Data:   ${dataStr}`, 470, 35);
     doc.text(`Hora:   ${horaStr}`, 470, 47);
 
-    // --- 2. TÍTULO (Centralização Matemática e Garantida) ---
+    // --- 2. TÍTULO ---
     doc.moveDown(3);
     const titleStr = `Auto de Infração nº ${numAutoInfracao}`;
     doc.font("Helvetica-Bold").fontSize(11);
@@ -323,7 +362,7 @@ const buildInfracaoPdf = (dados) => {
     
     doc.moveDown(1.5);
 
-    // --- 3. TABELA PRINCIPAL (UNIFICADA CONFORME IMAGEM) ---
+    // --- 3. TABELA PRINCIPAL ---
     let b1Y = doc.y;
     let rowH = 16;
     let pad = 4.5;
@@ -348,7 +387,32 @@ const buildInfracaoPdf = (dados) => {
     doc.moveTo(35, b1Y + rowH * 4).lineTo(560, b1Y + rowH * 4).stroke();
 
     let yRowIA = b1Y + rowH * 4;
-    doc.font("Helvetica").fontSize(9).text(texto_final, 40, yRowIA + dynamicPad, { align: "justify", width: 515, lineGap: 2 });
+    
+    // Suporte para **negrito** inline na descrição da infração em PDF
+    const textParts = texto_final.split(/\*\*(.*?)\*\*/g);
+    const validTextParts = textParts.map((part, index) => ({
+      text: part,
+      bold: index % 2 !== 0
+    })).filter(p => p.text !== "");
+
+    if (validTextParts.length === 0) {
+       doc.font("Helvetica").fontSize(9).text(" ", 40, yRowIA + dynamicPad, { align: "justify", width: 515, lineGap: 2 });
+    } else {
+       validTextParts.forEach((partObj, idx) => {
+         doc.font(partObj.bold ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+         const isLast = idx === validTextParts.length - 1;
+         const options = { align: "justify", width: 515, lineGap: 2, continued: !isLast };
+         
+         // Apenas o primeiro item precisa das coordenadas iniciais absolutas X e Y.
+         // Os próximos usam 'continued: true' e acompanham a fluidez do texto.
+         if (idx === 0) {
+           doc.text(partObj.text, 40, yRowIA + dynamicPad, options);
+         } else {
+           doc.text(partObj.text, options);
+         }
+       });
+    }
+
     let endRowIA = doc.y + dynamicPad;
     doc.moveTo(35, endRowIA).lineTo(560, endRowIA).stroke(); 
 

@@ -4,7 +4,6 @@ import {
   Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File,
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, ChevronDown, ChevronUp, MessageSquare
 } from "lucide-react";
-import { jsPDF } from "jspdf";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "bypass" | "clandestina" | "la_padronizada" | "la_cadastral" | "prorrogacao";
