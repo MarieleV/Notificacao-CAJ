@@ -103,6 +103,152 @@ function businessDaysBetween(start: Date, end: Date): number {
   return count;
 }
 
+// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
+
+function MonthYearRangePicker({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
+  const [startVal, setStartVal] = useState<number | null>(null);
+  const [endVal, setEndVal] = useState<number | null>(null);
+  const [hoverVal, setHoverVal] = useState<number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const parseValue = (valStr: string) => {
+    const parts = valStr.split(" a ");
+    const parsePart = (p: string) => {
+      if (!p) return null;
+      const [mStr, yStr] = p.split("/");
+      if (!mStr || !yStr) return null;
+      const mIdx = MONTHS_SHORT.findIndex((m) => m.toLowerCase() === mStr.toLowerCase());
+      if (mIdx === -1) return null;
+      return parseInt(yStr) * 100 + mIdx;
+    };
+    return { start: parsePart(parts[0]), end: parts.length > 1 ? parsePart(parts[1]) : null };
+  };
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      const parsed = parseValue(value);
+      setStartVal(parsed.start);
+      setEndVal(parsed.end);
+      setViewYear(parsed.start ? Math.floor(parsed.start / 100) : new Date().getFullYear());
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleMonthClick = (monthIdx: number) => {
+    const val = viewYear * 100 + monthIdx;
+    if (!startVal || (startVal && endVal)) {
+      setStartVal(val);
+      setEndVal(null);
+    } else {
+      if (val < startVal) {
+        setEndVal(startVal);
+        setStartVal(val);
+      } else {
+        setEndVal(val);
+      }
+    }
+  };
+
+  const formatDisplay = (val: number) => {
+    const y = Math.floor(val / 100);
+    const m = val % 100;
+    return `${MONTHS_SHORT[m]}/${y}`;
+  };
+
+  const handleConfirm = () => {
+    if (startVal && endVal) {
+      onChange(`${formatDisplay(startVal)} a ${formatDisplay(endVal)}`);
+    } else if (startVal) {
+      onChange(formatDisplay(startVal));
+    } else {
+      onChange("");
+    }
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setStartVal(null);
+    setEndVal(null);
+  };
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all text-left ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20 bg-[#eef6ff]" : "border-[#c3ddf8] bg-[#eef6ff]"
+        } ${value ? "text-[#0b1e35] font-medium" : "text-gray-500"}`}
+      >
+        <span className="truncate block flex-1">{value || placeholder}</span>
+        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={() => setViewYear((y) => y - 1)} className="p-1.5 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="font-bold text-sm text-[#0b1e35]">{viewYear}</span>
+            <button type="button" onClick={() => setViewYear((y) => y + 1)} className="p-1.5 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 mb-3" onMouseLeave={() => setHoverVal(null)}>
+            {MONTHS_SHORT.map((m, idx) => {
+              const val = viewYear * 100 + idx;
+              const isStart = startVal === val;
+              const isEnd = endVal === val;
+              const isSelected = isStart || isEnd;
+              const isBetween = startVal && endVal && val > startVal && val < endVal;
+              const isHover = startVal && !endVal && hoverVal && ((val > startVal && val <= hoverVal) || (val >= hoverVal && val < startVal));
+
+              let baseClass = "px-2 py-2 rounded-md text-xs font-medium transition-colors text-center cursor-pointer ";
+              if (isSelected) baseClass += "bg-[#1a5fa8] text-white shadow-sm";
+              else if (isBetween || isHover) baseClass += "bg-[#eef6ff] text-[#1a5fa8]";
+              else baseClass += "text-gray-600 hover:bg-gray-100";
+
+              return (
+                <div key={m} onClick={() => handleMonthClick(idx)} onMouseEnter={() => setHoverVal(val)} className={baseClass}>
+                  {m}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-red-500 transition-colors">
+              Limpar
+            </button>
+            <button type="button" onClick={handleConfirm} disabled={!startVal} className="text-xs font-bold text-white bg-[#1a5fa8] hover:bg-[#154d8a] px-3 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
 
 function MonthYearPicker({
@@ -951,11 +1097,10 @@ export function OuvidoriaManager() {
                 {showMesesSemAcesso && (
                   <div>
                     <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
-                    <input 
+                    <MonthYearRangePicker 
                       value={mesesSemAcesso} 
-                      onChange={(e) => setMesesSemAcesso(e.target.value)} 
+                      onChange={setMesesSemAcesso} 
                       placeholder="Ex: Jan/2026 a Mar/2026" 
-                      className="w-full px-3 py-2 border border-[#c3ddf8] rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-[#eef6ff] transition-all" 
                     />
                   </div>
                 )}
