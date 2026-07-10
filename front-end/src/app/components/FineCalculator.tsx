@@ -88,7 +88,157 @@ function labelFullDate(s: string): string {
     .replace(".", "");
 }
 
-// ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
+// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
+
+// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
+
+function MonthYearRangePicker({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
+  const [startVal, setStartVal] = useState<number | null>(null);
+  const [endVal, setEndVal] = useState<number | null>(null);
+  const [hoverVal, setHoverVal] = useState<number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const parseValue = (valStr: string) => {
+    if (!valStr) return { start: null, end: null };
+    const parts = valStr.split(" a ");
+    const parsePart = (p: string) => {
+      if (!p) return null;
+      const parsed = parseMonthYear(p);
+      if (!parsed) return null;
+      return parsed.getFullYear() * 100 + parsed.getMonth();
+    };
+    return { start: parsePart(parts[0]), end: parts.length > 1 ? parsePart(parts[1]) : null };
+  };
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      const parsed = parseValue(value);
+      setStartVal(parsed.start);
+      setEndVal(parsed.end);
+      setViewYear(parsed.start ? Math.floor(parsed.start / 100) : new Date().getFullYear());
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleMonthClick = (monthIdx: number) => {
+    const val = viewYear * 100 + monthIdx;
+    if (!startVal || (startVal && endVal)) {
+      setStartVal(val);
+      setEndVal(null);
+    } else {
+      if (val < startVal) {
+        setEndVal(startVal);
+        setStartVal(val);
+      } else {
+        setEndVal(val);
+      }
+    }
+  };
+
+  const formatNumericDisplay = (val: number) => {
+    const y = Math.floor(val / 100);
+    const m = String((val % 100) + 1).padStart(2, "0");
+    return `${m}/${y}`;
+  };
+
+  const handleConfirm = () => {
+    if (startVal && endVal) {
+      onChange(`${formatNumericDisplay(startVal)} a ${formatNumericDisplay(endVal)}`);
+    } else if (startVal) {
+      onChange(formatNumericDisplay(startVal));
+    } else {
+      onChange("");
+    }
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setStartVal(null);
+    setEndVal(null);
+  };
+
+  const displayLabel = value ? value.split(" a ").map(v => labelMonth(v)).join(" até ") : "";
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all text-left ${
+          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20 bg-[#eef6ff]" : "border-gray-200 bg-white hover:border-[#1a5fa8]"
+        } ${value ? "text-[#0b1e35] font-medium" : "text-gray-500"}`}
+      >
+        <span className="truncate block flex-1">{value ? displayLabel : placeholder}</span>
+        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 top-full right-0 lg:left-0 lg:right-auto mt-1 w-[220px] bg-white border border-gray-200 rounded-lg shadow-xl p-2.5">
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setViewYear((y) => y - 1)} className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
+              <ChevronLeft size={14} />
+            </button>
+            <span className="font-bold text-sm text-[#0b1e35]">{viewYear}</span>
+            <button type="button" onClick={() => setViewYear((y) => y + 1)} className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 mb-2" onMouseLeave={() => setHoverVal(null)}>
+            {MONTHS_SHORT.map((m, idx) => {
+              const val = viewYear * 100 + idx;
+              const isStart = startVal === val;
+              const isEnd = endVal === val;
+              const isSelected = isStart || isEnd;
+              const isBetween = startVal && endVal && val > startVal && val < endVal;
+              const isHover = startVal && !endVal && hoverVal && ((val > startVal && val <= hoverVal) || (val >= hoverVal && val < startVal));
+
+              let baseClass = "py-1.5 rounded-md text-[11px] font-medium transition-colors text-center cursor-pointer ";
+              if (isSelected) baseClass += "bg-[#1a5fa8] text-white shadow-sm";
+              else if (isBetween || isHover) baseClass += "bg-[#eef6ff] text-[#1a5fa8]";
+              else baseClass += "text-gray-600 hover:bg-gray-100";
+
+              return (
+                <div key={m} onClick={() => handleMonthClick(idx)} onMouseEnter={() => setHoverVal(val)} className={baseClass}>
+                  {m}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-gray-100 pt-2 mt-1">
+            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-red-500 transition-colors">
+              Limpar
+            </button>
+            <button type="button" onClick={handleConfirm} disabled={!startVal} className="text-xs font-bold text-white bg-[#1a5fa8] hover:bg-[#154d8a] px-3 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componente: Seletor de Mês/Ano Simples ──────────────────────────────────
 
 function MonthYearPicker({
   value,
@@ -332,7 +482,6 @@ const VIGENCIAS_AGUA = [
   "01/03/2023 a 29/02/2024"
 ];
 
-
 const VIGENCIAS_K1 = [
   "15/07/2025 Atual",
   "20/01/2023 a 14/07/2025"
@@ -520,9 +669,8 @@ export function FineCalculator() {
     },
   ]);
 
-  // Gerador de período
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd] = useState("");
+  // Gerador de período (Range Picker)
+  const [periodRange, setPeriodRange] = useState("");
 
   // Campos complementares do texto
   const [aiNumber, setAiNumber] = useState("");
@@ -572,18 +720,15 @@ export function FineCalculator() {
     }]);
   }
 
-  function handleGeneratePeriod() {
-    const start = parseMonthYear(periodStart);
-    const end = parseMonthYear(periodEnd);
+  function handleGeneratePeriod(rangeVal: string) {
+    if (!rangeVal) return;
 
-    if (!start || !end) {
-      alert("Formato de data inválido. Use o padrão MM/AAAA.");
-      return;
-    }
-    if (start > end) {
-      alert("A data de início deve ser anterior ou igual à data de fim.");
-      return;
-    }
+    // Se tiver " a ", pega os dois. Se for só um mês, o start e end são iguais.
+    const parts = rangeVal.split(" a ");
+    const start = parseMonthYear(parts[0]);
+    const end = parts.length > 1 ? parseMonthYear(parts[1]) : start;
+
+    if (!start || !end || start > end) return;
 
     const generatedRows: IrregularRow[] = [];
     let current = new Date(start);
@@ -611,16 +756,12 @@ export function FineCalculator() {
       const filteredRows = generatedRows.filter(r => !existingMonths.includes(r.monthYear));
       return [...prev, ...filteredRows];
     });
-
-    setPeriodStart("");
-    setPeriodEnd("");
   }
 
   function removeRow(id: number) {
     setRows((p) => p.filter((r) => r.id !== id));
   }
 
-  // Campos que recebem preenchimento automático a partir da 1ª linha
   const AUTOFILL_FIELDS: (keyof IrregularRow)[] = [
     "consumption",
     "irregularConsumption",
@@ -644,9 +785,6 @@ export function FineCalculator() {
     );
   }
 
-  // Ao sair do campo (blur) da 1ª linha, replica o valor final digitado para as
-  // linhas subsequentes que ainda estão vazias nesse campo. Linhas já preenchidas
-  // (manual ou automaticamente) não são sobrescritas, permitindo edição livre.
   function cascadeFillFromFirstRow(field: keyof IrregularRow) {
     if (!AUTOFILL_FIELDS.includes(field)) return;
     setRows((p) => {
@@ -893,7 +1031,7 @@ export function FineCalculator() {
         <div className="p-8 max-w-5xl mx-auto space-y-8 w-full">
 
           {/* ── Bloco 2A: Lançamento Água ───────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Plus size={18} className="text-[#1a5fa8]" />
@@ -903,18 +1041,15 @@ export function FineCalculator() {
                 </div>
               </div>
 
-              {/* Gerador de Período */}
-              <div className="flex items-center gap-2 bg-[#f8fafe] p-1.5 rounded-lg border border-[#dce9f7]">
-                <MonthYearPicker value={periodStart} onChange={setPeriodStart} placeholder="Início" />
-                <span className="text-gray-400 text-xs font-medium">até</span>
-                <MonthYearPicker value={periodEnd} onChange={setPeriodEnd} placeholder="Fim" />
-                <button
-                  onClick={handleGeneratePeriod}
-                  disabled={periodStart.length < 7 || periodEnd.length < 7}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-300 text-white rounded-md text-xs font-semibold transition-all shadow-sm"
-                >
-                  <RefreshCw size={12} /> Gerar
-                </button>
+              <div className="w-full max-w-[240px]">
+                <MonthYearRangePicker 
+                  value={periodRange} 
+                  onChange={(val) => {
+                    setPeriodRange(val);
+                    if (val) handleGeneratePeriod(val); // Aciona a geração automaticamente ao Confirmar
+                  }} 
+                  placeholder="Adicione um perído..." 
+                />
               </div>
             </div>
 
