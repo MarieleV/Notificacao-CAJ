@@ -628,10 +628,35 @@ export function OuvidoriaManager() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    doc.text(stripBoldMarkers(generatedText), 10, 10, { maxWidth: 190 });
-    doc.save(`Parecer_${tipoCaso}_${numProcesso}.pdf`);
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_parecer_pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          texto_final: generatedText,
+          numeroProcesso: numProcesso || matricula,
+          tipoCaso: tipoCaso,
+          decisao: decisao 
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erro ao gerar PDF no servidor.");
+
+      // Transforma a resposta binária em um Blob para download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Parecer_${tipoCaso}_${numProcesso || matricula}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao baixar o arquivo PDF pelo servidor. Certifique-se de que o backend foi atualizado.");
+    }
   };
 
   const handleDownloadWord = async () => {
