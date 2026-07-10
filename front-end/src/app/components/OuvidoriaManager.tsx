@@ -884,7 +884,7 @@ export function OuvidoriaManager() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
-                  <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Ex: protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>

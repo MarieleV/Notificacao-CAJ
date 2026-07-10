@@ -895,7 +895,7 @@ export function FineCalculator() {
             <h1 className="text-[#0b1e35] font-semibold text-lg">Cálculo de Consumo Irregular</h1>
           </div>
           <p className="text-gray-500 text-sm mt-0.5">
-            Apuração do valor correto vs. cobrado antes da regularização | base para notificação e lançamento
+            Apuração do valor correto vs. cobrado antes da regularização
           </p>
         </div>
         
@@ -1326,7 +1326,7 @@ export function FineCalculator() {
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
               <ClipboardList size={18} className="text-[#1a5fa8]" />
               <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo (Correspondente aos Meses de Irregularidade)</h2>
+                <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo - Correspondente aos Meses de Irregularidade</h2>
                 <p className="text-gray-400 text-xs mt-0.5">Base para lançamento financeiro ou notificação extrajudicial</p>
               </div>
             </div>
@@ -1481,7 +1481,7 @@ export function FineCalculator() {
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all shadow"
                 >
                   <RefreshCw size={14} />
-                  Gerar / Atualizar Texto
+                  Gerar Texto
                 </button>
               </div>
 
