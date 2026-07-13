@@ -1568,16 +1568,29 @@ export function OuvidoriaManager() {
                     </div>
                   )}
 
-                  {/* Passo 2 - Anexos */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700">2. Anexos ao Prot. de Recurso no Sansys - 3773</span>
-                    </div>
-                    <div className="p-4">
-                      <ul className="list-disc pl-4 text-xs text-gray-600 space-y-1">
-                        <li>Anexar pdf da resposta do Recurso; <strong className="text-red-600">Sempre!</strong></li>
-                        <li>Anexar pdf da fatura corrigida; <strong className="text-red-600">Apenas casos com retorno por Telefone/Whatsapp</strong></li>
-                      </ul>
+                  {/* Passo 2 - Anexos (Estilo Post-it / Lembrete) */}
+                  <div className="bg-amber-50 border border-amber-200 border-l-4 border-l-amber-500 rounded-lg p-4 shadow-sm relative">
+                    <div className="flex items-start gap-3">
+                      <FileText size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="block text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2">
+                          Lembrete Importante: Anexos no Sansys - 3773
+                        </span>
+                        <ul className="list-disc pl-4 text-xs text-amber-900 space-y-2">
+                          <li>
+                            Anexar PDF da resposta do Recurso{' '}
+                            <strong className="text-red-700 bg-red-100/80 border border-red-200 px-1.5 py-0.5 rounded ml-1">
+                            Em todos os casos, mesmo que não haja alteração de fatura 
+                            </strong>
+                          </li>
+                          <li>
+                            Anexar PDF da fatura corrigida{' '}
+                            <strong className="text-red-700 bg-red-100/80 border border-red-200 px-1.5 py-0.5 rounded ml-1">
+                              Apenas casos de retorno por Telefone
+                            </strong>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
 
@@ -1598,9 +1611,19 @@ export function OuvidoriaManager() {
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
                         <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
                       </div>
-                      <div className="p-4">
+                      {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
+                      <div className="p-4 space-y-3">
+                        <p className="text-[10px] text-amber-600"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
+
                         <EditableCopyBlock defaultText={`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`} />
-                        <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
+                    
+                        {/* NOVA MENSAGEM INFORMATIVA AZUL */}
+                        <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
+                          <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
+                          <span className="text-[10px] font-medium text-[#1a5fa8]">
+                            Não esquecer de notificar o analista do auto de infração.
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1611,9 +1634,19 @@ export function OuvidoriaManager() {
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
                         <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
                       </div>
-                      <div className="p-4">
+                      {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
+                      <div className="p-4 space-y-3">
+                        <p className="text-[10px] text-amber-600"><strong>Atenção: </strong>Lembre-se de anexar a fatura (se houver alteração).</p>
+
                         <EditableCopyBlock defaultText={`TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde Sr./Sra. ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${stripBoldMarkers(generatedText) || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`} />
-                        <p className="text-[10px] text-gray-500 mt-2">Lembre-se de anexar a fatura (se houver alteração).</p>
+                                                      
+                        {/* NOVA MENSAGEM INFORMATIVA AZUL */}
+                        <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
+                          <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
+                          <span className="text-[10px] font-medium text-[#1a5fa8]">
+                            Solicitar confirmação de entrega e leitura no e-mail - <strong>antes de enviar.</strong>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1622,9 +1655,9 @@ export function OuvidoriaManager() {
                   {(canalResposta === "telefone" || canalResposta === "ambos") && (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 - <strong className="text-red-600">Para atenção ao setor de atendimento</strong></span>
+                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073</span>
                       </div>
-                      <div className="p-4">
+                      <div className="p-4 space-y-3">
                         <div className="mb-3">
                           <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nº Prot. Contato Ativo</label>
                           <input 
@@ -1634,9 +1667,17 @@ export function OuvidoriaManager() {
                             className="w-1/3 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8]"
                           />
                         </div>
+                        <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Serve para priorizar cód. 1170: para contato ativo do Retorno de Recurso (quando canal de retorno por Telefone/Whatsapp)</p>
                         <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para abertura:</span>
                         <EditableCopyBlock defaultText={`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`} />
-                        <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Serve para priorizar cód. 1170: para contato ativo do Retorno de Recurso (quando canal de retorno por Telefone/Whatsapp)</p>
+                        
+                        {/* NOVA MENSAGEM INFORMATIVA AZUL */}
+                        <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
+                          <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
+                          <span className="text-[10px] font-medium text-[#1a5fa8]">
+                            <strong>Para atenção ao setor de atendimento - </strong>não esquecer de anexar a fatura, se houver alteração.
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
