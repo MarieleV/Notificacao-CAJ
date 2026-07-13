@@ -504,8 +504,68 @@ function DatePicker({
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+// ─── Componente: Bloco Editável e Copiável (Guia Sansys) ──────────────────────
+function EditableCopyBlock({ defaultText }: { defaultText: string }) {
+  const [copied, setCopied] = useState(false);
+  const [text, setText] = useState(defaultText);
+  const [isDirty, setIsDirty] = useState(false);
+  
+  useEffect(() => {
+    // Se o usuário não editou manualmente, atualiza o texto se as variáveis (processo, nome...) mudarem
+    if (!isDirty) {
+      setText(defaultText);
+    }
+  }, [defaultText, isDirty]);
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleReset = () => {
+    setIsDirty(false);
+    setText(defaultText);
+  };
+
+  // Calcula a altura da caixa baseada na quantidade de linhas (mínimo de 3, máximo de 15)
+  const rowCount = text.split('\n').length;
+  const displayRows = rowCount > 15 ? 15 : Math.max(rowCount, 3);
+
+  return (
+    <div className="p-3 bg-gray-50 rounded-lg text-xs font-mono border border-gray-200 focus-within:border-[#1a5fa8] focus-within:ring-1 focus-within:ring-[#1a5fa8]/20 focus-within:bg-white transition-all shadow-sm">
+      <div className="flex justify-end mb-2 gap-4">
+        {isDirty && (
+          <button 
+            onClick={handleReset} 
+            className="text-[10px] text-amber-600 hover:underline flex items-center font-bold"
+          >
+            Desfazer Edição
+          </button>
+        )}
+        <button 
+          onClick={handleCopy} 
+          className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1 font-bold"
+        >
+          {copied ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12}/>}
+          {copied ? "Copiado!" : "Copiar"}
+        </button>
+      </div>
+      
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setIsDirty(true);
+        }}
+        rows={displayRows}
+        className="w-full bg-transparent border-none resize-y focus:outline-none text-gray-700 leading-relaxed"
+      />
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export function OuvidoriaManager() {
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<"idle" | "generated">("idle");
@@ -1502,28 +1562,7 @@ export function OuvidoriaManager() {
                       <div className="p-4 space-y-3">
                         <div>
                           <span className="text-[10px] font-bold text-gray-500 mb-1 block">Para geração do cód 10082 (ou cancelamento 10024):</span>
-                          
-                          {/* Container cinza com o botão posicionado no topo à direita */}
-                          <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
-                            <div className="flex justify-end mb-2">
-                              <button 
-                                onClick={() => {
-                                  copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${stripBoldMarkers(getParte2Text(false))}`);
-                                  setCopied10082(true);
-                                  setTimeout(() => setCopied10082(false), 2000);
-                                }} 
-                                className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                              >
-                                {copied10082 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                                {copied10082 ? "Copiado!" : "Copiar"}
-                              </button>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
-                              <div className="pt-1"><strong>Descrição:</strong> {renderBoldInline(getParte2Text(false))}</div>
-                            </div>
-                          </div>
+                          <EditableCopyBlock defaultText={`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${stripBoldMarkers(getParte2Text(false))}`} />
                         </div>
                       </div>
                     </div>
@@ -1543,33 +1582,13 @@ export function OuvidoriaManager() {
                   </div>
 
                   {/* Passo 3 - Encerramento do 3773 */}
-
                   <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                     <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
                       <span className="text-xs font-bold text-gray-700">3. Encerramento no Sansys - 3773</span>
                     </div>
                     <div className="p-4">
                       <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
-                      
-                      {/* Botão posicionado DENTRO da div cinza usando flex */}
-                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
-                        <div className="flex justify-end mb-2">
-                          <button 
-                              onClick={() => {
-                              // Alterado para \n\n para dar o espaço de uma linha na cópia
-                              copyToClipboardSansys(`${getParte1Text()}\n\n${stripBoldMarkers(getParte2Text(true))}`);
-                              setCopied3773(true);
-                              setTimeout(() => setCopied3773(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copied3773 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copied3773 ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>
-                        {/* Alterado para '\n\n' para mostrar o espaço de uma linha na tela */}
-                        {getParte1Text()}{'\n\n'}{renderBoldInline(getParte2Text(true))}
-                      </div>
+                      <EditableCopyBlock defaultText={`${getParte1Text()}\n${stripBoldMarkers(getParte2Text(true))}`} />
                     </div>
                   </div>
 
@@ -1580,30 +1599,9 @@ export function OuvidoriaManager() {
                         <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
                       </div>
                       <div className="p-4">
-                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
-                        {/* Div flex para separar Solicitante (esquerda) e Botão (direita) */}
-                        <div className="flex justify-between items-start">
-                          <div><strong>Solicitante:</strong> Recurso Prot {numProcesso || "[PROCESSO]"}</div>
-                          <button 
-                            onClick={() => {
-                              copyToClipboardSansys(`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`);
-                              setCopied426(true);
-                              setTimeout(() => setCopied426(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copied426 ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copied426 ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>                     
-                        <div className="pt-1">
-                          <strong>Descrição:</strong><br/>
-                          Cliente notificado{statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. {numAutoInfracao || "[A.I.]"}.<br/>
-                          Novo prazo para padronização vence em: {get60BusinessDaysFromToday()}.
-                        </div>
+                        <EditableCopyBlock defaultText={`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição:\nCliente notificado${statusMulta426 === "aplicada" ? " e multado" : ""}, apresentou recurso ref. A.I. ${numAutoInfracao || "[A.I.]"}.\nNovo prazo para padronização vence em: ${get60BusinessDaysFromToday()}.`} />
+                        <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
                       </div>
-                      <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
-                    </div>
                     </div>
                   )}
 
@@ -1614,29 +1612,7 @@ export function OuvidoriaManager() {
                         <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
                       </div>
                       <div className="p-4">
-                        <div className="flex justify-between items-center mb-1"></div>
-                        
-                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono whitespace-pre-wrap">
-                          <div className="flex justify-end mb-2">
-                          <button 
-                            onClick={() => {
-                              copyToClipboardSansys(
-                                `TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde Sr./Sra. ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${stripBoldMarkers(generatedText) || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`
-                              );
-                              setCopiedEmail(true);
-                              setTimeout(() => setCopiedEmail(false), 2000);
-                            }} 
-                            className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"
-                          >
-                            {copiedEmail ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10}/>}
-                            {copiedEmail ? "Copiado!" : "Copiar"}
-                          </button>
-                        </div>
-                          <strong>TÍTULO:</strong> Retorno de Recurso<br/><br/>
-                          Bom dia/Boa tarde Sr./Sra. {morador || "[CLIENTE]"},<br/><br/>
-                          Encaminhamos retorno referente recurso apresentado, conforme segue:<br/><br/>
-                          <span className="text-amber-600 italic">{generatedText ? renderBoldInline(generatedText) : '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}</span>
-                        </div>
+                        <EditableCopyBlock defaultText={`TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde Sr./Sra. ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${stripBoldMarkers(generatedText) || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`} />
                         <p className="text-[10px] text-gray-500 mt-2">Lembre-se de anexar a fatura (se houver alteração).</p>
                       </div>
                     </div>
@@ -1649,7 +1625,7 @@ export function OuvidoriaManager() {
                         <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073 - <strong className="text-red-600">Para atenção ao setor de atendimento</strong></span>
                       </div>
                       <div className="p-4">
-                        <div className="mb-2">
+                        <div className="mb-3">
                           <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nº Prot. Contato Ativo</label>
                           <input 
                             value={protContatoAtivo} 
@@ -1658,14 +1634,8 @@ export function OuvidoriaManager() {
                             className="w-1/3 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#1a5fa8]"
                           />
                         </div>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[10px] font-bold text-gray-500">Texto para abertura:</span>
-                          <button onClick={() => copyToClipboardSansys(`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`)} className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1"><Copy size={10}/> Copiar</button>
-                        </div>
-                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono space-y-1">
-                          <div><strong>Solicitante:</strong> Contato Ativo Prot {protContatoAtivo || "[PROT CONTATO]"}</div>
-                          <div className="pt-1"><strong>Descrição:</strong> Por gentileza, efetuar o Contato Ativo, prot. {protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso {numProcesso || "[RECURSO]"}.</div>
-                        </div>
+                        <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para abertura:</span>
+                        <EditableCopyBlock defaultText={`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`} />
                         <p className="text-[10px] text-amber-600 mt-2"><strong>Atenção:</strong> Serve para priorizar cód. 1170: para contato ativo do Retorno de Recurso (quando canal de retorno por Telefone/Whatsapp)</p>
                       </div>
                     </div>
