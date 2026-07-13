@@ -11,7 +11,6 @@ type DefesaType = "com_defesa" | "sem_defesa";
 
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 
-// Apagar se der errado
 function getBusinessDaysDifference(date1: string, date2: string): number {
   const d1 = parseFullDate(date1);
   const d2 = parseFullDate(date2);
@@ -30,7 +29,7 @@ function getBusinessDaysDifference(date1: string, date2: string): number {
   }
   return count;
 }
-// -------------------------------------
+
 function get60BusinessDaysFromToday(): string {
   const d = new Date();
   let added = 0;
@@ -101,6 +100,27 @@ function businessDaysBetween(start: Date, end: Date): number {
   }
 
   return count;
+}
+
+// Adicione a função de formatação de nome
+function formatName(name: string): string {
+  if (!name) return "";
+  
+  // Palavras que não devem ser capitalizadas no meio do nome (opcional, mas recomendado)
+  const lowerCaseWords = ["da", "de", "do", "das", "dos", "e"];
+  
+  return name
+    .toLowerCase()
+    .split(" ")
+    .map((word, index) => {
+      // Se for uma das palavras de ligação e não for a primeira palavra, mantém minúscula
+      if (index !== 0 && lowerCaseWords.includes(word)) {
+        return word;
+      }
+      // Capitaliza a primeira letra da palavra
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
 }
 
 // ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
@@ -863,7 +883,12 @@ export function OuvidoriaManager() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
-                  <input value={morador} onChange={(e) => setMorador(e.target.value)} placeholder="Ex: Nome Completo do Usuário" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  <input 
+                    value={morador} 
+                    onChange={(e) => setMorador(formatName(e.target.value))} 
+                    placeholder="Ex: Nome Completo do Usuário" 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
