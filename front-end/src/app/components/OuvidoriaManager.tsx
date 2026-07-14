@@ -11,6 +11,48 @@ type DefesaType = "com_defesa" | "sem_defesa";
 
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 
+// Lista oficial de Feriados e Fins de Semana extraída da planilha
+const FERIADOS_E_FDS = [
+  "2025-08-30", "2025-08-31", "2025-09-06", "2025-09-07", "2025-09-13", "2025-09-14", "2025-09-20", "2025-09-21",
+  "2025-09-27", "2025-09-28", "2025-10-04", "2025-10-05", "2025-10-11", "2025-10-12", "2025-10-18", "2025-10-19",
+  "2025-10-25", "2025-10-26", "2025-11-01", "2025-11-02", "2025-11-08", "2025-11-09", "2025-11-15", "2025-11-16",
+  "2025-11-20", "2025-11-21", "2025-11-22", "2025-11-23", "2025-11-29", "2025-11-30", "2025-12-06", "2025-12-07",
+  "2025-12-13", "2025-12-14", "2025-12-20", "2025-12-21", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-25",
+  "2025-12-26", "2025-12-27", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-01", "2026-01-02",
+  "2026-01-03", "2026-01-04", "2026-01-10", "2026-01-11", "2026-01-17", "2026-01-18", "2026-01-24", "2026-01-25",
+  "2026-01-31", "2026-02-01", "2026-02-07", "2026-02-08", "2026-02-14", "2026-02-15", "2026-02-16", "2026-02-17",
+  "2026-02-21", "2026-02-22", "2026-02-28", "2026-03-01", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-14",
+  "2026-03-15", "2026-03-21", "2026-03-22", "2026-03-28", "2026-03-29", "2026-04-03", "2026-04-04", "2026-04-05",
+  "2026-04-11", "2026-04-12", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-25", "2026-04-26",
+  "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-09", "2026-05-10", "2026-05-16", "2026-05-17", "2026-05-23",
+  "2026-05-24", "2026-05-30", "2026-05-31", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07", "2026-06-13",
+  "2026-06-14", "2026-06-20", "2026-06-21", "2026-06-27", "2026-06-28", "2026-07-04", "2026-07-05", "2026-07-11",
+  "2026-07-12", "2026-07-18", "2026-07-19", "2026-07-25", "2026-07-26", "2026-08-01", "2026-08-02", "2026-08-08",
+  "2026-08-09", "2026-08-15", "2026-08-16", "2026-08-22", "2026-08-23", "2026-08-29", "2026-08-30", "2026-09-05",
+  "2026-09-06", "2026-09-07", "2026-09-12", "2026-09-13", "2026-09-19", "2026-09-20", "2026-09-26", "2026-09-27",
+  "2026-10-03", "2026-10-04", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-17", "2026-10-18", "2026-10-24",
+  "2026-10-25", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-07", "2026-11-08", "2026-11-14", "2026-11-15",
+  "2026-11-20", "2026-11-21", "2026-11-22", "2026-11-28", "2026-11-29", "2026-12-05", "2026-12-06", "2026-12-12",
+  "2026-12-13", "2026-12-19", "2026-12-20", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28",
+  "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02", "2027-01-03", "2027-01-09", "2027-01-10",
+  "2027-01-16", "2027-01-17", "2027-01-23", "2027-01-24", "2027-01-30", "2027-01-31", "2027-02-06", "2027-02-07",
+  "2027-02-08", "2027-02-09", "2027-02-13", "2027-02-14", "2027-02-20", "2027-02-21", "2027-02-27", "2027-02-28",
+  "2027-03-06", "2027-03-07", "2027-03-08", "2027-03-09", "2027-03-13", "2027-03-14", "2027-03-20", "2027-03-21",
+  "2027-03-26", "2027-03-27", "2027-03-28", "2027-04-03", "2027-04-04", "2027-04-10", "2027-04-11", "2027-04-17",
+  "2027-04-18", "2027-04-21", "2027-04-24", "2027-04-25", "2027-05-01", "2027-05-02", "2027-05-08", "2027-05-09",
+  "2027-05-15", "2027-05-16", "2027-05-22", "2027-05-23", "2027-05-27", "2027-05-28", "2027-05-29", "2027-05-30",
+  "2027-06-05", "2027-06-06", "2027-06-12", "2027-06-13", "2027-06-19", "2027-06-20", "2027-06-26", "2027-06-27",
+  "2027-07-03", "2027-07-04", "2027-07-10", "2027-07-11", "2027-07-17", "2027-07-18", "2027-07-24", "2027-07-25",
+  "2027-07-31", "2027-08-01", "2027-08-07", "2027-08-08", "2027-08-14", "2027-08-15", "2027-08-21", "2027-08-22",
+  "2027-08-28", "2027-08-29", "2027-09-04", "2027-09-05", "2027-09-06", "2027-09-07", "2027-09-11", "2027-09-12",
+  "2027-09-18", "2027-09-19", "2027-09-25", "2027-09-26", "2027-10-02", "2027-10-03", "2027-10-09", "2027-10-10",
+  "2027-10-11", "2027-10-12", "2027-10-16", "2027-10-17", "2027-10-23", "2027-10-24", "2027-10-30", "2027-10-31",
+  "2027-11-01", "2027-11-02", "2027-11-06", "2027-11-07", "2027-11-13", "2027-11-14", "2027-11-15", "2027-11-20",
+  "2027-11-21", "2027-11-27", "2027-11-28", "2027-12-04", "2027-12-05", "2027-12-11", "2027-12-12", "2027-12-18",
+  "2027-12-19", "2027-12-24", "2027-12-25", "2027-12-26", "2027-12-27", "2027-12-28", "2027-12-29", "2027-12-30",
+  "2027-12-31"
+];
+
 function getBusinessDaysDifference(date1: string, date2: string): number {
   const d1 = parseFullDate(date1);
   const d2 = parseFullDate(date2);
@@ -23,7 +65,17 @@ function getBusinessDaysDifference(date1: string, date2: string): number {
   let current = new Date(start);
   while (current < end) {
     current.setDate(current.getDate() + 1);
-    if (current.getDay() !== 0 && current.getDay() !== 6) { // Ignora Sábado e Domingo
+    
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
+    // Ignora Sábados, Domingos E os dias listados no array (Feriados/Emendas)
+    const isWeekend = current.getDay() === 0 || current.getDay() === 6;
+    const isFeriado = FERIADOS_E_FDS.includes(dateString);
+
+    if (!isWeekend && !isFeriado) {
       count++;
     }
   }
@@ -35,14 +87,24 @@ function get60BusinessDaysFromToday(): string {
   let added = 0;
   while (added < 60) {
     d.setDate(d.getDate() + 1);
-    if (d.getDay() !== 0 && d.getDay() !== 6) {
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
+    // Conta 60 dias para frente ignorando os feriados, sábados e domingos
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const isFeriado = FERIADOS_E_FDS.includes(dateString);
+
+    if (!isWeekend && !isFeriado) {
       added++;
     }
   }
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  const dayStr = String(d.getDate()).padStart(2, '0');
+  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+  const yearStr = d.getFullYear();
+  return `${dayStr}/${monthStr}/${yearStr}`;
 }
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -89,35 +151,34 @@ function businessDaysBetween(start: Date, end: Date): number {
   const current = new Date(start);
 
   while (current <= end) {
-    const day = current.getDay();
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
 
-    // ignora sábado e domingo
-    if (day !== 0 && day !== 6) {
+    const isWeekend = current.getDay() === 0 || current.getDay() === 6;
+    const isFeriado = FERIADOS_E_FDS.includes(dateString);
+
+    if (!isWeekend && !isFeriado) {
       count++;
     }
-
     current.setDate(current.getDate() + 1);
   }
-
   return count;
 }
 
-// Adicione a função de formatação de nome
 function formatName(name: string): string {
   if (!name) return "";
   
-  // Palavras que não devem ser capitalizadas no meio do nome (opcional, mas recomendado)
   const lowerCaseWords = ["da", "de", "do", "das", "dos", "e"];
   
   return name
     .toLowerCase()
     .split(" ")
     .map((word, index) => {
-      // Se for uma das palavras de ligação e não for a primeira palavra, mantém minúscula
       if (index !== 0 && lowerCaseWords.includes(word)) {
         return word;
       }
-      // Capitaliza a primeira letra da palavra
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(" ");
@@ -504,14 +565,14 @@ function DatePicker({
   );
 }
 
-// ─── Componente: Bloco Editável e Copiável (Guia Sansys) ──────────────────────
+// ─── Componente: Bloco Editável e Copiável com Altura Dinâmica (Guia Sansys) ───
 function EditableCopyBlock({ defaultText }: { defaultText: string }) {
   const [copied, setCopied] = useState(false);
   const [text, setText] = useState(defaultText);
   const [isDirty, setIsDirty] = useState(false);
   
   useEffect(() => {
-    // Se o usuário não editou manualmente, atualiza o texto se as variáveis (processo, nome...) mudarem
+    // Se o usuário ainda não editou manualmente, atualiza o texto se as variáveis mudarem
     if (!isDirty) {
       setText(defaultText);
     }
@@ -528,13 +589,15 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
     setText(defaultText);
   };
 
-  // Calcula a altura da caixa baseada na quantidade de linhas (mínimo de 3, máximo de 15)
-  const rowCount = text.split('\n').length;
-  const displayRows = rowCount > 15 ? 15 : Math.max(rowCount, 3);
+  // CALCULO DE ALTURA DINÂMICA:
+  // Conta quantas quebras de linha existem no texto atual.
+  // Garante que o mínimo seja 2 linhas (para textos curtinhos) e remove limites rígidos.
+  const lineCount = text.split('\n').length;
+  const dynamicRows = Math.max(lineCount, 2);
 
   return (
     <div className="p-3 bg-gray-50 rounded-lg text-xs font-mono border border-gray-200 focus-within:border-[#1a5fa8] focus-within:ring-1 focus-within:ring-[#1a5fa8]/20 focus-within:bg-white transition-all shadow-sm">
-      <div className="flex justify-end mb-2 gap-4">
+      <div className="flex justify-end mb-1.5 gap-4">
         {isDirty && (
           <button 
             onClick={handleReset} 
@@ -558,8 +621,8 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
           setText(e.target.value);
           setIsDirty(true);
         }}
-        rows={displayRows}
-        className="w-full bg-transparent border-none resize-y focus:outline-none text-gray-700 leading-relaxed"
+        rows={dynamicRows} // Aplica dinamicamente a quantidade exata de linhas do texto
+        className="w-full bg-transparent border-none resize-none focus:outline-none text-gray-700 leading-relaxed overflow-hidden"
       />
     </div>
   );
@@ -622,6 +685,7 @@ export function OuvidoriaManager() {
   const [statusMulta426, setStatusMulta426] = useState("aplicada");
   const [tipoIndeferido, setTipoIndeferido] = useState("padrao");
   const [protContatoAtivo, setProtContatoAtivo] = useState("");
+  const [faturaAlterada, setFaturaAlterada] = useState(false);
 
   // ─── LÓGICA DE CONDICIONAIS DE EXIBIÇÃO ───
   const isLeitura = tipoCaso === "leitura";
@@ -1511,6 +1575,17 @@ export function OuvidoriaManager() {
                       <option value="nao">Não</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Fatura Alterada?</label>
+                    <select 
+                      value={faturaAlterada ? "sim" : "nao"} 
+                      onChange={(e) => setFaturaAlterada(e.target.value === "sim")} 
+                      className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="nao">Não</option>
+                      <option value="sim">Sim</option>
+                    </select>
+                  </div>
                   {(decisao === "deferir" || decisao === "parcial") && (
                     <div>
                       <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Restituição de Multa?</label>
@@ -1554,16 +1629,34 @@ export function OuvidoriaManager() {
                 <div className="grid grid-cols-1 gap-4">
                   
                   {/* Passo 1 - Alteração de Fatura */}
-                  {(decisao === "deferir" || decisao === "parcial") && (
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  {faturaAlterada && (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden animate-fadeIn">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">1. Alteração de Fatura - Cód 10024 / 10082</span>
+                        <span className="text-xs font-bold text-gray-700">Alteração de Fatura - Cód 10024 / 10082</span>
                       </div>
                       <div className="p-4 space-y-3">
+                        
+                        {(decisao === "deferir" || decisao === "parcial") && (
+                          <p className="text-[10px] text-amber-600">
+                            <strong>Atenção:</strong> Somar 20 dias úteis para o vencimento da nova fatura após a data da decisão.
+                          </p>
+                        )}
+
                         <div>
                           <span className="text-[10px] font-bold text-gray-500 mb-1 block">Para geração do cód 10082 (ou cancelamento 10024):</span>
-                          <EditableCopyBlock defaultText={`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${stripBoldMarkers(getParte2Text(false))}`} />
+                          <EditableCopyBlock 
+                            defaultText={`Solicitante: Recurso Prot ${numProcesso || "[PROCESSO]"}\nDescrição: ${stripBoldMarkers(getParte2Text(false))}`} 
+                          />
                         </div>
+
+                        {/* MENSAGEM INFORMATIVA AZUL: Motivo do Cancelamento */}
+                        <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
+                          <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
+                          <span className="text-[10px] font-medium text-[#1a5fa8]">
+                            <strong>Motivo do Cancelamento:</strong> {decisao === "indeferir" ? "Reclamação Infundada/Improcedente" : "Alteração de código de serviço no Sansys"}
+                          </span>
+                        </div>
+
                       </div>
                     </div>
                   )}
@@ -1597,19 +1690,36 @@ export function OuvidoriaManager() {
                   {/* Passo 3 - Encerramento do 3773 */}
                   <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                     <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                      <span className="text-xs font-bold text-gray-700">3. Encerramento no Sansys - 3773</span>
+                      <span className="text-xs font-bold text-gray-700">Encerramento no Sansys - 3773</span>
                     </div>
-                    <div className="p-4">
-                      <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
-                      <EditableCopyBlock defaultText={`${getParte1Text()}\n${stripBoldMarkers(getParte2Text(true))}`} />
+                    <div className="p-4 space-y-4">
+                      
+                      {/* Texto Padrão para Encerrar */}
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para encerrar:</span>
+                        <EditableCopyBlock defaultText={`${getParte1Text()}\n${stripBoldMarkers(getParte2Text(true))}`} />
+                      </div>
+
+                      {/* NOVO: Bloco condicional para Desdobrar Contato Ativo */}
+                      {(canalResposta === "telefone" || canalResposta === "ambos") && (
+                        <div className="pt-2 border-t border-gray-100">
+                          <span className="text-[10px] font-bold text-[#1a5fa8] mb-1 flex items-center gap-1">
+                            <Clock size={12} /> Desdobrar o Contato Ativo - 1170
+                          </span>
+                          <EditableCopyBlock 
+                            defaultText={`Informar cliente Telefone: ${clienteTelefone || "[TELEFONE]"} sobre Retorno de Recurso ${numProcesso || "[PROCESSO]"}`} 
+                          />
+                        </div>
+                      )}
+
                     </div>
                   </div>
 
                   {/* Passo 4 - Geração Cód 426 */}
-                  {tipoCaso !== "la_cadastral" && (
+                  {tipoCaso !== "la_cadastral" && decisao !== "deferir" && (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                        <span className="text-xs font-bold text-gray-700">4. Geração cód. 426 – Prorrogação de prazo</span>
+                        <span className="text-xs font-bold text-gray-700">Geração cód. 426 – Prorrogação de prazo</span>
                       </div>
                       {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
                       <div className="p-4 space-y-3">
@@ -1632,7 +1742,7 @@ export function OuvidoriaManager() {
                   {(canalResposta === "email" || canalResposta === "ambos") && (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">5. Confecção de E-mail Resposta</span>
+                        <span className="text-xs font-bold text-gray-700">Confecção de E-mail Resposta</span>
                       </div>
                       {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
                       <div className="p-4 space-y-3">
@@ -1655,7 +1765,7 @@ export function OuvidoriaManager() {
                   {(canalResposta === "telefone" || canalResposta === "ambos") && (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                        <span className="text-xs font-bold text-gray-700">6. Abertura cód. 1073</span>
+                        <span className="text-xs font-bold text-gray-700">Abertura cód. 1073</span>
                       </div>
                       <div className="p-4 space-y-3">
                         <div className="mb-3">
