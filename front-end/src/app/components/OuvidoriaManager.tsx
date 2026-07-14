@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Copy, CheckCircle2,
   Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, ChevronDown, ChevronUp, MessageSquare
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, ChevronDown, ChevronUp, MessageSquare, Calculator, X
 } from "lucide-react";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
@@ -182,6 +182,34 @@ function formatName(name: string): string {
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(" ");
+}
+
+// Função Genérica para Calcular Prazos (Usada na Calculadora)
+function calculateEndDate(startDateStr: string, duration: number): string {
+  if (!startDateStr || !duration || isNaN(duration)) return "";
+  const d = parseFullDate(startDateStr);
+  if (!d) return "";
+
+  let added = 0;
+  while (added < duration) {
+    d.setDate(d.getDate() + 1);
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const isFeriado = FERIADOS_E_FDS.includes(dateString);
+
+    if (!isWeekend && !isFeriado) {
+      added++;
+    }
+  }
+  const dayStr = String(d.getDate()).padStart(2, '0');
+  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+  const yearStr = d.getFullYear();
+  return `${dayStr}/${monthStr}/${yearStr}`;
 }
 
 // ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
@@ -687,6 +715,30 @@ export function OuvidoriaManager() {
   const [protContatoAtivo, setProtContatoAtivo] = useState("");
   const [faturaAlterada, setFaturaAlterada] = useState(false);
 
+  // --- ESTADOS DA CALCULADORA DE PRAZOS ---
+  const [showCalculator, setShowCalculator] = useState(false);
+  const calculatorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutsideCalculator(event: MouseEvent) {
+      if (calculatorRef.current && !calculatorRef.current.contains(event.target as Node)) {
+        setShowCalculator(false);
+      }
+    }
+    if (showCalculator) {
+      document.addEventListener("mousedown", handleClickOutsideCalculator);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideCalculator);
+    };
+  }, [showCalculator]);
+  const [calcPrazo, setCalcPrazo] = useState<string>("15");
+  const [calcCustomPrazo, setCalcCustomPrazo] = useState<string>("");
+  const [calcDataInicial, setCalcDataInicial] = useState<string>("");
+
+  const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
+  const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
+
   // ─── LÓGICA DE CONDICIONAIS DE EXIBIÇÃO ───
   const isLeitura = tipoCaso === "leitura";
   const isServico = tipoCaso === "servico";
@@ -987,6 +1039,91 @@ export function OuvidoriaManager() {
             <h1 className="text-[#0b1e35] font-semibold text-lg">Análise de Processos e Ouvidoria</h1>
           </div>
           <p className="text-gray-500 text-sm mt-0.5">Gestão de Pareceres Locais e Determinísticos</p>
+        </div>
+
+        {/* BOTÃO DA CALCULADORA */}
+        <div ref={calculatorRef} className="relative">
+          <button 
+            onClick={() => setShowCalculator((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
+              showCalculator
+                ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]"
+                : "bg-white border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] shadow-sm"
+            }`}
+          >
+            <Calculator size={16} />
+            Calculadora de Dias Úteis
+          </button>
+
+          {/* ============================================================== */}
+          {/* MODAL: CALCULADORA DE DIAS ÚTEIS (UI PADRONIZADA) */}
+          {/* ============================================================== */}
+          {showCalculator && (
+            <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[380px] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden origin-top-right z-50 animate-slideUp">
+
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator size={18} className="text-[#1a5fa8]" />
+                  <h2 className="text-[#0b1e35] font-bold text-sm">Calculadora de Dias Úteis</h2>
+                </div>
+                <button onClick={() => setShowCalculator(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Campo Data Inicial */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data Inicial</label>
+                  <DatePicker value={calcDataInicial} onChange={setCalcDataInicial} placeholder="DD/MM/AAAA" />
+                </div>
+
+                {/* Seleção do Prazo */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prazo de Resposta</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select 
+                      value={calcPrazo} 
+                      onChange={(e) => setCalcPrazo(e.target.value)}
+                      className="col-span-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] transition-all"
+                    >
+                      <option value="15">15 dias úteis</option>
+                      <option value="30">30 dias úteis</option>
+                      <option value="45">45 dias úteis</option>
+                      <option value="60">60 dias úteis</option>
+                      <option value="90">90 dias úteis</option>
+                      <option value="X">X dias úteis (Personalizar)</option>
+                    </select>
+
+                    {calcPrazo === "X" && (
+                      <input 
+                        type="number" 
+                        min="1"
+                        value={calcCustomPrazo}
+                        onChange={(e) => setCalcCustomPrazo(e.target.value)}
+                        placeholder="Qtd. dias"
+                        className="col-span-2 w-full px-3 py-2 border border-[#1a5fa8] rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Resultado */}
+                <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
+                  <span className={`text-sm font-bold ${calcDataFinal ? "text-[#1a5fa8]" : "text-gray-400"}`}>
+                    {calcDataFinal || "--/--/----"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                 <button onClick={() => setShowCalculator(false)} className="px-5 py-2 bg-[#1a5fa8] text-white text-xs font-bold rounded-lg hover:bg-[#154d8a] transition-all">
+                   Entendido
+                 </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
