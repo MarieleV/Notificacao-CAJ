@@ -903,7 +903,7 @@ export function FineCalculator() {
         <div ref={panelRef} className="relative">
           <button
             onClick={() => setConfigOpen((v) => !v)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
               configOpen 
                 ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]"
                 : "bg-white border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] shadow-sm"
