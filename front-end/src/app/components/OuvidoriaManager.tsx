@@ -1839,16 +1839,10 @@ export function OuvidoriaManager() {
                         </span>
                         <ul className="list-disc pl-4 text-xs text-amber-900 space-y-2">
                           <li>
-                            Anexar PDF da resposta do Recurso{' '}
-                            <strong className="text-red-700 bg-red-100/80 border border-red-200 px-1.5 py-0.5 rounded ml-1">
-                            Em todos os casos, mesmo que não haja alteração de fatura 
-                            </strong>
+                            Anexar PDF da resposta do Recurso <strong className="text-red-700">em todos os casos, mesmo que não haja alteração de fatura.</strong>
                           </li>
                           <li>
-                            Anexar PDF da fatura corrigida{' '}
-                            <strong className="text-red-700 bg-red-100/80 border border-red-200 px-1.5 py-0.5 rounded ml-1">
-                              Apenas casos de retorno por Telefone
-                            </strong>
+                            Anexar PDF da fatura corrigida,<strong className="text-red-700"> apenas casos de retorno por telefone.</strong>
                           </li>
                         </ul>
                       </div>
