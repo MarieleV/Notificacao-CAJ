@@ -32,7 +32,7 @@ const formatTextToDocx = (text) => {
       return new TextRun({ 
         text: part, 
         bold: isPartBold, 
-        color: isRed ? "FF0000" : undefined, // Cor vermelha se for a frase de alerta
+        color: isRed ? "FF0000" : undefined, 
         font: "Arial", 
         size: 22 
       });
@@ -43,10 +43,11 @@ const formatTextToDocx = (text) => {
       textRuns.push(new TextRun({ text: " ", font: "Arial", size: 22 }));
     }
 
+    // O alinhamento JUSTIFY entra direto na raiz do parágrafo
     return new Paragraph({
       children: textRuns,
       spacing: { after: 120 },
-      alignment: AlignmentType.JUSTIFY
+      alignment: AlignmentType.JUSTIFY 
     });
   });
 };
@@ -108,12 +109,19 @@ const buildParecerPdf = (textoFinal) => {
           
           doc.font(partObj.bold ? "Helvetica-Bold" : "Helvetica")
              .fontSize(11)
-             .fillColor(partObj.isRed ? "red" : "black") // Aplica cor vermelha se for o alerta
-             .text(partObj.text, {
-               continued: !isLast,
-               align: "justify",
-               lineGap: isLast ? 2 : 0
-             });
+             .fillColor(partObj.isRed ? "red" : "black"); // Aplica cor vermelha se for o alerta
+
+          // O Segredo do PDFKit: O alinhamento só deve ser declarado no 1º fragmento de texto
+          const options = {
+            continued: !isLast,
+            lineGap: isLast ? 2 : 0
+          };
+
+          if (idx === 0) {
+            options.align = "justify";
+          }
+
+          doc.text(partObj.text, options);
         });
         
         // Retorna para a cor preta padrão após terminar a linha, por garantia
