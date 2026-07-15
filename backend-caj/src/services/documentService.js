@@ -25,7 +25,17 @@ const formatTextToDocx = (text) => {
       if (part === "") return null;
       // Índices ímpares são as palavras que estavam dentro dos **
       const isPartBold = isBoldLine || (index % 2 !== 0);
-      return new TextRun({ text: part, bold: isPartBold, font: "Arial", size: 22 });
+      
+      // NOVA REGRA: Se a parte for a frase de alerta, pinta de vermelho!
+      const isRed = part === "<adicionar fato novo ao processo>";
+
+      return new TextRun({ 
+        text: part, 
+        bold: isPartBold, 
+        color: isRed ? "FF0000" : undefined, // Cor vermelha se for a frase de alerta
+        font: "Arial", 
+        size: 22 
+      });
     }).filter(Boolean);
 
     // Garante espaçamento caso a linha seja vazia
@@ -82,13 +92,14 @@ const buildParecerPdf = (textoFinal) => {
       const safeLine = line.trim() === "" ? " " : line;
 
       if (safeLine === " ") {
-        doc.font("Helvetica").fontSize(11).text(" ", { lineGap: 2 });
+        doc.font("Helvetica").fontSize(11).fillColor("black").text(" ", { lineGap: 2 });
       } else {
         // Separa partes normais de partes em **negrito**
         const parts = safeLine.split(/\*\*(.*?)\*\*/g);
         const validParts = parts.map((part, index) => ({
           text: part,
-          bold: isBoldLine || (index % 2 !== 0)
+          bold: isBoldLine || (index % 2 !== 0),
+          isRed: part === "<adicionar fato novo ao processo>" // Identifica se é a frase de alerta
         })).filter(p => p.text !== "");
 
         // Desenha os pedaços na mesma linha (continued: true)
@@ -97,12 +108,16 @@ const buildParecerPdf = (textoFinal) => {
           
           doc.font(partObj.bold ? "Helvetica-Bold" : "Helvetica")
              .fontSize(11)
+             .fillColor(partObj.isRed ? "red" : "black") // Aplica cor vermelha se for o alerta
              .text(partObj.text, {
                continued: !isLast,
                align: "justify",
                lineGap: isLast ? 2 : 0
              });
         });
+        
+        // Retorna para a cor preta padrão após terminar a linha, por garantia
+        doc.fillColor("black");
       }
 
       // Espaçamento equivalente ao spacing: { after: 120 } (twips) do Word

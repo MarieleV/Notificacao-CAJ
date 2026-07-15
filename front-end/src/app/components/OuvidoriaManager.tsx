@@ -931,6 +931,12 @@ export function OuvidoriaManager() {
       }
     }
 
+    // Se a decisão for favorável ao cliente, insere o lembrete de fato novo no final
+    if (decisao === "deferir" || decisao === "parcial") {
+      tpl += `\n\n**<adicionar fato novo ao processo>**`;
+    }
+    // ==================================
+
     setGeneratedText(tpl);
     setStep("generated");
   };
@@ -950,19 +956,25 @@ export function OuvidoriaManager() {
   };
 
   // Converte "**palavra**" em <strong>, linha por linha, para exibição
-  // no modo de pré-visualização (sem nunca mostrar os asteriscos ao usuário).
   const renderFormattedPreview = (text: string) => {
     return text.split("\n").map((line, lineIdx) => {
       const parts = line.split(/\*\*(.*?)\*\*/g);
       return (
         <p key={lineIdx} className="min-h-[1em]">
-          {parts.map((part, partIdx) =>
-            partIdx % 2 !== 0 ? (
-              <strong key={partIdx}>{part}</strong>
-            ) : (
-              <span key={partIdx}>{part}</span>
-            )
-          )}
+          {parts.map((part, partIdx) => {
+            const isBold = partIdx % 2 !== 0;
+            // Verifica se é a nossa frase especial
+            const isRed = part === "<adicionar fato novo ao processo>";
+
+            if (isBold) {
+              return (
+                <strong key={partIdx} className={isRed ? "text-red-600" : ""}>
+                  {part}
+                </strong>
+              );
+            }
+            return <span key={partIdx}>{part}</span>;
+          })}
         </p>
       );
     });
