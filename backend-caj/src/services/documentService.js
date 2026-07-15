@@ -47,7 +47,7 @@ const formatTextToDocx = (text) => {
     return new Paragraph({
       children: textRuns,
       spacing: { after: 120 },
-      alignment: AlignmentType.JUSTIFY 
+      alignment: AlignmentType.JUSTIFIED 
     });
   });
 };
@@ -204,7 +204,7 @@ const buildInfracaoWord = async (dados) => {
 
     return new Paragraph({ 
       children: textRuns.length > 0 ? textRuns : [new TextRun(" ")], 
-      alignment: AlignmentType.JUSTIFY, 
+      alignment: AlignmentType.JUSTIFIED, 
       spacing: { after: 60 } 
     });
   });
@@ -247,7 +247,7 @@ const buildInfracaoWord = async (dados) => {
             children: [
               new Paragraph({
                 children: [new TextRun({ text: "Defesa: ", bold: true }), new TextRun("Fica assegurado ao notificado o direito ao contraditório e à ampla defesa, podendo apresentar defesa ou impugnação, pessoalmente ou por intermédio de procurador legalmente constituído, por meio de um dos canais de atendimento desta prestadora, no prazo de 15 (quinze) dias úteis, contados da data de recebimento desta notificação. Decorrido o prazo sem a apresentação de defesa, ou sendo esta indeferida após análise administrativa, serão adotadas as medidas cabíveis e aplicadas as penalidades previstas na legislação e regulamentação vigentes.")],
-                alignment: AlignmentType.JUSTIFY
+                alignment: AlignmentType.JUSTIFIED
               })
             ],
             margins: defaultMargin,
@@ -259,9 +259,9 @@ const buildInfracaoWord = async (dados) => {
           new TableCell({
             columnSpan: 3,
             children: [
-              new Paragraph({ children: [new TextRun({ text: "Canais de atendimento: ", bold: true }), new TextRun("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.")], alignment: AlignmentType.JUSTIFY }),
-              new Paragraph({ children: [new TextRun("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.")], alignment: AlignmentType.JUSTIFY }),
-              new Paragraph({ children: [new TextRun("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras. WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br")], alignment: AlignmentType.JUSTIFY })
+              new Paragraph({ children: [new TextRun({ text: "Canais de atendimento: ", bold: true }), new TextRun("Centro: Rua Tijucas, 213 - Centro, das 8h às 16h, de segunda a sexta-feira.")], alignment: AlignmentType.JUSTIFIED }),
+              new Paragraph({ children: [new TextRun("Comasa: Rua Albano Schmidt, 4932 - Comasa (Subprefeitura Leste), das 8h às 12h, de segunda a sexta-feira.")], alignment: AlignmentType.JUSTIFIED }),
+              new Paragraph({ children: [new TextRun("Pirabeiraba: Rua Joinville, 13.500 (Subprefeitura Pirabeiraba), das 7h30 às 12h e das 13h às 15h30, somente às segundas e terças-feiras. WhatsApp: (47) 99771-8115 - Call Center: 115 ou 0800 723 0300 - E-mail: atendimento@aguasdejoinville.com.br")], alignment: AlignmentType.JUSTIFIED })
             ],
             margins: defaultMargin,
           }),
