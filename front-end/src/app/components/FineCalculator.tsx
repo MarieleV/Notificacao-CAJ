@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   Settings2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Trash2,
   Calculator, ClipboardList, Info, AlertCircle, Droplets,
-  FileText, Copy, CheckCircle2, RefreshCw, Lock, Calendar as CalendarIcon
+  FileText, Copy, CheckCircle2, RefreshCw, Lock, Calendar as CalendarIcon,
+  Search
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -904,11 +905,11 @@ export function FineCalculator() {
             onClick={() => setConfigOpen((v) => !v)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all border-2 ${
               configOpen 
-                ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" 
-                : "bg-white border-gray-200 text-gray-600 hover:border-[#1a5fa8] hover:text-[#1a5fa8]"
+                ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]"
+                : "bg-white border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] shadow-sm"
             }`}
           >
-            <Lock size={15} className="mr-1" />
+            <Search size={15} className="mr-1" />
             Parâmetros de Cálculo
             {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
