@@ -1503,9 +1503,14 @@ export function OuvidoriaManager() {
                 )}
                 
                 {showDefesaCampos && (
-                  <>
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn">
+                    <div className="col-span-1 sm:col-span-2 lg:col-span-4 mb-1">
+                      <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Scale size={14} /> Dados da Defesa Prévia
+                      </span>
+                    </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mb-1">Data Defesa Apresentada</label>
+                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data da Defesa</label>
                       <DatePicker 
                         value={dataDefesa} 
                         onChange={setDataDefesa} 
@@ -1513,16 +1518,16 @@ export function OuvidoriaManager() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mb-1">Nº Protocolo Defesa</label>
+                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Defesa</label>
                       <input 
                         value={protDefesa} 
                         onChange={(e) => setProtDefesa(e.target.value)} 
                         placeholder="Ex: 998877" 
-                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-indigo-50/30 transition-all" 
+                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" 
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mb-1">Data Indeferimento (Defesa)</label>
+                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data Indeferimento</label>
                       <DatePicker 
                         value={dataIndeferimento} 
                         onChange={setDataIndeferimento} 
@@ -1530,15 +1535,15 @@ export function OuvidoriaManager() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mb-1">Nº Protocolo Indeferimento</label>
+                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Indeferimento</label>
                       <input 
                         value={protIndeferimento} 
                         onChange={(e) => setProtIndeferimento(e.target.value)} 
                         placeholder="Ex: 112233" 
-                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-indigo-50/30 transition-all" 
+                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" 
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {/* NOVOS CAMPOS - SEMPRE VISÍVEIS NA SESSÃO 4 */}
