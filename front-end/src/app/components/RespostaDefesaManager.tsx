@@ -417,7 +417,7 @@ export function RespostaDefesaManager() {
 
   const handleDownloadWord = async () => {
     try {
-      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_word", {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_parecer_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -447,7 +447,7 @@ export function RespostaDefesaManager() {
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_pdf", {
+      const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_parecer_pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
