@@ -1,168 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon
 } from "lucide-react";
-
-function maskDate(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return digits.slice(0, 2) + "/" + digits.slice(2);
-  return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
-}
-
-const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
-
-function parseFullDate(s: string): Date | null {
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const year = parseInt(m[3], 10);
-  if (month < 1 || month > 12) return null;
-  const d = new Date(year, month - 1, day);
-  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
-  return d;
-}
-
-function labelFullDate(s: string): string {
-  const d = parseFullDate(s);
-  if (!d) return s;
-  return d
-    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-    .replace(".", "");
-}
-
-// ─── Componente: Seletor de Data Completa (Dia/Mês/Ano) ───────────────────────
-
-function DatePicker({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState<Date>(() => {
-    const parsed = parseFullDate(value);
-    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date();
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selected = parseFullDate(value);
-
-  function handleToggle() {
-    if (!isOpen) {
-      const parsed = parseFullDate(value);
-      setViewDate(parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date());
-    }
-    setIsOpen((v) => !v);
-  }
-
-  function changeMonth(delta: number) {
-    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
-  }
-
-  function selectDay(day: number) {
-    const dd = String(day).padStart(2, "0");
-    const mm = String(viewDate.getMonth() + 1).padStart(2, "0");
-    const yyyy = viewDate.getFullYear();
-    onChange(`${dd}/${mm}/${yyyy}`);
-    setIsOpen(false);
-  }
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = viewDate
-    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    .replace(/^\w/, (c) => c.toUpperCase());
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all bg-white ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
-        } ${selected ? "text-gray-700" : "text-gray-400"}`}
-      >
-        <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAYS_SHORT.map((w, i) => (
-              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((day, i) => {
-              if (day === null) return <div key={i} />;
-              const isSelected =
-                !!selected &&
-                selected.getFullYear() === year &&
-                selected.getMonth() === month &&
-                selected.getDate() === day;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => selectDay(day)}
-                  className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { DatePicker } from "./shared/DatePicker";
+import { SectionBlock } from "./shared/SectionBlock";
 
 // === FUNCIONÁRIOS: nome + matrícula (ordem alfabética por nome) ===
 interface Funcionario {
@@ -201,7 +44,6 @@ const FUNCIONARIOS: Funcionario[] = [
   { matricula: 314, nome: "Valter Carlos Estephanes" },
   { matricula: 960, nome: "Vilmar Vieira De Meneses" },
 ];
-
 
 const INFRACTION_CODES = [
   {
@@ -381,8 +223,8 @@ export function NotificationDrafter() {
   const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); 
-  
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Estados da planilha
   const [excelData, setExcelData] = useState<any[]>([]);
 
@@ -390,11 +232,11 @@ export function NotificationDrafter() {
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [fileName, setFileName] = useState<string>("");
-  
+
   // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
   const [matriculaBuscada, setMatriculaBuscada] = useState("");
-  
+
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [autoInfracao, setAutoInfracao] = useState("");
@@ -472,12 +314,12 @@ export function NotificationDrafter() {
       try {
         const arrayBuffer = event.target?.result;
         const wb = XLSX.read(arrayBuffer, { type: "array" });
-        const wsname = wb.SheetNames[0]; 
+        const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
-        
+
         setExcelData(data);
-        
+
         if (data.length === 0) {
           setFileModal({
             type: "warning",
@@ -518,7 +360,7 @@ export function NotificationDrafter() {
   const handleSearchMatricula = () => {
     if (!matricula) return;
     setMatriculaBuscada(matricula);
-    
+
     const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
 
     if (encontrado) {
@@ -539,11 +381,11 @@ export function NotificationDrafter() {
 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
 
-  const camposObrigatoriosVazios = 
-    !matricula.trim() || 
-    !dataConstatacao.trim() || 
-    !protocolo.trim() || 
-    !funcionario.trim() || 
+  const camposObrigatoriosVazios =
+    !matricula.trim() ||
+    !dataConstatacao.trim() ||
+    !protocolo.trim() ||
+    !funcionario.trim() ||
     !equipe.trim();
 
   const handleGenerate = async () => {
@@ -566,7 +408,7 @@ export function NotificationDrafter() {
     setLoading(true);
     setStep("idle");
 
-    const textosBase = selectedItems.map(item => 
+    const textosBase = selectedItems.map(item =>
       penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta
     );
 
@@ -585,7 +427,7 @@ export function NotificationDrafter() {
       });
 
       if (!response.ok) throw new Error("Erro na comunicação com o servidor Python");
-      
+
       const data = await response.json();
       setGeneratedText(data.texto_gerado);
       setStep("generated");
@@ -608,16 +450,16 @@ export function NotificationDrafter() {
       alert("Por favor, informe o Nº do Auto de Infração antes de baixar o documento.");
       return;
     }
-    
+
     try {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          texto_final: generatedText, 
+        body: JSON.stringify({
+          texto_final: generatedText,
           protocolo,
           autoInfracao,
-          matricula, 
+          matricula,
           ...clienteData
         }),
       });
@@ -649,11 +491,11 @@ export function NotificationDrafter() {
       const response = await fetch("https://notificacao-caj.vercel.app/api/exportar_pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          texto_final: generatedText, 
+        body: JSON.stringify({
+          texto_final: generatedText,
           protocolo,
           autoInfracao,
-          matricula, 
+          matricula,
           ...clienteData
         }),
       });
@@ -730,8 +572,8 @@ export function NotificationDrafter() {
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:border-[#1a5fa8] transition-colors">
             <Key size={14} className="text-gray-400 mr-2" />
-            <input 
-              type="password" 
+            <input
+              type="password"
               placeholder="Gemini API Key..."
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -744,349 +586,328 @@ export function NotificationDrafter() {
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
 
-          {/* Step 1 */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Seleção de Códigos de Infração</h2>
-                <p className="text-gray-500 text-xs">Selecione um ou mais códigos referentes ao caso do cliente</p>
-              </div>
-            </div>
-            <div className="p-6">
-              {/* Dropdown trigger */}
-              <div className="relative">
-                <button
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-[#1a5fa8] hover:bg-[#f0f7ff] transition-all"
-                >
-                  <span className="text-gray-500">
-                    {selectedCodes.length === 0
-                      ? "Clique para selecionar códigos de infração..."
-                      : `${selectedCodes.length} código(s) selecionado(s)`}
-                  </span>
-                  <ChevronDown size={16} className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
-                </button>
+          {/* Bloco 1 — Seleção de Códigos */}
+          <SectionBlock
+            number={1}
+            title="Seleção de Códigos de Infração"
+            description="Selecione um ou mais códigos referentes ao caso do cliente"
+          >
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-[#1a5fa8] hover:bg-[#f0f7ff] transition-all"
+              >
+                <span className="text-gray-500">
+                  {selectedCodes.length === 0
+                    ? "Clique para selecionar códigos de infração..."
+                    : `${selectedCodes.length} código(s) selecionado(s)`}
+                </span>
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+              </button>
 
-                {dropdownOpen && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                    <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
-                      <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Pesquisar por código, título ou categoria..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all"
-                        />
-                      </div>
-                    </div>
-                    <div className="p-2 border-b border-gray-100 bg-gray-50">
-                      <p className="text-xs text-gray-500 px-2">Clique para selecionar/desmarcar</p>
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
-                      {filteredCodes.length > 0 ? (
-                        filteredCodes.map((item) => {
-                          const selected = selectedCodes.includes(item.code);
-                          return (
-                            <button
-                              key={item.code}
-                              onClick={() => toggleCode(item.code)}
-                              className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#f0f7ff] transition-colors ${selected ? "bg-[#f0f7ff]" : ""}`}
-                            >
-                              <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected ? "bg-[#1a5fa8] border-[#1a5fa8]" : "border-gray-300"}`}>
-                                {selected && <CheckCircle2 size={10} className="text-white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
-                                  <span className="text-sm font-medium text-gray-800">{item.title}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${CATEGORY_COLORS[item.category]}`}>
-                                    {item.category}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1 truncate">{item.clauseMulta.substring(0, 90)}…</p>
-                              </div>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="p-6 text-center text-sm text-gray-500">
-                          Nenhum código encontrado para "{searchTerm}".
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-end">
-                      <button
-                        onClick={() => setDropdownOpen(false)}
-                        className="px-4 py-1.5 bg-[#1a5fa8] text-white text-xs rounded-lg hover:bg-[#154d8a] transition-colors"
-                      >
-                        Confirmar Seleção
-                      </button>
+              {dropdownOpen && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                  <div className="p-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Pesquisar por código, título ou categoria..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all"
+                      />
                     </div>
                   </div>
-                )}
+                  <div className="p-2 border-b border-gray-100 bg-gray-50">
+                    <p className="text-xs text-gray-500 px-2">Clique para selecionar/desmarcar</p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                    {filteredCodes.length > 0 ? (
+                      filteredCodes.map((item) => {
+                        const selected = selectedCodes.includes(item.code);
+                        return (
+                          <button
+                            key={item.code}
+                            onClick={() => toggleCode(item.code)}
+                            className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#f0f7ff] transition-colors ${selected ? "bg-[#f0f7ff]" : ""}`}
+                          >
+                            <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected ? "bg-[#1a5fa8] border-[#1a5fa8]" : "border-gray-300"}`}>
+                              {selected && <CheckCircle2 size={10} className="text-white" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
+                                <span className="text-sm font-medium text-gray-800">{item.title}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize ${CATEGORY_COLORS[item.category]}`}>
+                                  {item.category}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1 truncate">{item.clauseMulta.substring(0, 90)}…</p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-6 text-center text-sm text-gray-500">
+                        Nenhum código encontrado para "{searchTerm}".
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+                    <button
+                      onClick={() => setDropdownOpen(false)}
+                      className="px-4 py-1.5 bg-[#1a5fa8] text-white text-xs rounded-lg hover:bg-[#154d8a] transition-colors"
+                    >
+                      Confirmar Seleção
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {selectedItems.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedItems.map((item) => (
+                  <div
+                    key={item.code}
+                    className="flex items-center gap-1.5 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-2.5 py-1.5"
+                  >
+                    <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
+                    <span className="text-xs text-[#0b1e35]">{item.title}</span>
+                    <button
+                      onClick={() => toggleCode(item.code)}
+                      className="text-[#4a7fa5] hover:text-red-500 transition-colors ml-0.5"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Info size={14} className="text-gray-400" />
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                  Tipo de penalidade
+                </label>
               </div>
 
-              {/* Selected tags */}
-              {selectedItems.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setPenaltyVariant("multa")}
+                  className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    penaltyVariant === "multa"
+                      ? "bg-[#1a5fa8] text-white shadow-sm"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  Apenas Multa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPenaltyVariant("multaCP")}
+                  className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    penaltyVariant === "multaCP"
+                      ? "bg-[#1a5fa8] text-white shadow-sm"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  Multa + Padronização
+                </button>
+              </div>
+            </div>
+
+            {selectedItems.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Info size={12} className="text-gray-400" />
+                  <p className="text-xs text-gray-400 font-medium">Prévia das cláusulas selecionadas</p>
+                </div>
+                <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg p-3 space-y-2 max-h-32 overflow-y-auto">
                   {selectedItems.map((item) => (
-                    <div
-                      key={item.code}
-                      className="flex items-center gap-1.5 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-2.5 py-1.5"
-                    >
-                      <span className="text-xs font-mono font-bold text-[#1a5fa8]">{item.code}</span>
-                      <span className="text-xs text-[#0b1e35]">{item.title}</span>
-                      <button
-                        onClick={() => toggleCode(item.code)}
-                        className="text-[#4a7fa5] hover:text-red-500 transition-colors ml-0.5"
-                      >
-                        <X size={12} />
-                      </button>
+                    <div key={item.code} className="text-xs text-gray-600 leading-relaxed">
+                      <span className="font-bold text-[#1a5fa8]">[{item.code}]</span>{" "}
+                      {penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta}
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* SELETOR SEM O CAMPO CINZA */}
-              <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Info size={14} className="text-gray-400" />
-                  <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
-                    Tipo de penalidade
-                  </label>
-                </div>
-
-                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setPenaltyVariant("multa")}
-                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                      penaltyVariant === "multa" 
-                        ? "bg-[#1a5fa8] text-white shadow-sm" 
-                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                    }`}
-                  >
-                    Apenas Multa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPenaltyVariant("multaCP")}
-                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                      penaltyVariant === "multaCP" 
-                        ? "bg-[#1a5fa8] text-white shadow-sm" 
-                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                    }`}
-                  >
-                    Multa + Padronização
-                  </button>
-                </div>
               </div>
+            )}
+          </SectionBlock>
 
-              {/* Clause preview */}
-              {selectedItems.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Info size={12} className="text-gray-400" />
-                    <p className="text-xs text-gray-400 font-medium">Prévia das cláusulas selecionadas</p>
-                  </div>
-                  <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg p-3 space-y-2 max-h-32 overflow-y-auto">
-                    {selectedItems.map((item) => (
-                      <div key={item.code} className="text-xs text-gray-600 leading-relaxed">
-                        <span className="font-bold text-[#1a5fa8]">[{item.code}]</span>{" "}
-                        {penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Step 2 — Generate */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Dados da Notificação</h2>
-                  <p className="text-gray-500 text-xs">Insira a Matrícula para buscar o cliente automaticamente</p>
-                </div>
+          {/* Bloco 2 — Dados da Notificação */}
+          <SectionBlock
+            number={2}
+            title="Dados da Notificação"
+            description="Insira a Matrícula para buscar o cliente automaticamente"
+          >
+            {/* PAINEL DE PLANILHA (OPCIONAL E ENXUTO) */}
+            <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
+                <p className="text-[10px] text-gray-500">Faça o upload do Excel/CSV para habilitar a busca automática por Matrícula.</p>
+              </div>
+              <div className="w-full sm:w-auto">
+                <input
+                  type="file"
+                  accept=".csv, .xlsx, .xls"
+                  onChange={handleFileUpload}
+                  disabled={fileLoading}
+                  className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {fileName && (
+                  <p className="mt-1.5 text-[11px] text-[#1a5fa8] flex items-center gap-1 truncate max-w-[260px]">
+                    <FileText size={11} className="flex-shrink-0" />
+                    <span className="truncate">{fileName}</span>
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="p-6">
-              
-              {/* PAINEL DE PLANILHA (OPCIONAL E ENXUTO) */}
-              <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
-                  <p className="text-[10px] text-gray-500">Faça o upload do Excel/CSV para habilitar a busca automática por Matrícula.</p>
+            {/* CAMPOS ENXUTOS */}
+            <div className="mb-6">
+
+              {/* Linha 1: Matrícula e Busca */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
+                      placeholder="Ex: 1298382-9"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    />
+                    <button
+                      onClick={handleSearchMatricula}
+                      disabled={excelData.length === 0}
+                      title={excelData.length === 0 ? "Carregue a planilha primeiro" : "Buscar dados"}
+                      className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Buscar
+                    </button>
+                  </div>
                 </div>
-                <div className="w-full sm:w-auto">
-                  <input 
-                    type="file" 
-                    accept=".csv, .xlsx, .xls" 
-                    onChange={handleFileUpload}
-                    disabled={fileLoading}
-                    className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              </div>
+
+              {/* Card de Confirmação visual caso ache o cliente */}
+              {clienteData.nomeCliente && (
+                <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-3">
+                  <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
+                    <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro} | <strong>Hidrômetro:</strong> {clienteData.numeroHidrometro}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Linha 2: Constatação, Protocolo, Funcionário, Equipe */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
+                  <DatePicker
+                    value={dataConstatacao}
+                    onChange={setDataConstatacao}
+                    placeholder="DD/MM/AAAA"
                   />
-                  {fileName && (
-                    <p className="mt-1.5 text-[11px] text-[#1a5fa8] flex items-center gap-1 truncate max-w-[260px]">
-                      <FileText size={11} className="flex-shrink-0" />
-                      <span className="truncate">{fileName}</span>
-                    </p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
+                  <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                </div>
+
+                {/* === CAMPO DE FUNCIONÁRIO COM AUTOCOMPLETE (mostra nome + matrícula, salva só a matrícula) === */}
+                <div className="relative">
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
+                  <input
+                    value={funcionario ? `Mat. ${funcionario}` : funcionarioBusca}
+                    onChange={(e) => {
+                      // Ao digitar, o usuário está pesquisando de novo — limpa a seleção final
+                      setFuncionario("");
+                      setFuncionarioBusca(e.target.value);
+                      setFuncSearchOpen(true);
+                    }}
+                    onFocus={() => {
+                      // Ao focar em um campo já preenchido, começa uma nova busca do zero
+                      if (funcionario) {
+                        setFuncionarioBusca("");
+                      }
+                      setFuncSearchOpen(true);
+                    }}
+                    onBlur={() => setTimeout(() => setFuncSearchOpen(false), 200)}
+                    placeholder="Pesquisar por nome..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
+                  />
+                  {funcionarioSelecionado && !funcSearchOpen && (
+                    <p className="mt-1 text-[10px] text-gray-500 truncate">{funcionarioSelecionado.nome}</p>
+                  )}
+                  {funcSearchOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                      {filteredFuncionarios.map((f) => (
+                        <div
+                          key={f.matricula}
+                          className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setFuncionario(String(f.matricula));
+                            setFuncionarioBusca("");
+                            setFuncSearchOpen(false);
+                          }}
+                        >
+                          <span className="truncate">{f.nome}</span>
+                          <span className="text-[10px] font-mono font-bold text-[#1a5fa8] flex-shrink-0">Mat. {f.matricula}</span>
+                        </div>
+                      ))}
+                      {filteredFuncionarios.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-500">Nenhum funcionário encontrado</div>
+                      )}
+                    </div>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
+                  <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                </div>
               </div>
-
-              {/* CAMPOS ENXUTOS */}
-              <div className="mb-6">
-                
-                {/* Linha 1: Matrícula e Busca */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
-                    <div className="flex gap-2">
-                      <input
-                        value={matricula}
-                        onChange={(e) => setMatricula(e.target.value)}
-                        placeholder="Ex: 1298382-9"
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                      />
-                      <button 
-                        onClick={handleSearchMatricula}
-                        disabled={excelData.length === 0}
-                        title={excelData.length === 0 ? "Carregue a planilha primeiro" : "Buscar dados"}
-                        className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Buscar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card de Confirmação visual caso ache o cliente */}
-                {clienteData.nomeCliente && (
-                  <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-3">
-                    <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
-                    <div>
-                      <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
-                      <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {clienteData.nomeCliente} | <strong>Endereço:</strong> {clienteData.logradouro} | <strong>Hidrômetro:</strong> {clienteData.numeroHidrometro}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Linha 2: Constatação, Protocolo, Funcionário, Equipe */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
-                    <DatePicker 
-                      value={dataConstatacao} 
-                      onChange={setDataConstatacao} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
-                    <input value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                  </div>
-                  
-                  {/* === CAMPO DE FUNCIONÁRIO COM AUTOCOMPLETE (mostra nome + matrícula, salva só a matrícula) === */}
-                  <div className="relative">
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
-                    <input
-                      value={funcionario ? `Mat. ${funcionario}` : funcionarioBusca}
-                      onChange={(e) => {
-                        // Ao digitar, o usuário está pesquisando de novo — limpa a seleção final
-                        setFuncionario("");
-                        setFuncionarioBusca(e.target.value);
-                        setFuncSearchOpen(true);
-                      }}
-                      onFocus={() => {
-                        // Ao focar em um campo já preenchido, começa uma nova busca do zero
-                        if (funcionario) {
-                          setFuncionarioBusca("");
-                        }
-                        setFuncSearchOpen(true);
-                      }}
-                      onBlur={() => setTimeout(() => setFuncSearchOpen(false), 200)}
-                      placeholder="Pesquisar por nome..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
-                    />
-                    {funcionarioSelecionado && !funcSearchOpen && (
-                      <p className="mt-1 text-[10px] text-gray-500 truncate">{funcionarioSelecionado.nome}</p>
-                    )}
-                    {funcSearchOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                        {filteredFuncionarios.map((f) => (
-                          <div
-                            key={f.matricula}
-                            className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setFuncionario(String(f.matricula));
-                              setFuncionarioBusca("");
-                              setFuncSearchOpen(false);
-                            }}
-                          >
-                            <span className="truncate">{f.nome}</span>
-                            <span className="text-[10px] font-mono font-bold text-[#1a5fa8] flex-shrink-0">Mat. {f.matricula}</span>
-                          </div>
-                        ))}
-                        {filteredFuncionarios.length === 0 && (
-                          <div className="px-3 py-2 text-sm text-gray-500">Nenhum funcionário encontrado</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {/* ============================================================== */}
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
-                    <input value={equipe} onChange={(e) => setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                  </div>
-                </div>
-
-              </div>
-
-              <button
-                onClick={handleGenerate}
-                disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar || camposObrigatoriosVazios}
-                className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
-              >
-               
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    IA processando — redigindo notificação…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} />
-                    Consolidar e Redigir Texto
-                  </>
-                )}
-              </button>
-              {(selectedCodes.length === 0 || esqueceuDeBuscar || camposObrigatoriosVazios) && (
-                <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <AlertCircle size={13} className="flex-shrink-0" />
-                  <p className="text-xs">
-                    {selectedCodes.length === 0 
-                      ? "Selecione ao menos um código de infração para habilitar a geração."
-                      : esqueceuDeBuscar 
-                      ? "Você digitou uma Matrícula. Clique no botão 'Buscar' ao lado dela para confirmar os dados antes de gerar o texto."
-                      : "Preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe)."}
-                  </p>
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* Step 3 — Edit */}
+            <button
+              onClick={handleGenerate}
+              disabled={selectedCodes.length === 0 || loading || esqueceuDeBuscar || camposObrigatoriosVazios}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  IA processando — redigindo notificação…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  Consolidar e Redigir Texto
+                </>
+              )}
+            </button>
+            {(selectedCodes.length === 0 || esqueceuDeBuscar || camposObrigatoriosVazios) && (
+              <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <AlertCircle size={13} className="flex-shrink-0" />
+                <p className="text-xs">
+                  {selectedCodes.length === 0
+                    ? "Selecione ao menos um código de infração para habilitar a geração."
+                    : esqueceuDeBuscar
+                    ? "Você digitou uma Matrícula. Clique no botão 'Buscar' ao lado dela para confirmar os dados antes de gerar o texto."
+                    : "Preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe)."}
+                </p>
+              </div>
+            )}
+          </SectionBlock>
+
+          {/* Bloco 3 — Revisão e Edição (badge de status, não de passo — mantido como card à parte) */}
           {step === "generated" && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -1099,7 +920,7 @@ export function NotificationDrafter() {
                     <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
                     Gerado com sucesso!
@@ -1134,7 +955,7 @@ export function NotificationDrafter() {
             </div>
           )}
 
-          {/* Step 4 — Export */}
+          {/* Bloco 4 — Exportação (estrutura com múltiplas subseções internas; mantido como card à parte para preservar o full-bleed dos separadores) */}
           {step === "generated" && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -1150,11 +971,11 @@ export function NotificationDrafter() {
                   Nº Auto Infração <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-3 items-center">
-                  <input 
-                    value={autoInfracao} 
-                    onChange={(e) => setAutoInfracao(e.target.value)} 
-                    placeholder="Ex: 98765" 
-                    className="w-64 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" 
+                  <input
+                    value={autoInfracao}
+                    onChange={(e) => setAutoInfracao(e.target.value)}
+                    placeholder="Ex: 98765"
+                    className="w-64 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                   />
                   {!autoInfracao.trim() && (
                     <span className="text-[11px] text-amber-600 font-medium flex items-center gap-1">
