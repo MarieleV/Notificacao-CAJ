@@ -360,9 +360,11 @@ export function RespostaDefesaManager() {
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
 
+  // Permite selecionar apenas UM código por vez. 
+  // Se clicar no mesmo código, ele desmarca (deixa vazio).
   const toggleCode = (code: string) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    setSelectedCodes((prev) => 
+      prev.includes(code) ? [] : [code]
     );
   };
 
