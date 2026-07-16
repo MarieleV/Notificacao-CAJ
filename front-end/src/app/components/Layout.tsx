@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router";
-import { FileText, Calculator, Droplets, ChevronRight, Building2, Scale } from "lucide-react";
+import { MessageSquareReply, FileText, FileCheck, Calculator, Droplets, ChevronRight, Building2, Scale } from "lucide-react";
 
 export function Layout() {
   return (
@@ -46,6 +46,29 @@ export function Layout() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium leading-none">Redigir Notificação</p>
                   <p className="text-[10px] mt-0.5 opacity-70 truncate">Assistente de IA</p>
+                </div>
+                {isActive && <ChevronRight size={12} className="opacity-60" />}
+              </>
+            )}
+          </NavLink>
+
+          {/* Botão: RespostaDefesa */}
+          <NavLink
+            to="/resposta-defesa"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${
+                isActive
+                  ? "bg-[#1a5fa8] text-white shadow-lg shadow-[#1a5fa8]/20"
+                  : "text-[#6a9fc0] hover:bg-[#0f2a45] hover:text-white"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <MessageSquareReply size={16} className={isActive ? "text-[#7ec8e3]" : "text-[#4a7fa5] group-hover:text-[#7ec8e3]"} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium leading-none">Retorno de Defesa</p>
+                  <p className="text-[10px] mt-0.5 opacity-70 truncate">Pareceres de Resposta</p>
                 </div>
                 {isActive && <ChevronRight size={12} className="opacity-60" />}
               </>
