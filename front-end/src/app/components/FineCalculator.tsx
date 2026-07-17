@@ -1,10 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Settings2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Trash2,
+  ChevronDown, ChevronUp, Plus, Trash2,
   Calculator, ClipboardList, Info, AlertCircle, Droplets,
-  FileText, Copy, CheckCircle2, RefreshCw, Lock, Calendar as CalendarIcon,
-  Search
+  FileText, Copy, CheckCircle2, RefreshCw, Lock, Search
 } from "lucide-react";
+
+// --- IMPORTAÇÕES DA NOVA ARQUITETURA ---
+import { parseMonthYear, labelMonth } from "../lib/dates";
+import { maskMonthYear, maskBRL, fmtBRL } from "../lib/masks";
+import { DatePicker } from "./shared/DatePicker";
+import { MonthYearPicker } from "./shared/MonthYearPicker";
+import { MonthYearRangePicker } from "./shared/MonthYearRangePicker";
+import { SectionBlock } from "./shared/SectionBlock";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,457 +29,6 @@ type IrregularRow = {
 
 let uid = 1;
 const newId = () => uid++;
-
-function parseMonthYear(s: string): Date | null {
-  const m = s.match(/^(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const month = parseInt(m[1], 10);
-  const year = parseInt(m[2], 10);
-  if (month < 1 || month > 12) return null;
-  return new Date(year, month - 1, 1);
-}
-
-function labelMonth(mmyyyy: string): string {
-  const d = parseMonthYear(mmyyyy);
-  if (!d) return mmyyyy;
-  return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
-    .replace(".", "").replace(/^\w/, (c) => c.toUpperCase());
-}
-
-function maskMonthYear(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 6);
-  if (digits.length <= 2) return digits;
-  return digits.slice(0, 2) + "/" + digits.slice(2);
-}
-
-function maskBRL(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return "";
-  const val = parseInt(digits, 10) / 100;
-  return val.toLocaleString("pt-BR", { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
-  });
-}
-
-function maskDate(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return digits.slice(0, 2) + "/" + digits.slice(2);
-  return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
-}
-
-function fmtBRL(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
-
-function parseFullDate(s: string): Date | null {
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const year = parseInt(m[3], 10);
-  if (month < 1 || month > 12) return null;
-  const d = new Date(year, month - 1, day);
-  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
-  return d;
-}
-
-function labelFullDate(s: string): string {
-  const d = parseFullDate(s);
-  if (!d) return s;
-  return d
-    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-    .replace(".", "");
-}
-
-// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
-
-// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
-
-function MonthYearRangePicker({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
-  const [startVal, setStartVal] = useState<number | null>(null);
-  const [endVal, setEndVal] = useState<number | null>(null);
-  const [hoverVal, setHoverVal] = useState<number | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const parseValue = (valStr: string) => {
-    if (!valStr) return { start: null, end: null };
-    const parts = valStr.split(" a ");
-    const parsePart = (p: string) => {
-      if (!p) return null;
-      const parsed = parseMonthYear(p);
-      if (!parsed) return null;
-      return parsed.getFullYear() * 100 + parsed.getMonth();
-    };
-    return { start: parsePart(parts[0]), end: parts.length > 1 ? parsePart(parts[1]) : null };
-  };
-
-  const handleToggle = () => {
-    if (!isOpen) {
-      const parsed = parseValue(value);
-      setStartVal(parsed.start);
-      setEndVal(parsed.end);
-      setViewYear(parsed.start ? Math.floor(parsed.start / 100) : new Date().getFullYear());
-    }
-    setIsOpen(!isOpen);
-  };
-
-  const handleMonthClick = (monthIdx: number) => {
-    const val = viewYear * 100 + monthIdx;
-    if (!startVal || (startVal && endVal)) {
-      setStartVal(val);
-      setEndVal(null);
-    } else {
-      if (val < startVal) {
-        setEndVal(startVal);
-        setStartVal(val);
-      } else {
-        setEndVal(val);
-      }
-    }
-  };
-
-  const formatNumericDisplay = (val: number) => {
-    const y = Math.floor(val / 100);
-    const m = String((val % 100) + 1).padStart(2, "0");
-    return `${m}/${y}`;
-  };
-
-  const handleConfirm = () => {
-    if (startVal && endVal) {
-      onChange(`${formatNumericDisplay(startVal)} a ${formatNumericDisplay(endVal)}`);
-    } else if (startVal) {
-      onChange(formatNumericDisplay(startVal));
-    } else {
-      onChange("");
-    }
-    setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    setStartVal(null);
-    setEndVal(null);
-  };
-
-  const displayLabel = value ? value.split(" a ").map(v => labelMonth(v)).join(" até ") : "";
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all text-left ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20 bg-[#eef6ff]" : "border-gray-200 bg-white hover:border-[#1a5fa8]"
-        } ${value ? "text-[#0b1e35] font-medium" : "text-gray-500"}`}
-      >
-        <span className="truncate block flex-1">{value ? displayLabel : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full right-0 lg:left-0 lg:right-auto mt-1 w-[220px] bg-white border border-gray-200 rounded-lg shadow-xl p-2.5">
-          <div className="flex items-center justify-between mb-2">
-            <button type="button" onClick={() => setViewYear((y) => y - 1)} className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
-              <ChevronLeft size={14} />
-            </button>
-            <span className="font-bold text-sm text-[#0b1e35]">{viewYear}</span>
-            <button type="button" onClick={() => setViewYear((y) => y + 1)} className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1 mb-2" onMouseLeave={() => setHoverVal(null)}>
-            {MONTHS_SHORT.map((m, idx) => {
-              const val = viewYear * 100 + idx;
-              const isStart = startVal === val;
-              const isEnd = endVal === val;
-              const isSelected = isStart || isEnd;
-              const isBetween = startVal && endVal && val > startVal && val < endVal;
-              const isHover = startVal && !endVal && hoverVal && ((val > startVal && val <= hoverVal) || (val >= hoverVal && val < startVal));
-
-              let baseClass = "py-1.5 rounded-md text-[11px] font-medium transition-colors text-center cursor-pointer ";
-              if (isSelected) baseClass += "bg-[#1a5fa8] text-white shadow-sm";
-              else if (isBetween || isHover) baseClass += "bg-[#eef6ff] text-[#1a5fa8]";
-              else baseClass += "text-gray-600 hover:bg-gray-100";
-
-              return (
-                <div key={m} onClick={() => handleMonthClick(idx)} onMouseEnter={() => setHoverVal(val)} className={baseClass}>
-                  {m}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between border-t border-gray-100 pt-2 mt-1">
-            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-red-500 transition-colors">
-              Limpar
-            </button>
-            <button type="button" onClick={handleConfirm} disabled={!startVal} className="text-xs font-bold text-white bg-[#1a5fa8] hover:bg-[#154d8a] px-3 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Confirmar
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Componente: Seletor de Mês/Ano Simples ──────────────────────────────────
-
-function MonthYearPicker({
-  value,
-  onChange,
-  placeholder,
-  size = "sm",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  size?: "sm" | "md";
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewYear, setViewYear] = useState<number>(() => {
-    const parsed = parseMonthYear(value);
-    return parsed ? parsed.getFullYear() : new Date().getFullYear();
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selected = parseMonthYear(value);
-
-  function handleToggle() {
-    if (!isOpen) {
-      setViewYear(selected ? selected.getFullYear() : new Date().getFullYear());
-    }
-    setIsOpen((v) => !v);
-  }
-
-  function selectMonth(monthIndex: number) {
-    const mm = String(monthIndex + 1).padStart(2, "0");
-    onChange(`${mm}/${viewYear}`);
-    setIsOpen(false);
-  }
-
-  const buttonSizeClasses =
-    size === "md"
-      ? "w-full px-3 py-2.5 text-sm rounded-lg"
-      : "w-[128px] px-2.5 py-1.5 text-xs rounded-md";
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 border transition-all bg-white ${buttonSizeClasses} ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
-        } ${selected ? "text-gray-700" : "text-gray-400"}`}
-      >
-        <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
-        <CalendarIcon size={size === "md" ? 14 : 12} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <button
-              type="button"
-              onClick={() => setViewYear((y) => y - 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-sm font-bold text-[#0b1e35] tabular-nums">{viewYear}</span>
-            <button
-              type="button"
-              onClick={() => setViewYear((y) => y + 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {MONTHS_SHORT.map((m, idx) => {
-              const isSelected =
-                !!selected && selected.getFullYear() === viewYear && selected.getMonth() === idx;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => selectMonth(idx)}
-                  className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
-                  }`}
-                >
-                  {m}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Componente: Seletor de Data Completa (Dia/Mês/Ano) ───────────────────────
-
-function DatePicker({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState<Date>(() => {
-    const parsed = parseFullDate(value);
-    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date();
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selected = parseFullDate(value);
-
-  function handleToggle() {
-    if (!isOpen) {
-      const parsed = parseFullDate(value);
-      setViewDate(parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date());
-    }
-    setIsOpen((v) => !v);
-  }
-
-  function changeMonth(delta: number) {
-    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
-  }
-
-  function selectDay(day: number) {
-    const dd = String(day).padStart(2, "0");
-    const mm = String(viewDate.getMonth() + 1).padStart(2, "0");
-    const yyyy = viewDate.getFullYear();
-    onChange(`${dd}/${mm}/${yyyy}`);
-    setIsOpen(false);
-  }
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = viewDate
-    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    .replace(/^\w/, (c) => c.toUpperCase());
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2.5 border rounded-lg text-sm transition-all bg-white ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
-        } ${selected ? "text-gray-700" : "text-gray-400"}`}
-      >
-        <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAYS_SHORT.map((w, i) => (
-              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((day, i) => {
-              if (day === null) return <div key={i} />;
-              const isSelected =
-                !!selected &&
-                selected.getFullYear() === year &&
-                selected.getMonth() === month &&
-                selected.getDate() === day;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => selectDay(day)}
-                  className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Base de Dados Fixa (Somente Leitura) ────────────────────────────────────
 
@@ -724,7 +280,7 @@ export function FineCalculator() {
   function handleGeneratePeriod(rangeVal: string) {
     if (!rangeVal) return;
 
-    // Se tiver " a ", pega os dois. Se for só um mês, o start e end são iguais.
+    // O Range Picker agora devolve "MM/AAAA a MM/AAAA"
     const parts = rangeVal.split(" a ");
     const start = parseMonthYear(parts[0]);
     const end = parts.length > 1 ? parseMonthYear(parts[1]) : start;
@@ -1031,218 +587,199 @@ export function FineCalculator() {
       <div className="flex-1 overflow-auto bg-[#f8fafe]">
         <div className="p-8 max-w-5xl mx-auto space-y-8 w-full">
 
-          {/* ── Bloco 2A: Lançamento Água ───────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Plus size={18} className="text-[#1a5fa8]" />
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Água</h2>
-                  <p className="text-gray-400 text-xs mt-0.5">Gere um período automático ou adicione mês a mês</p>
-                </div>
-              </div>
-
+          {/* ── Bloco 1: Lançamento Água ───────────────────────────────────── */}
+          <SectionBlock
+            icon={Plus}
+            title="Lançamento dos Meses Irregulares de Água"
+            description="Gere um período automático ou adicione mês a mês"
+            headerAction={
               <div className="w-full max-w-[240px]">
                 <MonthYearRangePicker 
                   value={periodRange} 
                   onChange={(val) => {
                     setPeriodRange(val);
-                    if (val) handleGeneratePeriod(val); // Aciona a geração automaticamente ao Confirmar
+                    if (val) handleGeneratePeriod(val); 
                   }} 
-                  placeholder="Adicione um perído..." 
+                  placeholder="Adicione um período..." 
                 />
               </div>
+            }
+          >
+            <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 mb-2 px-1">
+              {[
+                "Mês/Ano",
+                "Consumo Regular (m³)",
+                "Consumo Irregular (m³)",
+                "Água Cobrada Errada (R$)",
+                "Serviço Cobrado Errado (R$)",
+                ""
+              ].map((h, i) => (
+                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
+              ))}
             </div>
 
-            <div className="p-4">
-              <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 mb-2 px-1">
-                {[
-                  "Mês/Ano",
-                  "Consumo Regular (m³)",
-                  "Consumo Irregular (m³)",
-                  "Água Cobrada Errada (R$)",
-                  "Serviço Cobrado Errado (R$)",
-                  ""
-                ].map((h, i) => (
-                  <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
-                ))}
-              </div>
+            <div className="space-y-2">
+              {rows.map((row, idx) => {
+                const calc = calcRows[idx];
+                const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
+                const noRate = row.monthYear.length === 7 && parseMonthYear(row.monthYear) && calc.hasError;
 
-              <div className="space-y-2">
-                {rows.map((row, idx) => {
-                  const calc = calcRows[idx];
-                  const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
-                  const noRate = row.monthYear.length === 7 && parseMonthYear(row.monthYear) && calc.hasError;
-
-                  return (
-                    <div key={row.id}>
-                      <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 items-center">
-                        <input
-                          value={row.monthYear}
-                          onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
-                          placeholder="MM/AAAA"
-                          maxLength={7}
-                          className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all ${
-                            dateError
-                              ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
-                              : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
-                          }`}
-                        />
-                        <input
-                          value={row.consumption}
-                          onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
-                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("consumption")}
-                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                          placeholder="Ex: 20"
-                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                        />
-                        <input
-                          value={row.irregularConsumption}
-                          onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value)}
-                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("irregularConsumption")}
-                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                          placeholder="Ex: 15"
-                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                        />
-                        <input
-                          value={row.chargedWater}
-                          onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
-                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedWater")}
-                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                          placeholder="Ex: 13,60"
-                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                        />
-                        <input
-                          value={row.chargedService}
-                          onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
-                          onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedService")}
-                          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                          placeholder="Ex: 31,96"
-                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                        />
-                        <button
-                          onClick={() => removeRow(row.id)}
-                          className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-
-                      {noRate && (
-                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
-                          <AlertCircle size={10} /> Verifique a vigência selecionada nos Parâmetros.
-                        </div>
-                      )}
-                      {dateError && (
-                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
-                          <AlertCircle size={10} /> Formato inválido. Use MM/AAAA (ex: 01/2026).
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {rows.length === 0 && (
-                <div className="py-8 text-center text-gray-300 text-sm">
-                  Utilize o gerador de período acima ou clique abaixo para adicionar manualmente.
-                </div>
-              )}
-
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={addRow}
-                  className="flex items-center gap-1.5 text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
-                >
-                  <Plus size={12} /> Adicionar mês avulso manualmente
-                </button>
-              </div>
-              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-[#4a7fa5]">
-                  Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo - <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Bloco 2B: Lançamento Esgoto ───────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <div className="flex items-center gap-3">
-                <Plus size={18} className="text-[#4a7fa5]" />
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Lançamento dos Meses Irregulares de Esgoto</h2>
-                  <p className="text-gray-400 text-xs mt-0.5">Sincronizado automaticamente com a tabela de Água</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4">
-              <div className="grid grid-cols-[140px_200px] gap-4 mb-2 px-1">
-                {["Mês/Ano (Automático)", "Esgoto Cobrado Errado (R$)"].map((h, i) => (
-                  <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                {rows.map((row, idx) => (
+                return (
                   <div key={row.id}>
-                    <div className="grid grid-cols-[140px_200px] gap-4 items-center">
-                      <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
-                        {row.monthYear || "Mês não preenchido"}
-                      </div>
+                    <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 items-center">
                       <input
-                        value={row.chargedSewage}
-                        onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedSewage")}
-                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                        placeholder="Ex: 10,88"
-                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
+                        value={row.monthYear}
+                        onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
+                        placeholder="MM/AAAA"
+                        maxLength={7}
+                        className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all ${
+                          dateError
+                            ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
+                            : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
+                        }`}
                       />
+                      <input
+                        value={row.consumption}
+                        onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
+                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("consumption")}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        placeholder="Ex: 20"
+                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      />
+                      <input
+                        value={row.irregularConsumption}
+                        onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value)}
+                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("irregularConsumption")}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        placeholder="Ex: 15"
+                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      />
+                      <input
+                        value={row.chargedWater}
+                        onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
+                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedWater")}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        placeholder="Ex: 13,60"
+                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      />
+                      <input
+                        value={row.chargedService}
+                        onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
+                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedService")}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        placeholder="Ex: 31,96"
+                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                      />
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-              
-              {rows.length === 0 && (
-                <div className="py-6 text-center text-gray-300 text-sm">
-                  Adicione meses na tabela de Água primeiro.
-                </div>
-              )}
 
-              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-[#4a7fa5]">
-                  A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong>.
-                </p>
-              </div>
+                    {noRate && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 px-1">
+                        <AlertCircle size={10} /> Verifique a vigência selecionada nos Parâmetros.
+                      </div>
+                    )}
+                    {dateError && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
+                        <AlertCircle size={10} /> Formato inválido. Use MM/AAAA (ex: 01/2026).
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+
+            {rows.length === 0 && (
+              <div className="py-8 text-center text-gray-300 text-sm">
+                Utilize o gerador de período acima ou clique abaixo para adicionar manualmente.
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={addRow}
+                className="flex items-center gap-1.5 text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
+              >
+                <Plus size={12} /> Adicionar mês avulso manualmente
+              </button>
+            </div>
+            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#4a7fa5]">
+                Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo - <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
+              </p>
+            </div>
+          </SectionBlock>
+
+          {/* ── Bloco 2: Lançamento Esgoto ───────────────────────────────────── */}
+          <SectionBlock
+            icon={Plus}
+            title="Lançamento dos Meses Irregulares de Esgoto"
+            description="Sincronizado automaticamente com a tabela de Água"
+          >
+            <div className="grid grid-cols-[140px_200px] gap-4 mb-2 px-1">
+              {["Mês/Ano (Automático)", "Esgoto Cobrado Errado (R$)"].map((h, i) => (
+                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {rows.map((row, idx) => (
+                <div key={row.id}>
+                  <div className="grid grid-cols-[140px_200px] gap-4 items-center">
+                    <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
+                      {row.monthYear || "Mês não preenchido"}
+                    </div>
+                    <input
+                      value={row.chargedSewage}
+                      onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
+                      onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedSewage")}
+                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                      placeholder="Ex: 10,88"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {rows.length === 0 && (
+              <div className="py-6 text-center text-gray-300 text-sm">
+                Adicione meses na tabela de Água primeiro.
+              </div>
+            )}
+
+            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#4a7fa5]">
+                A tarifa referente ao esgotamento sanitário corresponde à <strong>80% do valor da fatura de água</strong> multiplicado pelo <strong>Fator K1</strong>.
+              </p>
+            </div>
+          </SectionBlock>
 
           {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <Calculator size={18} className="text-[#1a5fa8]" />
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Resultado Detalhado por Mês</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Gerado automaticamente pelo motor de cálculo</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
+          <SectionBlock
+            icon={Calculator}
+            title="Resultado Detalhado por Mês"
+            description="Gerado automaticamente pelo motor de cálculo"
+          >
+            <div className="overflow-x-auto -mx-6">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#f8fafe] border border-gray-100 rounded-t-lg">
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
+                  <tr className="bg-[#f8fafe] border-y border-gray-100">
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Valor Água<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight border-l border-white">Valor Água<br/>(Correto)</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Total<br/>Correto</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight border-r border-white">Total<br/>Correto</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Total<br/>Errado</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight border-r border-white">Total<br/>Errado</th>
+                    <th className="px-6 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1250,10 +787,10 @@ export function FineCalculator() {
                     if (c.hasError) {
                       return (
                         <tr key={c.row.id} className="bg-amber-50/40">
-                          <td className="px-3 py-3 text-gray-500 text-xs italic">
+                          <td className="px-6 py-3 text-gray-500 text-xs italic">
                             {c.row.monthYear || "—"}
                           </td>
-                          <td colSpan={8} className="px-3 py-3 text-xs text-amber-600 italic">
+                          <td colSpan={8} className="px-6 py-3 text-xs text-amber-600 italic">
                             <div className="flex items-center gap-1.5">
                               <AlertCircle size={11} />
                               Aguardando dados completos.
@@ -1265,7 +802,7 @@ export function FineCalculator() {
                     const positive = (c.diff ?? 0) >= 0;
                     return (
                       <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-3 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
+                        <td className="px-6 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
                           {labelMonth(c.row.monthYear)}
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums text-gray-700">
@@ -1289,7 +826,7 @@ export function FineCalculator() {
                         <td className="px-3 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
                           {fmtBRL(c.totalCharged)}
                         </td>
-                        <td className={`px-3 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                        <td className={`px-6 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
                           {c.diff !== null ? fmtBRL(c.diff) : "—"}
                         </td>
                       </tr>
@@ -1297,7 +834,7 @@ export function FineCalculator() {
                   })}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-10 text-center text-gray-300 text-sm">
+                      <td colSpan={9} className="px-6 py-10 text-center text-gray-300 text-sm">
                         Nenhum dado para exibir.
                       </td>
                     </tr>
@@ -1306,13 +843,13 @@ export function FineCalculator() {
                 {validRows.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 bg-[#f8fafe]">
-                      <td className="px-3 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
+                      <td className="px-6 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
                       <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{totalM3} m³</td>
                       <td colSpan={2} className="bg-[#eef6ff]/60"></td>
                       <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(grandCorrect)}</td>
                       <td colSpan={2} className="bg-red-50/40"></td>
                       <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(grandCharged)}</td>
-                      <td className={`px-3 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      <td className={`px-6 py-3 text-right tabular-nums text-sm font-bold ${grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                         {fmtBRL(grandDiff)}
                       </td>
                     </tr>
@@ -1320,89 +857,79 @@ export function FineCalculator() {
                 )}
               </table>
             </div>
-          </div>
+          </SectionBlock>
 
           {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <ClipboardList size={18} className="text-[#1a5fa8]" />
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Painel de Resumo - Correspondente aos Meses de Irregularidade</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Base para lançamento financeiro ou notificação extrajudicial</p>
+          <SectionBlock
+            icon={ClipboardList}
+            title="Painel de Resumo - Correspondente aos Meses de Irregularidade"
+            description="Base para lançamento financeiro ou notificação extrajudicial"
+          >
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Droplets size={14} className="text-[#1a5fa8]" />
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de m³</p>
+                </div>
+                <p className="text-2xl font-bold text-[#0b1e35] tabular-nums">{totalM3}</p>
+                <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
+              </div>
+
+              <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calculator size={14} className="text-[#1a5fa8]" />
+                  <p className="text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider">Valor Correto</p>
+                </div>
+                <p className="text-2xl font-bold text-[#1a5fa8] tabular-nums">{fmtBRL(grandCorrect)}</p>
+                <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
+              </div>
+
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={14} className="text-red-500" />
+                  <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Cobrado (Errado)</p>
+                </div>
+                <p className="text-2xl font-bold text-red-600 tabular-nums">{fmtBRL(grandCharged)}</p>
+                <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
+              </div>
+
+              <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${grandDiff >= 0 ? "text-emerald-700" : "text-red-500"}`}>
+                    Diferença a Lançar
+                  </p>
+                </div>
+                <p className={`text-2xl font-bold tabular-nums ${grandDiff >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                  {fmtBRL(Math.abs(grandDiff))}
+                </p>
+                <p className={`text-[10px] mt-1 ${grandDiff >= 0 ? "text-emerald-600" : "text-red-400"}`}>
+                  {grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"}
+                </p>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Droplets size={14} className="text-[#1a5fa8]" />
-                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de m³</p>
-                  </div>
-                  <p className="text-2xl font-bold text-[#0b1e35] tabular-nums">{totalM3}</p>
-                  <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
-                </div>
-
-                <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calculator size={14} className="text-[#1a5fa8]" />
-                    <p className="text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider">Valor Correto</p>
-                  </div>
-                  <p className="text-2xl font-bold text-[#1a5fa8] tabular-nums">{fmtBRL(grandCorrect)}</p>
-                  <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
-                </div>
-
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle size={14} className="text-red-500" />
-                    <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Cobrado (Errado)</p>
-                  </div>
-                  <p className="text-2xl font-bold text-red-600 tabular-nums">{fmtBRL(grandCharged)}</p>
-                  <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
-                </div>
-
-                <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${grandDiff >= 0 ? "text-emerald-700" : "text-red-500"}`}>
-                      Diferença a Lançar
-                    </p>
-                  </div>
-                  <p className={`text-2xl font-bold tabular-nums ${grandDiff >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                    {fmtBRL(Math.abs(grandDiff))}
-                  </p>
-                  <p className={`text-[10px] mt-1 ${grandDiff >= 0 ? "text-emerald-600" : "text-red-400"}`}>
-                    {grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"}
-                  </p>
-                </div>
+            {validRows.length > 0 && (
+              <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-[#4a7fa5]">
+                  <strong>Resumo:</strong> Nos {validRows.length} meses de irregularidade apurados,
+                  o valor correto total seria de <strong>{fmtBRL(grandCorrect)}</strong>,
+                  porém foi cobrado apenas <strong>{fmtBRL(grandCharged)}</strong>.
+                  A diferença de <strong>{fmtBRL(Math.abs(grandDiff))}</strong> representa o ajuste financeiro a ser lançado
+                  referente ao consumo irregular de <strong>{totalM3} m³</strong>.
+                </p>
               </div>
-
-              {validRows.length > 0 && (
-                <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-                  <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-[#4a7fa5]">
-                    <strong>Resumo:</strong> Nos {validRows.length} meses de irregularidade apurados,
-                    o valor correto total seria de <strong>{fmtBRL(grandCorrect)}</strong>,
-                    porém foi cobrado apenas <strong>{fmtBRL(grandCharged)}</strong>.
-                    A diferença de <strong>{fmtBRL(Math.abs(grandDiff))}</strong> representa o ajuste financeiro a ser lançado
-                    referente ao consumo irregular de <strong>{totalM3} m³</strong>.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </SectionBlock>
 
           {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <FileText size={18} className="text-[#1a5fa8]" />
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Texto de Apuração</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Gerado com base nos cálculos - editável e copiável</p>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-5">
+          <SectionBlock
+            icon={FileText}
+            title="Texto de Apuração"
+            description="Gerado com base nos cálculos - editável e copiável"
+          >
+            <div className="space-y-5">
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para o texto</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1508,7 +1035,7 @@ export function FineCalculator() {
                     onChange={(e) => setWaterReportText(e.target.value)}
                     placeholder={
                       validRows.length === 0
-                        ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
+                        ? "Adicione os meses irregulares e clique em [Gerar Texto]..."
                         : "Texto da Água aparecerá aqui."
                     }
                     rows={10}
@@ -1538,7 +1065,7 @@ export function FineCalculator() {
                     onChange={(e) => setSewageReportText(e.target.value)}
                     placeholder={
                       validRows.length === 0
-                        ? "Adicione os meses irregulares e clique em [Gerar / Atualizar Texto]..."
+                        ? "Adicione os meses irregulares e clique em [Gerar Texto]..."
                         : "Texto do Esgoto aparecerá aqui caso existam valores informados."
                     }
                     rows={10}
@@ -1553,7 +1080,7 @@ export function FineCalculator() {
                 Clique dentro de qualquer um dos textos para editar manualmente antes de copiar.
               </p>
             </div>
-          </div>
+          </SectionBlock>
 
         </div>
       </div>

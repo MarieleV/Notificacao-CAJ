@@ -1,597 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  Sparkles, Copy, CheckCircle2,
-  Scale, FileCheck, FileX, Clock, HelpCircle, FileText, File,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, ChevronDown, ChevronUp, MessageSquare, Calculator, X
+  Sparkles, Copy, CheckCircle2, Scale, FileCheck, FileX, Clock, 
+  HelpCircle, FileText, File, Info, ChevronDown, ChevronUp, 
+  MessageSquare, Calculator, X
 } from "lucide-react";
+
+// --- IMPORTAÇÕES DA NOVA ARQUITETURA ---
+import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../lib/dates";
+import { formatName } from "../lib/masks";
+import { DatePicker } from "./shared/DatePicker";
+import { MonthYearPicker } from "./shared/MonthYearPicker";
+import { MonthYearRangePicker } from "./shared/MonthYearRangePicker";
+import { SectionBlock } from "./shared/SectionBlock";
 
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "bypass" | "clandestina" | "la_padronizada" | "la_cadastral" | "prorrogacao";
 type DefesaType = "com_defesa" | "sem_defesa";
-
-// ─── Helpers de Data ──────────────────────────────────────────────────────────
-
-// Lista oficial de Feriados e Fins de Semana extraída da planilha
-const FERIADOS_E_FDS = [
-  "2025-08-30", "2025-08-31", "2025-09-06", "2025-09-07", "2025-09-13", "2025-09-14", "2025-09-20", "2025-09-21",
-  "2025-09-27", "2025-09-28", "2025-10-04", "2025-10-05", "2025-10-11", "2025-10-12", "2025-10-18", "2025-10-19",
-  "2025-10-25", "2025-10-26", "2025-11-01", "2025-11-02", "2025-11-08", "2025-11-09", "2025-11-15", "2025-11-16",
-  "2025-11-20", "2025-11-21", "2025-11-22", "2025-11-23", "2025-11-29", "2025-11-30", "2025-12-06", "2025-12-07",
-  "2025-12-13", "2025-12-14", "2025-12-20", "2025-12-21", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-25",
-  "2025-12-26", "2025-12-27", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-01", "2026-01-02",
-  "2026-01-03", "2026-01-04", "2026-01-10", "2026-01-11", "2026-01-17", "2026-01-18", "2026-01-24", "2026-01-25",
-  "2026-01-31", "2026-02-01", "2026-02-07", "2026-02-08", "2026-02-14", "2026-02-15", "2026-02-16", "2026-02-17",
-  "2026-02-21", "2026-02-22", "2026-02-28", "2026-03-01", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-14",
-  "2026-03-15", "2026-03-21", "2026-03-22", "2026-03-28", "2026-03-29", "2026-04-03", "2026-04-04", "2026-04-05",
-  "2026-04-11", "2026-04-12", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-25", "2026-04-26",
-  "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-09", "2026-05-10", "2026-05-16", "2026-05-17", "2026-05-23",
-  "2026-05-24", "2026-05-30", "2026-05-31", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07", "2026-06-13",
-  "2026-06-14", "2026-06-20", "2026-06-21", "2026-06-27", "2026-06-28", "2026-07-04", "2026-07-05", "2026-07-11",
-  "2026-07-12", "2026-07-18", "2026-07-19", "2026-07-25", "2026-07-26", "2026-08-01", "2026-08-02", "2026-08-08",
-  "2026-08-09", "2026-08-15", "2026-08-16", "2026-08-22", "2026-08-23", "2026-08-29", "2026-08-30", "2026-09-05",
-  "2026-09-06", "2026-09-07", "2026-09-12", "2026-09-13", "2026-09-19", "2026-09-20", "2026-09-26", "2026-09-27",
-  "2026-10-03", "2026-10-04", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-17", "2026-10-18", "2026-10-24",
-  "2026-10-25", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-07", "2026-11-08", "2026-11-14", "2026-11-15",
-  "2026-11-20", "2026-11-21", "2026-11-22", "2026-11-28", "2026-11-29", "2026-12-05", "2026-12-06", "2026-12-12",
-  "2026-12-13", "2026-12-19", "2026-12-20", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28",
-  "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02", "2027-01-03", "2027-01-09", "2027-01-10",
-  "2027-01-16", "2027-01-17", "2027-01-23", "2027-01-24", "2027-01-30", "2027-01-31", "2027-02-06", "2027-02-07",
-  "2027-02-08", "2027-02-09", "2027-02-13", "2027-02-14", "2027-02-20", "2027-02-21", "2027-02-27", "2027-02-28",
-  "2027-03-06", "2027-03-07", "2027-03-08", "2027-03-09", "2027-03-13", "2027-03-14", "2027-03-20", "2027-03-21",
-  "2027-03-26", "2027-03-27", "2027-03-28", "2027-04-03", "2027-04-04", "2027-04-10", "2027-04-11", "2027-04-17",
-  "2027-04-18", "2027-04-21", "2027-04-24", "2027-04-25", "2027-05-01", "2027-05-02", "2027-05-08", "2027-05-09",
-  "2027-05-15", "2027-05-16", "2027-05-22", "2027-05-23", "2027-05-27", "2027-05-28", "2027-05-29", "2027-05-30",
-  "2027-06-05", "2027-06-06", "2027-06-12", "2027-06-13", "2027-06-19", "2027-06-20", "2027-06-26", "2027-06-27",
-  "2027-07-03", "2027-07-04", "2027-07-10", "2027-07-11", "2027-07-17", "2027-07-18", "2027-07-24", "2027-07-25",
-  "2027-07-31", "2027-08-01", "2027-08-07", "2027-08-08", "2027-08-14", "2027-08-15", "2027-08-21", "2027-08-22",
-  "2027-08-28", "2027-08-29", "2027-09-04", "2027-09-05", "2027-09-06", "2027-09-07", "2027-09-11", "2027-09-12",
-  "2027-09-18", "2027-09-19", "2027-09-25", "2027-09-26", "2027-10-02", "2027-10-03", "2027-10-09", "2027-10-10",
-  "2027-10-11", "2027-10-12", "2027-10-16", "2027-10-17", "2027-10-23", "2027-10-24", "2027-10-30", "2027-10-31",
-  "2027-11-01", "2027-11-02", "2027-11-06", "2027-11-07", "2027-11-13", "2027-11-14", "2027-11-15", "2027-11-20",
-  "2027-11-21", "2027-11-27", "2027-11-28", "2027-12-04", "2027-12-05", "2027-12-11", "2027-12-12", "2027-12-18",
-  "2027-12-19", "2027-12-24", "2027-12-25", "2027-12-26", "2027-12-27", "2027-12-28", "2027-12-29", "2027-12-30",
-  "2027-12-31"
-];
-
-function getBusinessDaysDifference(date1: string, date2: string): number {
-  const d1 = parseFullDate(date1);
-  const d2 = parseFullDate(date2);
-  if (!d1 || !d2) return 0;
-
-  let count = 0;
-  const start = new Date(Math.min(d1.getTime(), d2.getTime()));
-  const end = new Date(Math.max(d1.getTime(), d2.getTime()));
-  
-  let current = new Date(start);
-  while (current < end) {
-    current.setDate(current.getDate() + 1);
-    
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
-    const day = String(current.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-
-    // Ignora Sábados, Domingos E os dias listados no array (Feriados/Emendas)
-    const isWeekend = current.getDay() === 0 || current.getDay() === 6;
-    const isFeriado = FERIADOS_E_FDS.includes(dateString);
-
-    if (!isWeekend && !isFeriado) {
-      count++;
-    }
-  }
-  return count;
-}
-
-function get60BusinessDaysFromToday(): string {
-  const d = new Date();
-  let added = 0;
-  while (added < 60) {
-    d.setDate(d.getDate() + 1);
-    
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-
-    // Conta 60 dias para frente ignorando os feriados, sábados e domingos
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-    const isFeriado = FERIADOS_E_FDS.includes(dateString);
-
-    if (!isWeekend && !isFeriado) {
-      added++;
-    }
-  }
-  const dayStr = String(d.getDate()).padStart(2, '0');
-  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-  const yearStr = d.getFullYear();
-  return `${dayStr}/${monthStr}/${yearStr}`;
-}
-
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
-
-function parseMonthYear(s: string): Date | null {
-  const m = s.match(/^(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const month = parseInt(m[1], 10);
-  const year = parseInt(m[2], 10);
-  if (month < 1 || month > 12) return null;
-  return new Date(year, month - 1, 1);
-}
-
-function labelMonth(mmyyyy: string): string {
-  const d = parseMonthYear(mmyyyy);
-  if (!d) return mmyyyy;
-  return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
-    .replace(".", "").replace(/^\w/, (c) => c.toUpperCase());
-}
-
-function parseFullDate(s: string): Date | null {
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const year = parseInt(m[3], 10);
-  if (month < 1 || month > 12) return null;
-  const d = new Date(year, month - 1, day);
-  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
-  return d;
-}
-
-function labelFullDate(s: string): string {
-  const d = parseFullDate(s);
-  if (!d) return s;
-  return d
-    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-    .replace(".", "");
-}
-
-function businessDaysBetween(start: Date, end: Date): number {
-  let count = 0;
-  const current = new Date(start);
-
-  while (current <= end) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
-    const day = String(current.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-
-    const isWeekend = current.getDay() === 0 || current.getDay() === 6;
-    const isFeriado = FERIADOS_E_FDS.includes(dateString);
-
-    if (!isWeekend && !isFeriado) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-function formatName(name: string): string {
-  if (!name) return "";
-  
-  const lowerCaseWords = ["da", "de", "do", "das", "dos", "e"];
-  
-  return name
-    .toLowerCase()
-    .split(" ")
-    .map((word, index) => {
-      if (index !== 0 && lowerCaseWords.includes(word)) {
-        return word;
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    })
-    .join(" ");
-}
-
-// Função Genérica para Calcular Prazos (Usada na Calculadora)
-function calculateEndDate(startDateStr: string, duration: number): string {
-  if (!startDateStr || !duration || isNaN(duration)) return "";
-  const d = parseFullDate(startDateStr);
-  if (!d) return "";
-
-  let added = 0;
-  while (added < duration) {
-    d.setDate(d.getDate() + 1);
-    
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-    const isFeriado = FERIADOS_E_FDS.includes(dateString);
-
-    if (!isWeekend && !isFeriado) {
-      added++;
-    }
-  }
-  const dayStr = String(d.getDate()).padStart(2, '0');
-  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-  const yearStr = d.getFullYear();
-  return `${dayStr}/${monthStr}/${yearStr}`;
-}
-
-// ─── Componente: Seletor de Período de Meses/Ano (Range Picker) ───────────────
-
-function MonthYearRangePicker({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
-  const [startVal, setStartVal] = useState<number | null>(null);
-  const [endVal, setEndVal] = useState<number | null>(null);
-  const [hoverVal, setHoverVal] = useState<number | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const parseValue = (valStr: string) => {
-    const parts = valStr.split(" a ");
-    const parsePart = (p: string) => {
-      if (!p) return null;
-      const [mStr, yStr] = p.split("/");
-      if (!mStr || !yStr) return null;
-      const mIdx = MONTHS_SHORT.findIndex((m) => m.toLowerCase() === mStr.toLowerCase());
-      if (mIdx === -1) return null;
-      return parseInt(yStr) * 100 + mIdx;
-    };
-    return { start: parsePart(parts[0]), end: parts.length > 1 ? parsePart(parts[1]) : null };
-  };
-
-  const handleToggle = () => {
-    if (!isOpen) {
-      const parsed = parseValue(value);
-      setStartVal(parsed.start);
-      setEndVal(parsed.end);
-      setViewYear(parsed.start ? Math.floor(parsed.start / 100) : new Date().getFullYear());
-    }
-    setIsOpen(!isOpen);
-  };
-
-  const handleMonthClick = (monthIdx: number) => {
-    const val = viewYear * 100 + monthIdx;
-    if (!startVal || (startVal && endVal)) {
-      setStartVal(val);
-      setEndVal(null);
-    } else {
-      if (val < startVal) {
-        setEndVal(startVal);
-        setStartVal(val);
-      } else {
-        setEndVal(val);
-      }
-    }
-  };
-
-  const formatDisplay = (val: number) => {
-    const y = Math.floor(val / 100);
-    const m = val % 100;
-    return `${MONTHS_SHORT[m]}/${y}`;
-  };
-
-  const handleConfirm = () => {
-    if (startVal && endVal) {
-      onChange(`${formatDisplay(startVal)} a ${formatDisplay(endVal)}`);
-    } else if (startVal) {
-      onChange(formatDisplay(startVal));
-    } else {
-      onChange("");
-    }
-    setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    setStartVal(null);
-    setEndVal(null);
-  };
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all text-left ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20 bg-[#eef6ff]" : "border-[#c3ddf8] bg-[#eef6ff]"
-        } ${value ? "text-[#0b1e35] font-medium" : "text-gray-500"}`}
-      >
-        <span className="truncate block flex-1">{value || placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-3">
-            <button type="button" onClick={() => setViewYear((y) => y - 1)} className="p-1.5 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
-              <ChevronLeft size={16} />
-            </button>
-            <span className="font-bold text-sm text-[#0b1e35]">{viewYear}</span>
-            <button type="button" onClick={() => setViewYear((y) => y + 1)} className="p-1.5 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1 mb-3" onMouseLeave={() => setHoverVal(null)}>
-            {MONTHS_SHORT.map((m, idx) => {
-              const val = viewYear * 100 + idx;
-              const isStart = startVal === val;
-              const isEnd = endVal === val;
-              const isSelected = isStart || isEnd;
-              const isBetween = startVal && endVal && val > startVal && val < endVal;
-              const isHover = startVal && !endVal && hoverVal && ((val > startVal && val <= hoverVal) || (val >= hoverVal && val < startVal));
-
-              let baseClass = "px-2 py-2 rounded-md text-xs font-medium transition-colors text-center cursor-pointer ";
-              if (isSelected) baseClass += "bg-[#1a5fa8] text-white shadow-sm";
-              else if (isBetween || isHover) baseClass += "bg-[#eef6ff] text-[#1a5fa8]";
-              else baseClass += "text-gray-600 hover:bg-gray-100";
-
-              return (
-                <div key={m} onClick={() => handleMonthClick(idx)} onMouseEnter={() => setHoverVal(val)} className={baseClass}>
-                  {m}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-red-500 transition-colors">
-              Limpar
-            </button>
-            <button type="button" onClick={handleConfirm} disabled={!startVal} className="text-xs font-bold text-white bg-[#1a5fa8] hover:bg-[#154d8a] px-3 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Confirmar
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-// ─── Componente: Seletor de Mês/Ano (Calendário) ──────────────────────────────
-
-function MonthYearPicker({
-  value,
-  onChange,
-  placeholder,
-  size = "sm",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  size?: "sm" | "md";
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewYear, setViewYear] = useState<number>(() => {
-    const parsed = parseMonthYear(value);
-    return parsed ? parsed.getFullYear() : new Date().getFullYear();
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selected = parseMonthYear(value);
-
-  function handleToggle() {
-    if (!isOpen) {
-      setViewYear(selected ? selected.getFullYear() : new Date().getFullYear());
-    }
-    setIsOpen((v) => !v);
-  }
-
-  function selectMonth(monthIndex: number) {
-    const mm = String(monthIndex + 1).padStart(2, "0");
-    onChange(`${mm}/${viewYear}`);
-    setIsOpen(false);
-  }
-
-  const buttonSizeClasses =
-    size === "md"
-      ? "w-full px-3 py-2.5 text-sm rounded-lg"
-      : "w-[128px] px-2.5 py-1.5 text-xs rounded-md";
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 border transition-all bg-white ${buttonSizeClasses} ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
-        } ${selected ? "text-gray-700" : "text-gray-400"}`}
-      >
-        <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
-        <CalendarIcon size={size === "md" ? 14 : 12} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <button
-              type="button"
-              onClick={() => setViewYear((y) => y - 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-sm font-bold text-[#0b1e35] tabular-nums">{viewYear}</span>
-            <button
-              type="button"
-              onClick={() => setViewYear((y) => y + 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {MONTHS_SHORT.map((m, idx) => {
-              const isSelected =
-                !!selected && selected.getFullYear() === viewYear && selected.getMonth() === idx;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => selectMonth(idx)}
-                  className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
-                  }`}
-                >
-                  {m}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Componente: Seletor de Data Completa (Dia/Mês/Ano) ───────────────────────
-
-function DatePicker({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState<Date>(() => {
-    const parsed = parseFullDate(value);
-    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date();
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-    }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selected = parseFullDate(value);
-
-  function handleToggle() {
-    if (!isOpen) {
-      const parsed = parseFullDate(value);
-      setViewDate(parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), 1) : new Date());
-    }
-    setIsOpen((v) => !v);
-  }
-
-  function changeMonth(delta: number) {
-    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
-  }
-
-  function selectDay(day: number) {
-    const dd = String(day).padStart(2, "0");
-    const mm = String(viewDate.getMonth() + 1).padStart(2, "0");
-    const yyyy = viewDate.getFullYear();
-    onChange(`${dd}/${mm}/${yyyy}`);
-    setIsOpen(false);
-  }
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = viewDate
-    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-    .replace(/^\w/, (c) => c.toUpperCase());
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all bg-white ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
-        } ${selected ? "text-gray-700" : "text-gray-400"}`}
-      >
-        <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAYS_SHORT.map((w, i) => (
-              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((day, i) => {
-              if (day === null) return <div key={i} />;
-              const isSelected =
-                !!selected &&
-                selected.getFullYear() === year &&
-                selected.getMonth() === month &&
-                selected.getDate() === day;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => selectDay(day)}
-                  className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Componente: Bloco Editável e Copiável com Altura Dinâmica (Guia Sansys) ───
 function EditableCopyBlock({ defaultText }: { defaultText: string }) {
@@ -600,7 +24,6 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
   const [isDirty, setIsDirty] = useState(false);
   
   useEffect(() => {
-    // Se o usuário ainda não editou manualmente, atualiza o texto se as variáveis mudarem
     if (!isDirty) {
       setText(defaultText);
     }
@@ -617,9 +40,6 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
     setText(defaultText);
   };
 
-  // CALCULO DE ALTURA DINÂMICA:
-  // Conta quantas quebras de linha existem no texto atual.
-  // Garante que o mínimo seja 2 linhas (para textos curtinhos) e remove limites rígidos.
   const lineCount = text.split('\n').length;
   const dynamicRows = Math.max(lineCount, 2);
 
@@ -649,7 +69,7 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
           setText(e.target.value);
           setIsDirty(true);
         }}
-        rows={dynamicRows} // Aplica dinamicamente a quantidade exata de linhas do texto
+        rows={dynamicRows}
         className="w-full bg-transparent border-none resize-none focus:outline-none text-gray-700 leading-relaxed overflow-hidden"
       />
     </div>
@@ -677,9 +97,9 @@ export function OuvidoriaManager() {
   const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
   const [dataManifestacao, setDataManifestacao] = useState("");
   
-  // Cálculo da diferença 
+  // Cálculo da diferença usando o helper importado
   const diasUteisDif = getBusinessDaysDifference(dataEmissaoFatura, dataManifestacao);
-  const isForaDoPrazo = dataEmissaoFatura && dataManifestacao &&  diasUteisDif > 30;
+  const isForaDoPrazo = dataEmissaoFatura && dataManifestacao && diasUteisDif > 30;
 
   // --- CONFIGURAÇÃO DO CASO ---
   const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
@@ -726,13 +146,10 @@ export function OuvidoriaManager() {
         setShowCalculator(false);
       }
     }
-    if (showCalculator) {
-      document.addEventListener("mousedown", handleClickOutsideCalculator);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutsideCalculator);
-    };
+    if (showCalculator) document.addEventListener("mousedown", handleClickOutsideCalculator);
+    return () => document.removeEventListener("mousedown", handleClickOutsideCalculator);
   }, [showCalculator]);
+  
   const [calcPrazo, setCalcPrazo] = useState<string>("15");
   const [calcCustomPrazo, setCalcCustomPrazo] = useState<string>("");
   const [calcDataInicial, setCalcDataInicial] = useState<string>("");
@@ -754,17 +171,14 @@ export function OuvidoriaManager() {
   const isSimples = isPadronizada || isCadastral || isProrrogacao;
   const isRecursoEnxuto = isRecurso && (isLeitura || isServico) && (decisao === "deferir" || decisao === "parcial");
 
-  // Controla se a Sessão 3 inteira aparece e se tem botões de decisão
   const hasDecisaoButtons = isLeitura || isServico;
-  const hasDefesaToggle = true; // Agora aparece em todos os casos de texto
+  const hasDefesaToggle = true; 
   const showSessao3 = hasDecisaoButtons || hasDefesaToggle;
 
-  // Numeração Dinâmica baseada em SESSÃO 3
-  const numSessao3 = showSessao3 ? "3" : null;
-  const numSessao4 = showSessao3 ? "4" : "3";
-  const numSessao5 = showSessao3 ? "5" : "4";
+  const numSessao3 = showSessao3 ? 3 : undefined;
+  const numSessao4 = showSessao3 ? 4 : 3;
+  const numSessao5 = showSessao3 ? 5 : 4;
 
-  // Regras de renderização das variáveis (Sessão 4)
   const showDataGeracaoAI = !isSimples && !isRecursoEnxuto;
   const showMesesSemAcesso = isLeitura && !isRecursoEnxuto;
   const showDataConstatacao = (isServico || isCorte || isHd || isBypass || isClandestina) && !isRecursoEnxuto;
@@ -776,19 +190,12 @@ export function OuvidoriaManager() {
   const showFaturaReferencia = !isProrrogacao && !isBypass && !isClandestina;
   const showDefesaCampos = historicoDefesa === "com_defesa";
 
-  // Componentes de cópia para clipboard (Sessão 5)
-  const [copied10082, setCopied10082] = useState(false);
-  const [copied3773, setCopied3773] = useState(false);
-  const [copied426, setCopied426] = useState(false);
-  const [copiedEmail, setCopiedEmail] = useState(false);
-
-  // Lidar com a troca de opções do tipo de caso
   const handleTipoCasoChange = (val: TipoCasoType) => {
     setTipoCaso(val);
     if (val === "leitura" || val === "servico") {
       setDecisao(null); 
     } else {
-      setDecisao("deferir"); // Auto-seta apenas para desativar a trava do botão de Gerar
+      setDecisao("deferir"); 
     }
   };
 
@@ -828,10 +235,6 @@ export function OuvidoriaManager() {
     return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"} em ${hoje} e Telefone: ${clienteTelefone || "[TELEFONE]"} sobre teor do docto anexado neste protocolo.`;
   };
 
-  const copyToClipboardSansys = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   // ─── GERAÇÃO DA MINUTA JURÍDICA ───
   const handleGenerateParecer = () => {
     if (!matricula || !numProcesso || (hasDecisaoButtons && !decisao)) {
@@ -858,7 +261,6 @@ export function OuvidoriaManager() {
     const tplProtIndeferimento = protIndeferimento || "[PROT. INDEFERIMENTO]";
     const tplPrazo = get60BusinessDaysFromToday();
 
-    // Parágrafo padrão inserido quando "Houve defesa prévia?" = Sim
     const paragrafoDefesaPrevia = `Foi apresentada Defesa em ${tplDataDefesa} (Prot. ${tplProtDefesa}). A mesma foi indeferida em ${tplDataIndeferimento} (Prot. ${tplProtIndeferimento}), pois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\nInciso XII - Impedimento voluntário/involuntário à promoção da leitura do hidrômetro ou à execução de serviços de manutenção do cavalete, hidrômetro e caixa de inspeção de esgoto pela prestadora de serviços.`;
     
     const txtImpCap = tipoServico === "voluntario" ? "Impedimento Voluntário" : "Impedimento Involuntário";
@@ -866,9 +268,7 @@ export function OuvidoriaManager() {
 
     let tpl = "";
 
-    // =======================================================
-    // TEXTOS: É RECURSO? -> SIM
-    // =======================================================
+    // LÓGICA DE TEXTOS (Mantida 100% igual à original)
     if (isRecurso) {
       if (tipoCaso === "leitura") {
         if (decisao === "deferir" || decisao === "parcial") {
@@ -906,9 +306,6 @@ export function OuvidoriaManager() {
         tpl = `À Ouvidoria,\nObjeto: Multa por Ligação clandestina de água e Revisão do faturamento de água.\n**Morador: ${tplMorador}**\n**Matrícula:** ${tplMatricula}\n\nO que ensejou a manifestação do cliente foi a aplicação de multas referente à Ligação clandestina de água, conforme Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso VII da Resolução 019/2019 - ARIS. Data da constatação: ${tplConstatacao}. Protocolo: ${tplProtServico}. Constatado pela Fiscalização. Penalidade prevista: Multa por ligação clandestina de água.\nCaso após a retirada da irregularidade, a matrícula tenha variação positiva de consumo, poderá haver a Revisão do faturamento de água e esgoto: ARIS - Resolução 19/2019.\nO Auto de Infração foi entregue, no endereço do imóvel, pelos Correios/por fiscal da Companhia e recebido por ${tplRecebedor} em ${tplRecebimentoAR}.\n${textDefesa}\npois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\n\n**VII -** Ligação clandestina de água e esgoto.\nVEREDICTO (ANALISAR CFE MANIFESTAÇÃO) A partir da manifestação do cliente, analisada a matrícula, constatamos que [ANALISE OS FATOS E COMPLETE]\n\nDECIDIMOS:\nRATIFICAR, a decisão proferida em [DATA ANTERIOR], MANTENDO as penalidades. A fatura com a multa não será alterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: **atendimento@aguasdejoinville.com.br**`;
       }
     } 
-    // =======================================================
-    // TEXTOS: É RECURSO? -> NÃO
-    // =======================================================
     else {
       if (tipoCaso === "leitura") {
         if (decisao === "deferir" || decisao === "parcial") {
@@ -931,31 +328,16 @@ export function OuvidoriaManager() {
       }
     }
 
-    // Se a decisão for favorável ao cliente, insere o lembrete de fato novo no final
     if (decisao === "deferir" || decisao === "parcial") {
       tpl += `\n\n**<adicionar fato novo ao processo>**`;
     }
-    // ==================================
 
     setGeneratedText(tpl);
     setStep("generated");
   };
 
-  // Remove os marcadores de negrito (**) mantendo o texto,
-  // usado sempre que o texto for exibido/copiado fora do modo de edição bruta.
   const stripBoldMarkers = (text: string) => text.replace(/\*\*/g, "");
 
-  // Versão inline: troca **palavra** por <strong>palavra</strong>, sem quebrar
-  // o texto em parágrafos (útil dentro de blocos que já usam whitespace-pre-wrap,
-  // como o preview do e-mail de resposta).
-  const renderBoldInline = (text: string) => {
-    const parts = text.split(/\*\*([\s\S]*?)\*\*/g);
-    return parts.map((part, idx) =>
-      idx % 2 !== 0 ? <strong key={idx}>{part}</strong> : part
-    );
-  };
-
-  // Converte "**palavra**" em <strong>, linha por linha, para exibição
   const renderFormattedPreview = (text: string) => {
     return text.split("\n").map((line, lineIdx) => {
       const parts = line.split(/\*\*(.*?)\*\*/g);
@@ -963,7 +345,6 @@ export function OuvidoriaManager() {
         <p key={lineIdx} className="min-h-[1em]">
           {parts.map((part, partIdx) => {
             const isBold = partIdx % 2 !== 0;
-            // Verifica se é a nossa frase especial
             const isRed = part === "<adicionar fato novo ao processo>";
 
             if (isBold) {
@@ -1001,7 +382,6 @@ export function OuvidoriaManager() {
 
       if (!response.ok) throw new Error("Erro ao gerar PDF no servidor.");
 
-      // Transforma a resposta binária em um Blob para download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1072,12 +452,8 @@ export function OuvidoriaManager() {
             Calculadora de Dias Úteis
           </button>
 
-          {/* ============================================================== */}
-          {/* MODAL: CALCULADORA DE DIAS ÚTEIS (UI PADRONIZADA) */}
-          {/* ============================================================== */}
           {showCalculator && (
             <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[380px] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden origin-top-right z-50 animate-slideUp">
-
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Calculator size={18} className="text-[#1a5fa8]" />
@@ -1089,13 +465,11 @@ export function OuvidoriaManager() {
               </div>
 
               <div className="p-6 space-y-5">
-                {/* Campo Data Inicial */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data Inicial</label>
                   <DatePicker value={calcDataInicial} onChange={setCalcDataInicial} placeholder="DD/MM/AAAA" />
                 </div>
 
-                {/* Seleção do Prazo */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prazo de Resposta</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -1125,7 +499,6 @@ export function OuvidoriaManager() {
                   </div>
                 </div>
 
-                {/* Resultado */}
                 <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
                   <span className={`text-sm font-bold ${calcDataFinal ? "text-[#1a5fa8]" : "text-gray-400"}`}>
@@ -1148,440 +521,359 @@ export function OuvidoriaManager() {
         <div className="p-8 max-w-5xl mx-auto space-y-6">
 
           {/* SESSÃO 1: IDENTIFICAÇÃO DO PROCESSO */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+          <SectionBlock
+            number={1}
+            title="Dados Globais da Manifestação"
+            description="Insira os dados cadastrais básicos obtidos na triagem do manifesto"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Dados Globais da Manifestação</h2>
-                <p className="text-gray-500 text-xs">Insira os dados cadastrais básicos obtidos na triagem do manifesto</p>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
+                <input 
+                  value={morador} 
+                  onChange={(e) => setMorador(formatName(e.target.value))} 
+                  placeholder="Ex: Nome Completo do Usuário" 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
+                <input value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="Ex: 1298382-9" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Origem do Processo</label>
+                <select value={tipoManifestacao} onChange={(e) => setTipoManifestacao(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#1a5fa8]">
+                  <option value="Recurso Administrativo">Recurso (Sansys)</option>
+                  <option value="Ouvidoria Interna">Ouvidoria CAJ</option>
+                  <option value="ARIS">ARIS</option>
+                  <option value="PROCON">PROCON</option>
+                  <option value="Reclame Aqui">Reclame Aqui</option>
+                </select>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
-                  <input 
-                    value={morador} 
-                    onChange={(e) => setMorador(formatName(e.target.value))} 
-                    placeholder="Ex: Nome Completo do Usuário" 
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
-                  <input value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="Ex: 1298382-9" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Origem do Processo</label>
-                  <select value={tipoManifestacao} onChange={(e) => setTipoManifestacao(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#1a5fa8]">
-                    <option value="Recurso Administrativo">Recurso (Sansys)</option>
-                    <option value="Ouvidoria Interna">Ouvidoria CAJ</option>
-                    <option value="ARIS">ARIS</option>
-                    <option value="PROCON">PROCON</option>
-                    <option value="Reclame Aqui">Reclame Aqui</option>
-                  </select>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
+                <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
-                  <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>
-                  <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Emissão Fatura</label>
-                  <DatePicker value={dataEmissaoFatura} onChange={setDataEmissaoFatura} placeholder="DD/MM/AAAA" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data da Manifestação</label>
-                  <DatePicker value={dataManifestacao} onChange={setDataManifestacao} placeholder="DD/MM/AAAA" />
-                </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>
+                <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
               </div>
-
-              {isForaDoPrazo && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                  <Info size={14} className="text-red-600" />
-                  <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
-                    O cliente está entrando com processo fora do prazo - <strong>30 dias úteis excedido</strong> ({diasUteisDif} dias úteis).
-                  </span>
-                </div>
-              )}
-              {/* Alerta de Dentro do Prazo */}
-              {dataManifestacao && dataEmissaoFatura && !isForaDoPrazo && (
-                <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                    PROCESSO DENTRO DO PRAZO ({diasUteisDif} dias úteis).
-                  </span>
-                </div>
-              )}
-
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Emissão Fatura</label>
+                <DatePicker value={dataEmissaoFatura} onChange={setDataEmissaoFatura} placeholder="DD/MM/AAAA" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data da Manifestação</label>
+                <DatePicker value={dataManifestacao} onChange={setDataManifestacao} placeholder="DD/MM/AAAA" />
+              </div>
             </div>
-          </div>
+
+            {isForaDoPrazo && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <Info size={14} className="text-red-600" />
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                  O cliente está entrando com processo fora do prazo - <strong>30 dias úteis excedido</strong> ({diasUteisDif} dias úteis).
+                </span>
+              </div>
+            )}
+            {dataManifestacao && dataEmissaoFatura && !isForaDoPrazo && (
+              <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                  PROCESSO DENTRO DO PRAZO ({diasUteisDif} dias úteis).
+                </span>
+              </div>
+            )}
+          </SectionBlock>
 
           {/* SESSÃO 2: TIPO DE INFRAÇÃO */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Tipo de Infração (Objeto)</h2>
-                <p className="text-gray-500 text-xs">Selecione o enquadramento do fato gerador do auto de infração</p>
+          <SectionBlock
+            number={2}
+            title="Tipo de Infração (Objeto)"
+            description="Selecione o enquadramento do fato gerador do auto de infração"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 mb-5">
+              <div className="flex items-center gap-2">
+                <HelpCircle size={14} className="text-[#1a5fa8]" />
+                <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">É recurso?</label>
+              </div>
+              <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => { setIsRecurso(true); handleTipoCasoChange("leitura"); }}
+                  className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                >
+                  Sim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsRecurso(false); handleTipoCasoChange("leitura"); }}
+                  className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${!isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                >
+                  Não
+                </button>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 mb-5">
-                <div className="flex items-center gap-2">
-                  <HelpCircle size={14} className="text-[#1a5fa8]" />
-                  <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">É recurso?</label>
-                </div>
-                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => { setIsRecurso(true); handleTipoCasoChange("leitura"); }}
-                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                  >
-                    Sim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setIsRecurso(false); handleTipoCasoChange("leitura"); }}
-                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${!isRecurso ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                  >
-                    Não
-                  </button>
-                </div>
-              </div>
-
-              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Qual foi o Fato Gerador?</label>
-              <select
-                value={tipoCaso}
-                onChange={(e) => handleTipoCasoChange(e.target.value as TipoCasoType)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] focus:bg-[#eef6ff] transition-all cursor-pointer"
-              >
-                {isRecurso ? (
-                  <>
-                    <option value="leitura">Leitura</option>
-                    <option value="servico">Serviço</option>
-                    <option value="corte_cavalete">Violação de corte de cavalete</option>
-                    <option value="hd">Hidrômetro danificado</option>
-                    <option value="bypass">By-pass/Derivação Clandestina</option>
-                    <option value="clandestina">Ligação Clandestina</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="leitura">Leitura</option>
-                    <option value="servico">Serviços</option>
-                    <option value="la_padronizada">LA Padronizada</option>
-                    <option value="la_cadastral">Atualização Cadastral</option>
-                    <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
-                  </>
-                )}
-              </select>
-              {/* === SERVIÇO VOLUNTÁRIO/INVOLUNTARIO === */}
-              {tipoCaso === "servico" && (
-                <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info size={14} className="text-[#1a5fa8]" />
-                    <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">O impedimento foi Voluntário ou Involuntário?</label>
-                  </div>
-                  <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
-                    <button
-                      type="button"
-                      onClick={() => setTipoServico("voluntario")}
-                      className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "voluntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                    >
-                      Voluntário
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTipoServico("involuntario")}
-                      className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "involuntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                    >
-                      Involuntário
-                    </button>
-                  </div>
-                </div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Qual foi o Fato Gerador?</label>
+            <select
+              value={tipoCaso}
+              onChange={(e) => handleTipoCasoChange(e.target.value as TipoCasoType)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] focus:bg-[#eef6ff] transition-all cursor-pointer"
+            >
+              {isRecurso ? (
+                <>
+                  <option value="leitura">Leitura</option>
+                  <option value="servico">Serviço</option>
+                  <option value="corte_cavalete">Violação de corte de cavalete</option>
+                  <option value="hd">Hidrômetro danificado</option>
+                  <option value="bypass">By-pass/Derivação Clandestina</option>
+                  <option value="clandestina">Ligação Clandestina</option>
+                </>
+              ) : (
+                <>
+                  <option value="leitura">Leitura</option>
+                  <option value="servico">Serviços</option>
+                  <option value="la_padronizada">LA Padronizada</option>
+                  <option value="la_cadastral">Atualização Cadastral</option>
+                  <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
+                </>
               )}
-              {/* ================================ */}
-            </div>
-          </div>
+            </select>
+            
+            {tipoCaso === "servico" && (
+              <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info size={14} className="text-[#1a5fa8]" />
+                  <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">O impedimento foi Voluntário ou Involuntário?</label>
+                </div>
+                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
+                  <button
+                    type="button"
+                    onClick={() => setTipoServico("voluntario")}
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "voluntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                  >
+                    Voluntário
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoServico("involuntario")}
+                    className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "involuntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                  >
+                    Involuntário
+                  </button>
+                </div>
+              </div>
+            )}
+          </SectionBlock>
 
           {/* SESSÃO 3: VEREDICTO DE MÉRITO / ANÁLISE DE DEFESA */}
           {showSessao3 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible animate-fadeIn">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao3}</span>
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">
-                    {hasDecisaoButtons ? "Veredicto Final e Conclusão" : "Análise de Defesa"}
-                  </h2>
-                  <p className="text-gray-500 text-xs">
-                    {hasDecisaoButtons ? "Defina o posicionamento formal de mérito da CAJ frente ao recurso" : "Informe se houve apresentação de defesa prévia pelo cliente"}
-                  </p>
+            <SectionBlock
+              number={numSessao3}
+              title={hasDecisaoButtons ? "Veredicto Final e Conclusão" : "Análise de Defesa"}
+              description={hasDecisaoButtons ? "Defina o posicionamento formal de mérito da CAJ frente ao recurso" : "Informe se houve apresentação de defesa prévia pelo cliente"}
+              className="animate-fadeIn"
+            >
+              {hasDecisaoButtons && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("deferir")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">1. Deferir (Retificar)</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("parcial")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">2. Deferir Parcialmente</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDecisao("indeferir")}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
+                      <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
+                  </button>
                 </div>
-              </div>
+              )}
+              
+              {hasDefesaToggle && (
+                <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6" : "space-y-6"}>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <div className="flex items-center gap-2">
+                      <Info size={14} className="text-gray-400" />
+                      <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Houve defesa prévia?</label>
+                    </div>
 
-              <div className="p-6">
-                {hasDecisaoButtons && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setDecisao("deferir")}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
-                        <span className="font-bold text-sm">1. Deferir (Retificar)</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDecisao("parcial")}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "parcial" ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Clock className={decisao === "parcial" ? "text-amber-600" : "text-gray-400"} size={20} />
-                        <span className="font-bold text-sm">2. Deferir Parcialmente</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Retira as multas atuais mas concede prorrogação de 90 dias.</p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDecisao("indeferir")}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
-                        <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
-                    </button>
-                  </div>
-                )}
-                
-                {hasDefesaToggle && (
-                  <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6" : "space-y-6"}>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
-                      <div className="flex items-center gap-2">
-                        <Info size={14} className="text-gray-400" />
-                        <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Houve defesa prévia?</label>
-                      </div>
-
-                      <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => setHistoricoDefesa("com_defesa")}
-                          className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "com_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                        >
-                          Sim
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHistoricoDefesa("sem_defesa")}
-                          className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "sem_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
-                        >
-                          Não
-                        </button>
-                      </div>
+                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setHistoricoDefesa("com_defesa")}
+                        className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "com_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHistoricoDefesa("sem_defesa")}
+                        className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "sem_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}
+                      >
+                        Não
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              )}
+            </SectionBlock>
           )}
 
           {/* SESSÃO 4: REQUISITOS VARIÁVEIS */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao4}</span>
-              <div>
-                <h2 className="text-[#0b1e35] font-semibold text-sm">Variáveis e Datas da Irregularidade</h2>
-                <p className="text-gray-500 text-xs">Apenas os campos pertinentes a esta infração estão sendo exibidos abaixo</p>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                
-                {showDataGeracaoAI && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
-                    <DatePicker 
-                      value={dataGeracaoAI} 
-                      onChange={setDataGeracaoAI} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                )}
-
-                {showMesesSemAcesso && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
-                    <MonthYearRangePicker 
-                      value={mesesSemAcesso} 
-                      onChange={setMesesSemAcesso} 
-                      placeholder="Ex: Jan/2026 a Mar/2026" 
-                    />
-                  </div>
-                )}
-
-                {showDataConstatacao && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
-                    <DatePicker 
-                      value={dataConstatacaoInfracao} 
-                      onChange={setDataConstatacaoInfracao} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                )}
-                
-                {showProtServico && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-1">Nº Prot. Serviço/Fiscaliz.</label>
-                    <input 
-                      value={protServico} 
-                      onChange={(e) => setProtServico(e.target.value)} 
-                      placeholder="Ex: 1234567" 
-                      className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30 transition-all" 
-                    />
-                  </div>
-                )}
-
-                {showRecebedorAR && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Recebedor do A.I. (AR)</label>
-                    <input 
-                      value={recebedorCorreios} 
-                      onChange={(e) => setRecebedorCorreios(e.target.value)} 
-                      placeholder="Nome de quem assinou" 
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all" 
-                    />
-                  </div>
-                )}
-
-                {showDataRecebimentoAR && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento AR</label>
-                    <DatePicker 
-                      value={dataRecebimentoAR} 
-                      onChange={setDataRecebimentoAR} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                )}
-
-                {showDataAplicacaoSancao && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Aplicação Sanções</label>
-                    <DatePicker 
-                      value={dataAplicacaoSancao} 
-                      onChange={setDataAplicacaoSancao} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                )}
-
-                {showDataDecisaoAnterior && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior</label>
-                    <DatePicker 
-                      value={dataDecisaoAnterior} 
-                      onChange={setDataDecisaoAnterior} 
-                      placeholder="DD/MM/AAAA" 
-                    />
-                  </div>
-                )}
-
-                {showFaturaReferencia && (
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Fatura (Competência)</label>
-                    <MonthYearPicker 
-                      value={faturaReferencia} 
-                      onChange={setFaturaReferencia} 
-                      placeholder="MM/AAAA" 
-                      size="md" 
-                    />
-                  </div>
-                )}
-                
-                {showDefesaCampos && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn">
-                    <div className="col-span-1 sm:col-span-2 lg:col-span-4 mb-1">
-                      <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <Scale size={14} /> Dados da Defesa Prévia
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data da Defesa</label>
-                      <DatePicker 
-                        value={dataDefesa} 
-                        onChange={setDataDefesa} 
-                        placeholder="DD/MM/AAAA" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Defesa</label>
-                      <input 
-                        value={protDefesa} 
-                        onChange={(e) => setProtDefesa(e.target.value)} 
-                        placeholder="Ex: 998877" 
-                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data Indeferimento</label>
-                      <DatePicker 
-                        value={dataIndeferimento} 
-                        onChange={setDataIndeferimento} 
-                        placeholder="DD/MM/AAAA" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Indeferimento</label>
-                      <input 
-                        value={protIndeferimento} 
-                        onChange={(e) => setProtIndeferimento(e.target.value)} 
-                        placeholder="Ex: 112233" 
-                        className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* NOVOS CAMPOS - SEMPRE VISÍVEIS NA SESSÃO 4 */}
+          <SectionBlock
+            number={numSessao4}
+            title="Variáveis e Datas da Irregularidade"
+            description="Apenas os campos pertinentes a esta infração estão sendo exibidos abaixo"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {showDataGeracaoAI && (
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento A.I.</label>
-                  <DatePicker 
-                    value={dataRecebimentoAI} 
-                    onChange={setDataRecebimentoAI} 
-                    placeholder="DD/MM/AAAA" 
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Geração A.I.</label>
+                  <DatePicker value={dataGeracaoAI} onChange={setDataGeracaoAI} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+
+              {showMesesSemAcesso && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-1">Meses sem acesso</label>
+                  <MonthYearRangePicker value={mesesSemAcesso} onChange={setMesesSemAcesso} placeholder="Ex: Jan/2026 a Mar/2026" />
+                </div>
+              )}
+
+              {showDataConstatacao && (
+                <div>
+                  <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Data Constatação/Imped.</label>
+                  <DatePicker value={dataConstatacaoInfracao} onChange={setDataConstatacaoInfracao} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+              
+              {showProtServico && (
+                <div>
+                  <label className="block text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-1">Nº Prot. Serviço/Fiscaliz.</label>
+                  <input 
+                    value={protServico} 
+                    onChange={(e) => setProtServico(e.target.value)} 
+                    placeholder="Ex: 1234567" 
+                    className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-amber-50/30 transition-all" 
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo Recebimento A.I.</label>
-                  <select 
-                    value={tipoRecebimentoAI} 
-                    onChange={(e) => setTipoRecebimentoAI(e.target.value)} 
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-white transition-all"
-                  >
-                    <option value="Correios">Correios</option>
-                    <option value="Fiscais da CAJ">Fiscais da CAJ</option>
-                  </select>
-                </div>
+              )}
 
+              {showRecebedorAR && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Recebedor do A.I. (AR)</label>
+                  <input 
+                    value={recebedorCorreios} 
+                    onChange={(e) => setRecebedorCorreios(e.target.value)} 
+                    placeholder="Nome de quem assinou" 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all" 
+                  />
+                </div>
+              )}
+
+              {showDataRecebimentoAR && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento AR</label>
+                  <DatePicker value={dataRecebimentoAR} onChange={setDataRecebimentoAR} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+
+              {showDataAplicacaoSancao && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Aplicação Sanções</label>
+                  <DatePicker value={dataAplicacaoSancao} onChange={setDataAplicacaoSancao} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+
+              {showDataDecisaoAnterior && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Decisão Anterior</label>
+                  <DatePicker value={dataDecisaoAnterior} onChange={setDataDecisaoAnterior} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+
+              {showFaturaReferencia && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Fatura (Competência)</label>
+                  <MonthYearPicker value={faturaReferencia} onChange={setFaturaReferencia} placeholder="MM/AAAA" size="md" />
+                </div>
+              )}
+              
+              {showDefesaCampos && (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn">
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 mb-1">
+                    <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Scale size={14} /> Dados da Defesa Prévia
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data da Defesa</label>
+                    <DatePicker value={dataDefesa} onChange={setDataDefesa} placeholder="DD/MM/AAAA" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Defesa</label>
+                    <input value={protDefesa} onChange={(e) => setProtDefesa(e.target.value)} placeholder="Ex: 998877" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data Indeferimento</label>
+                    <DatePicker value={dataIndeferimento} onChange={setDataIndeferimento} placeholder="DD/MM/AAAA" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Indeferimento</label>
+                    <input value={protIndeferimento} onChange={(e) => setProtIndeferimento(e.target.value)} placeholder="Ex: 112233" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
+                  </div>
+                </div>
+              )}
+
+              {/* NOVOS CAMPOS - SEMPRE VISÍVEIS NA SESSÃO 4 */}
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento A.I.</label>
+                <DatePicker value={dataRecebimentoAI} onChange={setDataRecebimentoAI} placeholder="DD/MM/AAAA" />
               </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo Recebimento A.I.</label>
+                <select 
+                  value={tipoRecebimentoAI} 
+                  onChange={(e) => setTipoRecebimentoAI(e.target.value)} 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-white transition-all"
+                >
+                  <option value="Correios">Correios</option>
+                  <option value="Fiscais da CAJ">Fiscais da CAJ</option>
+                </select>
+              </div>
+
             </div>
-          </div>
+          </SectionBlock>
 
           <button
             onClick={handleGenerateParecer}
@@ -1594,50 +886,40 @@ export function OuvidoriaManager() {
 
           {/* ÁREA DE EXIBIÇÃO E EXPORTAÇÃO DA MINUTA */}
           {step === "generated" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible animate-fadeIn">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-emerald-50/30 rounded-t-xl">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={13} />
-                  </span>
-                  <div>
-                    <h2 className="text-[#0b1e35] font-semibold text-sm">Revisão e Edição do Parecer</h2>
-                    <p className="text-gray-500 text-xs">
-                      {reviewMode === "preview"
-                        ? "Assim ficará o texto final. Clique em \"Editar\" para ajustar algum detalhe."
-                        : "Modo de edição: use **palavra** para marcar negrito."}
-                    </p>
+            <>
+              {/* Bloco de Revisão e Edição */}
+              <SectionBlock
+                icon={CheckCircle2}
+                title="Revisão e Edição do Parecer"
+                description={reviewMode === "preview" ? "Assim ficará o texto final. Clique em \"Editar\" para ajustar algum detalhe." : "Modo de edição: use **palavra** para marcar negrito."}
+                className="animate-fadeIn !border-emerald-200"
+                headerAction={
+                  <div className="flex items-center gap-2 mt-3 md:mt-0 w-full justify-between md:justify-end">
+                    <button
+                      onClick={() => setReviewMode(reviewMode === "preview" ? "edit" : "preview")}
+                      className="flex items-center gap-1.5 py-1.5 px-3 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-all bg-white"
+                    >
+                      {reviewMode === "preview" ? "Editar" : "Visualizar"}
+                    </button>
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all bg-white"
+                    >
+                      {copied ? (
+                        <>
+                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          <span className="text-emerald-600">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          Copiar Texto
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setReviewMode(reviewMode === "preview" ? "edit" : "preview")}
-                    className="flex items-center gap-1.5 py-1.5 px-3 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-all bg-white"
-                  >
-                    {reviewMode === "preview" ? "Editar" : "Visualizar"}
-                  </button>
-
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all bg-white"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle2 size={14} className="text-emerald-500" />
-                        <span className="text-emerald-600">Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        Copiar Texto
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6">
+                }
+              >
                 {reviewMode === "preview" ? (
                   <div
                     onClick={() => setReviewMode("edit")}
@@ -1655,31 +937,32 @@ export function OuvidoriaManager() {
                     className="w-full h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 font-mono leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all"
                   />
                 )}
-              </div>
+              </SectionBlock>
 
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{numSessao5}</span>
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Baixe o arquivo formatado em Microsoft Word ou PDF</p>
+              {/* Bloco de Exportação */}
+              <SectionBlock 
+                number={numSessao5} 
+                title="Exportação e Entrega" 
+                description="Baixe o arquivo formatado em Microsoft Word ou PDF" 
+                className="animate-fadeIn"
+              >
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all"
+                  >
+                    <File size={17} /> Baixar em PDF
+                  </button>
+
+                  <button
+                    onClick={handleDownloadWord}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                  >
+                    <FileText size={16} /> Baixar como Word (.doc)
+                  </button>
                 </div>
-              </div>
-              <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleDownloadPDF}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-50 transition-all"
-                >
-                  <File size={17} /> Baixar em PDF
-                </button>
-
-                <button
-                  onClick={handleDownloadWord}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0b1e35] hover:bg-[#071527] text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
-                >
-                  <FileText size={16} /> Baixar como Word (.doc)
-                </button>
-              </div>
-            </div>
+              </SectionBlock>
+            </>
           )}
 
           {/* SESSÃO 0: GUIA DE TRATATIVAS SANSYS */}
@@ -1824,7 +1107,6 @@ export function OuvidoriaManager() {
                             <strong>Motivo do Cancelamento:</strong> {decisao === "indeferir" ? "Reclamação Infundada/Improcedente" : "Alteração de código de serviço no Sansys"}
                           </span>
                         </div>
-
                       </div>
                     </div>
                   )}
@@ -1883,7 +1165,6 @@ export function OuvidoriaManager() {
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
                         <span className="text-xs font-bold text-gray-700">Geração cód. 426 – Prorrogação de prazo</span>
                       </div>
-                      {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
                       <div className="p-4 space-y-3">
                         <p className="text-[10px] text-amber-600"><strong>Atenção:</strong> Para processos menores que 90 dias, atrasar a data e hora para ser próximo a data de reanálise do processo pelo fiscal interno.</p>
 
@@ -1906,12 +1187,11 @@ export function OuvidoriaManager() {
                       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
                         <span className="text-xs font-bold text-gray-700">Confecção de E-mail Resposta</span>
                       </div>
-                      {/* Adicionado space-y-3 para criar um espaçamento uniforme entre os elementos */}
                       <div className="p-4 space-y-3">
                         <p className="text-[10px] text-amber-600"><strong>Atenção: </strong>Lembre-se de anexar a fatura (se houver alteração).</p>
 
                         <EditableCopyBlock defaultText={`TÍTULO: Retorno de Recurso\n\nBom dia/Boa tarde Sr./Sra. ${morador || "[CLIENTE]"},\n\nEncaminhamos retorno referente recurso apresentado, conforme segue:\n\n${stripBoldMarkers(generatedText) || '[COLE AQUI A MINUTA OFICIAL GERADA ABAIXO]'}`} />
-                                                      
+                                              
                         {/* NOVA MENSAGEM INFORMATIVA AZUL */}
                         <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
                           <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
