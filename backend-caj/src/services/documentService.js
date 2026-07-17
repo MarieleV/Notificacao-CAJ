@@ -27,7 +27,7 @@ const formatTextToDocx = (text) => {
       const isPartBold = isBoldLine || (index % 2 !== 0);
       
       // NOVA REGRA: Se a parte for a frase de alerta, pinta de vermelho!
-      const isRed = part === "<adicionar fato novo ao processo>";
+      const isRed = part === "[EDIÇÃO PECULIAR]";
 
       return new TextRun({ 
         text: part, 
