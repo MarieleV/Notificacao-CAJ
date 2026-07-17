@@ -173,26 +173,53 @@ export function OuvidoriaManager() {
   const isProrrogacao = tipoCaso === "prorrogacao";
 
   const isSimples = isPadronizada || isCadastral || isProrrogacao;
-  const isRecursoEnxuto = isRecurso && (isLeitura || isServico) && (decisao === "deferir" || decisao === "parcial");
+  
+  // Variáveis de rastreio para o fluxo "Recurso de Leitura ou Serviço"
+  const isRecursoLST = isRecurso && (isLeitura || isServico);
+  const isFatoNovo = isRecursoLST && decisao === "deferir" && deferirMotivo === "fato_novo";
+  const isLAPadronizadaRecurso = isRecursoLST && decisao === "deferir" && deferirMotivo === "la_padronizada";
+  const isParcial = isRecursoLST && decisao === "parcial";
+  const isIndeferir = isRecursoLST && decisao === "indeferir";
 
   const hasDecisaoButtons = isLeitura || isServico;
-  const hasDefesaToggle = true; 
+  const hasDefesaToggle = !isRecursoLST; 
   const showSessao3 = hasDecisaoButtons || hasDefesaToggle;
 
   const numSessao3 = showSessao3 ? 3 : undefined;
   const numSessao4 = showSessao3 ? 4 : 3;
   const numSessao5 = showSessao3 ? 5 : 4;
 
-  const showDataGeracaoAI = !isSimples && !isRecursoEnxuto;
-  const showMesesSemAcesso = isLeitura && !isRecursoEnxuto;
-  const showDataConstatacao = (isServico || isCorte || isHd || isBypass || isClandestina) && !isRecursoEnxuto;
-  const showProtServico = (isServico || isBypass || isClandestina) && !isRecursoEnxuto;
-  const showRecebedorAR = !isSimples && !isRecursoEnxuto;
-  const showDataRecebimentoAR = isHd || isProrrogacao || isBypass || isClandestina;
-  const showDataAplicacaoSancao = !isSimples && !isRecursoEnxuto && !isBypass && !isClandestina;
-  const showDataDecisaoAnterior = !isRecurso && decisao === "indeferir" && !isSimples;
+  // MAPEAMENTO EXATO DOS CAMPOS DA SESSÃO 4 (VARIÁVEIS E DATAS)
+  
+  // Data Geração A.I: Só exibe em Fato Novo ou Indeferir (oculta em LA/Parcial)
+  const showDataGeracaoAI = !isSimples && (!isRecursoLST || isFatoNovo || isIndeferir);
+  
+  // Meses sem Acesso: Apenas Leitura (Fato novo ou Indeferir)
+  const showMesesSemAcesso = isLeitura && (!isRecursoLST || isFatoNovo || isIndeferir);
+  
+  // Constatação/Prot. Serviço: Apenas Serviços/Cortes (Fato Novo ou Indeferir)
+  const showDataConstatacao = ((isServico && (!isRecursoLST || isFatoNovo || isIndeferir)) || isCorte || isHd || isBypass || isClandestina) && !isSimples;
+  const showProtServico = ((isServico && (!isRecursoLST || isFatoNovo || isIndeferir)) || isBypass || isClandestina) && !isSimples;
+  
+  // Recebedor do A.I. (Nome): Necessário no Indeferir (Não usado em Fato Novo, LA e Parcial)
+  const showRecebedorAR = !isSimples && (!isRecursoLST || isIndeferir);
+  
+  // Data Recebimento AR: Usada no Fato Novo (e em fluxos diretos como Bypass/HD)
+  const showDataRecebimentoAR = isFatoNovo || isHd || isBypass || isClandestina || isProrrogacao;
+  
+  // Data Aplicação Sanção: Apenas Fato Novo (Multado) ou fluxos que não são Recurso
+  const showDataAplicacaoSancao = (isFatoNovo && fatoNovoStatus === "multado") || (!isRecurso && hasDecisaoButtons);
+  
+  // Data Decisão Anterior: Nunca é usada no fluxo Recurso L/S
+  const showDataDecisaoAnterior = (!isRecurso && decisao === "indeferir" && !isSimples) || (isRecurso && (isBypass || isClandestina));
+  
   const showFaturaReferencia = !isProrrogacao && !isBypass && !isClandestina;
-  const showDefesaCampos = historicoDefesa === "com_defesa";
+  
+  const showDefesaCampos = hasDefesaToggle && historicoDefesa === "com_defesa";
+
+  // Tipos específicos que eram fixos no rodapé da Sessão 4
+  const showTipoRecebimentoAI = isFatoNovo || isParcial || isLAPadronizadaRecurso || (isIndeferir && isServico) || isSimples;
+  const showDataRecebimentoAI = isParcial || isLAPadronizadaRecurso || (isIndeferir && isServico) || isSimples;
 
   const handleTipoCasoChange = (val: TipoCasoType) => {
     setTipoCaso(val);
@@ -986,22 +1013,26 @@ export function OuvidoriaManager() {
                 </div>
               )}
 
-              {/* NOVOS CAMPOS - SEMPRE VISÍVEIS NA SESSÃO 4 */}
-              <div>
-                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento A.I.</label>
-                <DatePicker value={dataRecebimentoAI} onChange={setDataRecebimentoAI} placeholder="DD/MM/AAAA" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo Recebimento A.I.</label>
-                <select 
-                  value={tipoRecebimentoAI} 
-                  onChange={(e) => setTipoRecebimentoAI(e.target.value)} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-white transition-all"
-                >
-                  <option value="Correios">Correios</option>
-                  <option value="Fiscais da CAJ">Fiscais da CAJ</option>
-                </select>
-              </div>
+              {/* NOVOS CAMPOS - CONDICIONAIS NA SESSÃO 4 */}
+              {showDataRecebimentoAI && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Recebimento A.I.</label>
+                  <DatePicker value={dataRecebimentoAI} onChange={setDataRecebimentoAI} placeholder="DD/MM/AAAA" />
+                </div>
+              )}
+              {showTipoRecebimentoAI && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo Recebimento A.I.</label>
+                  <select 
+                    value={tipoRecebimentoAI} 
+                    onChange={(e) => setTipoRecebimentoAI(e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] bg-white transition-all"
+                  >
+                    <option value="Correios">Correios</option>
+                    <option value="Fiscais da CAJ">Fiscais da CAJ</option>
+                  </select>
+                </div>
+              )}
 
             </div>
           </SectionBlock>
