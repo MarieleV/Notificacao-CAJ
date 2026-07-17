@@ -589,7 +589,7 @@ export function FineCalculator() {
 
           {/* ── Bloco 1: Lançamento Água ───────────────────────────────────── */}
           <SectionBlock
-            number={1}
+            icon={Plus}
             title="Lançamento dos Meses Irregulares de Água"
             description="Gere um período automático ou adicione mês a mês"
             headerAction={
@@ -717,7 +717,7 @@ export function FineCalculator() {
 
           {/* ── Bloco 2: Lançamento Esgoto ───────────────────────────────────── */}
           <SectionBlock
-            number={2}
+            icon={Plus}
             title="Lançamento dos Meses Irregulares de Esgoto"
             description="Sincronizado automaticamente com a tabela de Água"
           >
@@ -763,7 +763,7 @@ export function FineCalculator() {
 
           {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
           <SectionBlock
-            number={3}
+            icon={Calculator}
             title="Resultado Detalhado por Mês"
             description="Gerado automaticamente pelo motor de cálculo"
           >
@@ -861,7 +861,7 @@ export function FineCalculator() {
 
           {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
           <SectionBlock
-            number={4}
+            icon={ClipboardList}
             title="Painel de Resumo - Correspondente aos Meses de Irregularidade"
             description="Base para lançamento financeiro ou notificação extrajudicial"
           >
@@ -925,7 +925,7 @@ export function FineCalculator() {
 
           {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
           <SectionBlock
-            number={5}
+            icon={FileText}
             title="Texto de Apuração"
             description="Gerado com base nos cálculos - editável e copiável"
           >
