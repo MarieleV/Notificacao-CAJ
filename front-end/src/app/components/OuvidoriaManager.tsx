@@ -448,7 +448,7 @@ export function OuvidoriaManager() {
         <p key={lineIdx} className="min-h-[1em]">
           {parts.map((part, partIdx) => {
             const isBold = partIdx % 2 !== 0;
-            const isRed = part === "<adicionar fato novo ao processo>";
+            const isRed = part === "<adicionar fato novo ao processo>" || part === "[EDIÇÃO PECULIAR]";
 
             if (isBold) {
               return (
