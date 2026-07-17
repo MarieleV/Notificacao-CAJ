@@ -212,7 +212,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type PenaltyVariant = "multa" | "multaCP";
 
-// === tipo para o modal de resultado do upload da planilha ===
 type FileModalType = "success" | "warning" | "error";
 interface FileModalState {
   type: FileModalType;
@@ -225,31 +224,22 @@ export function NotificationDrafter() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Estados da planilha
   const [excelData, setExcelData] = useState<any[]>([]);
-
-  // === estados para overlay de loading e modal de resultado do upload ===
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [fileName, setFileName] = useState<string>("");
 
-  // O único dado de identificação que o usuário digita agora
   const [matricula, setMatricula] = useState("");
   const [matriculaBuscada, setMatriculaBuscada] = useState("");
-
   const [dataConstatacao, setDataConstatacao] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [autoInfracao, setAutoInfracao] = useState("");
   const [equipe, setEquipe] = useState("");
 
-  // === Controle do menu de funcionários ===
-  // funcionario = valor final (MATRÍCULA) enviado à API e mostrado no campo após a escolha
   const [funcionario, setFuncionario] = useState("");
-  // funcionarioBusca = texto livre digitado para filtrar a lista (por nome ou matrícula)
   const [funcionarioBusca, setFuncionarioBusca] = useState("");
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  // Estado interno que guarda os dados encontrados na planilha
   const [clienteData, setClienteData] = useState({
     nomeCliente: "",
     logradouro: "",
@@ -266,6 +256,7 @@ export function NotificationDrafter() {
   const [step, setStep] = useState<"idle" | "generated">("idle");
   const [penaltyVariant, setPenaltyVariant] = useState<PenaltyVariant>("multa");
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
 
   const toggleCode = (code: string) => {
     setSelectedCodes((prev) =>
@@ -286,7 +277,6 @@ export function NotificationDrafter() {
     );
   });
 
-  // Lista de funcionários filtrada pelo texto de busca (nome OU matrícula)
   const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
     const term = funcionarioBusca.toLowerCase().trim();
     if (!term) return true;
@@ -300,7 +290,6 @@ export function NotificationDrafter() {
     (f) => String(f.matricula) === funcionario
   );
 
-  // === handleFileUpload: overlay de loading + modal central no lugar de alert() ===
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -352,8 +341,6 @@ export function NotificationDrafter() {
     };
 
     reader.readAsArrayBuffer(file);
-
-    // Permite selecionar o mesmo arquivo novamente em uploads futuros
     e.target.value = "";
   };
 
@@ -826,13 +813,11 @@ export function NotificationDrafter() {
                   <input
                     value={funcionario ? `Mat. ${funcionario}` : funcionarioBusca}
                     onChange={(e) => {
-                      // Ao digitar, o usuário está pesquisando de novo — limpa a seleção final
                       setFuncionario("");
                       setFuncionarioBusca(e.target.value);
                       setFuncSearchOpen(true);
                     }}
                     onFocus={() => {
-                      // Ao focar em um campo já preenchido, começa uma nova busca do zero
                       if (funcionario) {
                         setFuncionarioBusca("");
                       }
@@ -907,27 +892,27 @@ export function NotificationDrafter() {
             )}
           </SectionBlock>
 
-          {/* Bloco 3 — Revisão e Edição (badge de status, não de passo — mantido como card à parte) */}
+          {/* Bloco 3 — Revisão e Edição */}
           {step === "generated" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={13} />
-                  </span>
-                  <div>
-                    <h2 className="text-[#0b1e35] font-semibold text-sm">Revisão e Edição do Texto</h2>
-                    <p className="text-gray-500 text-xs">Clique no texto para personalizar qualquer detalhe necessário</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
+            <SectionBlock
+              icon={CheckCircle2}
+              title="Revisão e Edição do Texto"
+              description="Clique no texto para personalizar qualquer detalhe necessário"
+              className="animate-fadeIn !border-emerald-200"
+              headerAction={
+                <div className="flex items-center gap-3 mt-3 md:mt-0 w-full justify-between md:justify-end">
+                  <span className="hidden md:inline-block text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
                     Gerado com sucesso!
                   </span>
                   <button
+                    onClick={() => setReviewMode(reviewMode === "preview" ? "edit" : "preview")}
+                    className="flex items-center gap-1.5 py-1.5 px-3 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 transition-all bg-white"
+                  >
+                    {reviewMode === "preview" ? "Editar Texto" : "Modo Visualização"}
+                  </button>
+                  <button
                     onClick={handleCopy}
-                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all"
+                    className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all bg-white"
                   >
                     {copied ? (
                       <>
@@ -942,51 +927,58 @@ export function NotificationDrafter() {
                     )}
                   </button>
                 </div>
-              </div>
-              <div className="p-6">
+              }
+            >
+              {reviewMode === "preview" ? (
+                <div
+                  onClick={() => setReviewMode("edit")}
+                  className="w-full min-h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 leading-relaxed whitespace-pre-wrap cursor-text hover:border-[#1a5fa8]/40 transition-all"
+                >
+                  {generatedText}
+                </div>
+              ) : (
                 <textarea
                   ref={textAreaRef}
+                  autoFocus
                   value={generatedText}
                   onChange={(e) => setGeneratedText(e.target.value)}
+                  onBlur={() => setReviewMode("preview")}
                   className="w-full h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 font-mono leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all"
                   spellCheck={false}
                 />
-              </div>
-            </div>
+              )}
+            </SectionBlock>
           )}
 
-          {/* Bloco 4 — Exportação (estrutura com múltiplas subseções internas; mantido como card à parte para preservar o full-bleed dos separadores) */}
+          {/* Bloco 4 — Exportação */}
           {step === "generated" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#1a5fa8] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
-                <div>
-                  <h2 className="text-[#0b1e35] font-semibold text-sm">Exportação e Entrega</h2>
-                  <p className="text-gray-500 text-xs">Informe o Nº do Auto e baixe o arquivo formatado em PDF ou Word</p>
-                </div>
-              </div>
-
-              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50">
+            <SectionBlock
+              number={4}
+              title="Exportação e Entrega"
+              description="Informe o Nº do Auto e baixe o arquivo formatado em PDF ou Word"
+              className="animate-fadeIn"
+            >
+              <div className="mb-6 bg-gray-50 p-4 border border-gray-100 rounded-xl">
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                   Nº Auto Infração <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-3 items-center">
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <input
                     value={autoInfracao}
                     onChange={(e) => setAutoInfracao(e.target.value)}
                     placeholder="Ex: 98765"
-                    className="w-64 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
+                    className="w-full sm:w-64 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                   />
                   {!autoInfracao.trim() && (
                     <span className="text-[11px] text-amber-600 font-medium flex items-center gap-1">
-                      <AlertCircle size={12} />
+                      <AlertCircle size={12} className="flex-shrink-0" />
                       Obrigatório preencher para habilitar os downloads
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="p-6 flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <button
                   onClick={handleDownloadPDF}
                   disabled={!autoInfracao.trim()}
@@ -1006,15 +998,13 @@ export function NotificationDrafter() {
                 </button>
               </div>
 
-              <div className="px-6 pb-4">
-                <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
-                  <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-[#4a7fa5]">
-                    Os arquivos serão exportados com as variáveis embutidas. Se você subiu a planilha e buscou pela matrícula, elas serão preenchidas automaticamente; senão, seu ERP fará isso.
-                  </p>
-                </div>
+              <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-3 py-2 flex items-start gap-2">
+                <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-[#4a7fa5]">
+                  Os arquivos serão exportados com as variáveis embutidas. Se você subiu a planilha e buscou pela matrícula, elas serão preenchidas automaticamente; senão, seu ERP fará isso.
+                </p>
               </div>
-            </div>
+            </SectionBlock>
           )}
         </div>
       </div>

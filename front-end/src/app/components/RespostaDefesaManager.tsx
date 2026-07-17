@@ -170,7 +170,6 @@ export function RespostaDefesaManager() {
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
 
   // Permite selecionar apenas UM código por vez.
-  // Se clicar no mesmo código, ele desmarca (deixa vazio).
   const toggleCode = (code: string) => {
     setSelectedCodes((prev) => (prev.includes(code) ? [] : [code]));
   };
@@ -188,27 +187,22 @@ export function RespostaDefesaManager() {
 
   const camposObrigatoriosVazios = !defesaAI.trim();
 
-  // Função instantânea
   const handleGenerate = () => {
     if (selectedItems.length === 0) return;
-
     if (camposObrigatoriosVazios) {
       alert("Por favor, preencha o Nº da Defesa A.I.");
       return;
     }
 
-    // Pega todos os textos selecionados, troca as tags e junta tudo
     const finalTexts = selectedItems.map((item) => {
       let result = item.text.replace(/{DEFESA_AI}/g, defesaAI);
 
-      // Substitui o texto padrão de indeferimento se o usuário tiver preenchido o campo
       if (motivoIndeferimento.trim() !== "") {
         result = result.replace(
           /\[descrever aqui o fundamento específico para a decisão\]/g,
           motivoIndeferimento
         );
       }
-
       return result;
     });
 
@@ -229,9 +223,9 @@ export function RespostaDefesaManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           texto_final: generatedText,
-          protocolo: defesaAI, // Enviando a defesa como protocolo para o backend processar
-          autoInfracao: "", // Removido visualmente do front
-          matricula: "", // Removido
+          protocolo: defesaAI,
+          autoInfracao: "",
+          matricula: "",
         }),
       });
 
@@ -520,22 +514,16 @@ export function RespostaDefesaManager() {
             </button>
           </SectionBlock>
 
-          {/* Bloco 3 — Revisão e Edição (badge de status, não de passo — mantido como card à parte) */}
+          {/* Bloco 3 — Revisão e Edição (AGORA USANDO O SECTIONBLOCK!) */}
           {step === "generated" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm animate-fadeIn">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={13} />
-                  </span>
-                  <div>
-                    <h2 className="text-[#0b1e35] font-semibold text-sm">Revisão e Edição do Texto</h2>
-                    <p className="text-gray-500 text-xs">Preencha os campos "XXX" e ajuste qualquer detalhe necessário.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
+            <SectionBlock
+              number={3}
+              title="Revisão e Edição do Texto"
+              description='Preencha os campos "XXX" e ajuste qualquer detalhe necessário.'
+              className="animate-fadeIn"
+              headerAction={
+                <div className="flex items-center gap-3 w-full justify-between md:justify-end mt-3 md:mt-0">
+                  <span className="hidden md:inline-block text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-medium">
                     Pronto para edição!
                   </span>
                   <button
@@ -544,7 +532,6 @@ export function RespostaDefesaManager() {
                   >
                     {reviewMode === "preview" ? "Editar Texto" : "Modo Visualização"}
                   </button>
-
                   <button
                     onClick={handleCopy}
                     className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] transition-all bg-white"
@@ -562,33 +549,37 @@ export function RespostaDefesaManager() {
                     )}
                   </button>
                 </div>
-              </div>
-              <div className="p-6">
-                {reviewMode === "preview" ? (
-                  <div
-                    onClick={() => setReviewMode("edit")}
-                    className="w-full min-h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 leading-relaxed whitespace-pre-wrap cursor-text hover:border-[#1a5fa8]/40 transition-all"
-                  >
-                    {generatedText}
-                  </div>
-                ) : (
-                  <textarea
-                    ref={textAreaRef}
-                    autoFocus
-                    value={generatedText}
-                    onChange={(e) => setGeneratedText(e.target.value)}
-                    onBlur={() => setReviewMode("preview")}
-                    className="w-full h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 font-mono leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all"
-                    spellCheck={false}
-                  />
-                )}
-              </div>
-            </div>
+              }
+            >
+              {reviewMode === "preview" ? (
+                <div
+                  onClick={() => setReviewMode("edit")}
+                  className="w-full min-h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 leading-relaxed whitespace-pre-wrap cursor-text hover:border-[#1a5fa8]/40 transition-all"
+                >
+                  {generatedText}
+                </div>
+              ) : (
+                <textarea
+                  ref={textAreaRef}
+                  autoFocus
+                  value={generatedText}
+                  onChange={(e) => setGeneratedText(e.target.value)}
+                  onBlur={() => setReviewMode("preview")}
+                  className="w-full h-96 p-4 bg-[#fafbfc] border border-gray-200 rounded-lg text-xs text-gray-800 font-mono leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all"
+                  spellCheck={false}
+                />
+              )}
+            </SectionBlock>
           )}
 
           {/* Bloco 4 — Exportação */}
           {step === "generated" && (
-            <SectionBlock number={4} title="Exportação e Entrega" description="Baixe o arquivo de resposta formatado em PDF ou Word" className="animate-fadeIn">
+            <SectionBlock 
+              number={4} 
+              title="Exportação e Entrega" 
+              description="Baixe o arquivo de resposta formatado em PDF ou Word" 
+              className="animate-fadeIn"
+            >
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleDownloadPDF}
