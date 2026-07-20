@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import {
   Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Search, Scale, Calculator
+  ChevronDown, X, FileText, Search, Calculator,
+  MessageSquareReply
 } from "lucide-react";
 import { calculateEndDate } from "../lib/dates";
 import { DatePicker } from "./shared/DatePicker";
@@ -283,7 +284,7 @@ export function RespostaDefesaManager() {
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <Scale size={18} className="text-[#1a5fa8]" />
+            <MessageSquareReply size={18} className="text-[#1a5fa8]" />
             <h1 className="text-[#0b1e35] font-semibold text-lg">Redigir Resposta de Defesa</h1>
           </div>
           <p className="text-gray-500 text-sm mt-0.5">Módulo de respostas baseadas em infrações</p>
