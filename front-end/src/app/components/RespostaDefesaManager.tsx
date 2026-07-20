@@ -377,7 +377,7 @@ export function RespostaDefesaManager() {
           <SectionBlock
             number={1}
             title="Seleção de Códigos de Infração"
-            description="Selecione um ou mais códigos referentes ao caso do cliente"
+            description="Selecione a infração referente ao caso do cliente"
           >
             <div className="relative">
               <button

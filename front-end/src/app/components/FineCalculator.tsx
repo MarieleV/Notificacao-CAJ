@@ -217,14 +217,7 @@ export function FineCalculator() {
   const [selectedK1Activity, setSelectedK1Activity] = useState("Casa");
 
   // Estado das Linhas
-  const [rows, setRows] = useState<IrregularRow[]>([
-    { 
-      id: newId(), monthYear: "01/2026", consumption: "20",
-      irregularConsumption: "",
-      chargedWater: "13,60", chargedService: "31,96", 
-      chargedSewage: ""
-    },
-  ]);
+  const [rows, setRows] = useState<IrregularRow[]>([]);
 
   // Gerador de período (Range Picker)
   const [periodRange, setPeriodRange] = useState("");
