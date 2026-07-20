@@ -182,7 +182,7 @@ export function OuvidoriaManager() {
   const isIndeferir = isRecursoLST && decisao === "indeferir";
 
   const hasDecisaoButtons = isLeitura || isServico;
-  const hasDefesaToggle = !isRecursoLST; 
+  const hasDefesaToggle = !(isRecursoLST && decisao === "deferir"); 
   const showSessao3 = hasDecisaoButtons || hasDefesaToggle;
 
   const numSessao3 = showSessao3 ? 3 : undefined;
@@ -275,6 +275,10 @@ export function OuvidoriaManager() {
     if (canalResposta === "email") return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"}, em ${hoje} sobre teor do docto anexado neste protocolo.`;
     if (canalResposta === "telefone") return `Informar cliente pelo Telefone: ${clienteTelefone || "[TELEFONE]"}, sobre teor do docto anexado neste protocolo.`;
     return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"} em ${hoje} e Telefone: ${clienteTelefone || "[TELEFONE]"} sobre teor do docto anexado neste protocolo.`;
+  };
+
+  const copyToClipboardSansys = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
   // ─── GERAÇÃO DA MINUTA JURÍDICA ───
