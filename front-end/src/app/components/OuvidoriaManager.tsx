@@ -1389,7 +1389,7 @@ export function OuvidoriaManager() {
                         <span className="text-[10px] font-bold text-gray-500 mb-1 block">Texto para abertura:</span>
                         <EditableCopyBlock defaultText={`Solicitante: Contato Ativo Prot ${protContatoAtivo || "[PROT CONTATO]"}\nDescrição: Por gentileza, efetuar o Contato Ativo, prot. ${protContatoAtivo || "[PROT CONTATO]"}, relativo Retorno de Recurso ${numProcesso || "[RECURSO]"}.`} />
                         
-                        {/* NOVA MENSAGEM INFORMATIVA AZUL */}
+                        {/* INFO EM AZUL */}
                         <div className="p-2 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg flex items-center gap-2">
                           <Info size={14} className="text-[#1a5fa8] flex-shrink-0" />
                           <span className="text-[10px] font-medium text-[#1a5fa8]">
