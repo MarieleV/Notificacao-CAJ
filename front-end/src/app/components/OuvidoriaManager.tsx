@@ -13,6 +13,44 @@ import { MonthYearPicker } from "./shared/MonthYearPicker";
 import { MonthYearRangePicker } from "./shared/MonthYearRangePicker";
 import { SectionBlock } from "./shared/SectionBlock";
 
+// === FUNCIONÁRIOS: nome + matrícula (ordem alfabética por nome) ===
+interface Funcionario {
+  matricula: number;
+  nome: string;
+}
+
+const FUNCIONARIOS: Funcionario[] = [
+  { matricula: 769, nome: "Adriana Schons" },
+  { matricula: 864, nome: "Alfredino Schaldag" },
+  { matricula: 674, nome: "Anderson Vieira Marcos" },
+  { matricula: 633, nome: "Angelo Linhares Pinto" },
+  { matricula: 594, nome: "Artur Corsani Nishitani" },
+  { matricula: 541, nome: "Bernardo Theodoro Santos Dutra" },
+  { matricula: 751, nome: "Carlos Clemilton Andrade De Oliveira" },
+  { matricula: 763, nome: "Cristiano Bruch" },
+  { matricula: 646, nome: "Debora Evans Teixeira" },
+  { matricula: 1228, nome: "Edir Lamin" },
+  { matricula: 1559, nome: "Eduardo Limberger Netto" },
+  { matricula: 744, nome: "Elvis Gunther Dahnert" },
+  { matricula: 888, nome: "Emanuelle De Carvalho Alves" },
+  { matricula: 770, nome: "Fabiano Da Silva" },
+  { matricula: 861, nome: "Gilmar Fernandes Da Silveira" },
+  { matricula: 1324, nome: "Glauber Antonio Fachin" },
+  { matricula: 750, nome: "Jonata Da Silva" },
+  { matricula: 761, nome: "Jose Moacir Fabian Junior" },
+  { matricula: 827, nome: "Larissa Welter Emidio" },
+  { matricula: 587, nome: "Leandro Buch" },
+  { matricula: 402, nome: "Maira Fuchter" },
+  { matricula: 852, nome: "Marcel Gai" },
+  { matricula: 826, nome: "Marcio Monteiro Da Silva" },
+  { matricula: 1674, nome: "Marcio Roberto Pereira" },
+  { matricula: 635, nome: "Marcos Moises Muller" },
+  { matricula: 1723, nome: "Matheus Simoes Gomes De Freitas" },
+  { matricula: 522, nome: "Peroaldo De Souza Santos" },
+  { matricula: 314, nome: "Valter Carlos Estephanes" },
+  { matricula: 960, nome: "Vilmar Vieira De Meneses" },
+];
+
 type DecisaoType = "deferir" | "indeferir" | "parcial" | null;
 type TipoCasoType = "leitura" | "servico" | "corte_cavalete" | "hd" | "bypass" | "clandestina" | "la_padronizada" | "la_cadastral" | "prorrogacao";
 type DefesaType = "com_defesa" | "sem_defesa";
@@ -97,6 +135,11 @@ export function OuvidoriaManager() {
   const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
   const [dataManifestacao, setDataManifestacao] = useState("");
   
+  // --- ESTADOS DE FUNCIONÁRIO ---
+  const [funcionario, setFuncionario] = useState("");
+  const [funcionarioBusca, setFuncionarioBusca] = useState("");
+  const [funcSearchOpen, setFuncSearchOpen] = useState(false);
+  
   // Cálculo da diferença usando o helper importado
   const diasUteisDif = getBusinessDaysDifference(dataEmissaoFatura, dataManifestacao);
   const isForaDoPrazo = dataEmissaoFatura && dataManifestacao && diasUteisDif > 30;
@@ -161,6 +204,20 @@ export function OuvidoriaManager() {
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
 
+  // ─── LÓGICA DE FUNCIONÁRIOS ───
+  const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
+    const term = funcionarioBusca.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      f.nome.toLowerCase().includes(term) ||
+      String(f.matricula).includes(term)
+    );
+  });
+
+  const funcionarioSelecionado = FUNCIONARIOS.find(
+    (f) => String(f.matricula) === funcionario
+  );
+
   // ─── LÓGICA DE CONDICIONAIS DE EXIBIÇÃO ───
   const isLeitura = tipoCaso === "leitura";
   const isServico = tipoCaso === "servico";
@@ -182,10 +239,7 @@ export function OuvidoriaManager() {
   const isIndeferir = isRecursoLST && decisao === "indeferir";
 
   const hasDecisaoButtons = isLeitura || isServico;
-  
-  // RESTAURADO: Botão sempre ativo para casos de recurso.
   const hasDefesaToggle = true; 
-  
   const showSessao3 = hasDecisaoButtons || hasDefesaToggle;
 
   const numSessao3 = showSessao3 ? 3 : undefined;
@@ -376,7 +430,7 @@ export function OuvidoriaManager() {
         // ── DEFERIMENTO PARCIAL ──
         else if (decisao === "parcial") {
           if (tipoCaso === "leitura") {
-            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** Aplicação de multas referente à impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI}. ${historicoDefesa === "com_defesa" ? `${paragrafoDefesaPrevia}` : ""}\nAcatamos o exposto pelo(a) cliente e concedemos novo prazo para padronização da ligação de água.\n\nA notificação foi entregue no endereço pelos ${tipoRecebimentoAI}, em ${dataRecebimentoAI || "[DATA]"}.\n\n**02. DECISÃO:** A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à **Instrução Normativa nº 83/2025**, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.\n\n**03. PRORROGAÇÃO:** Fica o prazo de padronização prorrogado por **60 (sessenta) dias úteis** a contar da data desta decisão.\n**Novo prazo para padronizar a ligação de água vence em ${tplPrazo}.**\n\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de sanções independentemente de nova notificação.\nPara viabilizar a padronização, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\n${buildVantagensText()}`;
+            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** Aplicação de multas referente à impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI}. ${historicoDefesa === "com_defesa" ? `${paragrafoDefesaPrevia}` : ""}\n\nA notificação foi entregue no endereço pelos ${tipoRecebimentoAI}, em ${dataRecebimentoAI || "[DATA]"}.\n\n**02. DECISÃO:** A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à **Instrução Normativa nº 83/2025**, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.\n\n**03. PRORROGAÇÃO:** Fica o prazo de padronização prorrogado por **60 (sessenta) dias úteis** a contar da data desta decisão.\n**Novo prazo para padronizar a ligação de água vence em ${tplPrazo}.**\n\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de sanções independentemente de nova notificação.\nPara viabilizar a padronização, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\n${buildVantagensText()}`;
           } else { // serviço
             tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** Aplicação de multas referente à impedimento de acesso a ligação de água para realização de serviços e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI}. ${historicoDefesa === "com_defesa" ? `${paragrafoDefesaPrevia}` : ""}\nAcatamos o exposto pelo(a) cliente e concedemos novo prazo para padronização da ligação de água.\n\nA notificação foi entregue no endereço pelos ${tipoRecebimentoAI}, em ${dataRecebimentoAI || "[DATA]"}.\n\n**02. DECISÃO:** A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à **Instrução Normativa nº 83/2025**, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.\n\n**03. PRORROGAÇÃO:** Fica o prazo de padronização prorrogado por **60 (sessenta) dias úteis** a contar da data desta decisão.\n**Novo prazo para padronizar a ligação de água vence em ${tplPrazo}.**\n\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\nA não padronização dentro do novo prazo, poderá implicar aplicação de sanções independentemente de nova notificação.\nPara poder viabilizar a padronização, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal.\nAdquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão.\nApós instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço.\nA caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido.\nO serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)\n\n${buildVantagensText()}`;
           }
@@ -643,7 +697,7 @@ export function OuvidoriaManager() {
             title="Dados Globais da Manifestação"
             description="Insira os dados cadastrais básicos obtidos na triagem do manifesto"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
                 <input 
@@ -667,16 +721,63 @@ export function OuvidoriaManager() {
                   <option value="Reclame Aqui">Reclame Aqui</option>
                 </select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
                 <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              
               <div>
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>
                 <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+              </div>
+              {/* CAMPO FUNCIONÁRIO NO BLOCO 1 */}
+              <div className="relative">
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Analista Responsável</label>
+                <input
+                  value={funcionario ? `${funcionario}` : funcionarioBusca}
+                  onChange={(e) => {
+                    setFuncionario("");
+                    setFuncionarioBusca(e.target.value);
+                    setFuncSearchOpen(true);
+                  }}
+                  onFocus={() => {
+                    if (funcionario) {
+                      setFuncionarioBusca("");
+                    }
+                    setFuncSearchOpen(true);
+                  }}
+                  onBlur={() => setTimeout(() => setFuncSearchOpen(false), 200)}
+                  placeholder="Pesquisar por nome..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
+                />
+                {funcionarioSelecionado && !funcSearchOpen && (
+                  <p className="mt-1 text-[10px] text-gray-500 truncate">{funcionarioSelecionado.matricula}</p>
+                )}
+                {funcSearchOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {filteredFuncionarios.map((f) => (
+                      <div
+                        key={f.nome}
+                        className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setFuncionario(String(f.nome));
+                          setFuncionarioBusca("");
+                          setFuncSearchOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{f.nome}</span>
+                        <span className="text-[10px] font-mono font-bold text-[#1a5fa8] flex-shrink-0">Mat. {f.matricula}</span>
+                      </div>
+                    ))}
+                    {filteredFuncionarios.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500">Nenhum funcionário encontrado</div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Emissão Fatura</label>
