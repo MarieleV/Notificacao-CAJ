@@ -494,11 +494,6 @@ export function OuvidoriaManager() {
       }
     }
 
-    // Se a decisão for favorável ao cliente, insere o lembrete de fato novo no final
-    if (decisao === "parcial") {
-      tpl += `\n\n**<adicionar fato novo ao processo>**`;
-    }
-
     setGeneratedText(tpl);
     setStep("generated");
   };
@@ -512,7 +507,7 @@ export function OuvidoriaManager() {
         <p key={lineIdx} className="min-h-[1em]">
           {parts.map((part, partIdx) => {
             const isBold = partIdx % 2 !== 0;
-            const isRed = part === "<adicionar fato novo ao processo>" || part === "[EDIÇÃO PECULIAR]";
+            const isRed = part === "[EDIÇÃO PECULIAR]";
 
             if (isBold) {
               return (
