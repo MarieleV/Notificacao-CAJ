@@ -74,15 +74,6 @@ Sistema desenvolvido para a **Companhia Águas de Joinville (CAJ)**, com foco na
 - [Node.js](https://nodejs.org/) instalado na máquina
 - Uma **API Key do Google Gemini** para utilizar o gerador de IA
 
-## 📁 Estrutura do Projeto
-
-```
-notificacao-caj/
-├── frontend/        # Aplicação React + TypeScript
-├── backend/         # API Node.js + Express
-└── README.md
-```
-
 <div align="center">
 
 ---
