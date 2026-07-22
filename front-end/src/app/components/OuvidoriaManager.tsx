@@ -436,7 +436,7 @@ export function OuvidoriaManager() {
         else if (decisao === "parcial") {
           // Lógica ou um ou outro
           const textoFaturaDecisao = faturaQuitada === "fatura_quitada" 
-            ? `Como a FAT ${tplFatura} foi quitada, cliente deve solicitar processo de restituição das multas aplicadas pelo e-mail atendimento@aguasdejoinville.com.br.` 
+            ? `Como a FAT ${tplFatura} foi quitada, cliente deve solicitar processo de restituição das multas aplicadas pelo e-mail **atendimento@aguasdejoinville.com.br**.` 
             : `A FAT ${tplFatura} foi corrigida e está anexa.`;
 
           if (tipoCaso === "leitura") {
