@@ -152,7 +152,7 @@ export function OuvidoriaManager() {
   // Novos estados para a seleção de Deferimento Específico
   const [deferirMotivo, setDeferirMotivo] = useState<"la_padronizada" | "fato_novo" | null>(null);
   const [fatoNovoStatus, setFatoNovoStatus] = useState<"notificado" | "multado" | null>(null);
-  const [faturaQuitada, setFaturaQuitada] = useState<"sim" | "nao" | null>(null);
+  const [faturaQuitada, setFaturaQuitada] = useState<"fatura_quitada" | "fatura_nao_quitada" | null>(null);
   
 
   // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente) ---
@@ -434,7 +434,7 @@ export function OuvidoriaManager() {
 
         // ── DEFERIMENTO PARCIAL ──
         else if (decisao === "parcial") {
-          const textoRestituicao = faturaQuitada === "sim" 
+          const textoRestituicao = faturaQuitada === "fatura_quitada" 
             ? ` Como a FAT ${tplFatura} foi quitada, cliente deve solicitar processo de restituição das multas aplicadas pelo e-mail atendimento@aguasdejoinville.com.br.` 
             : "";
 
@@ -1000,17 +1000,17 @@ export function OuvidoriaManager() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setFaturaQuitada("sim")}
-                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${faturaQuitada === "sim" ? "bg-amber-600 text-white border-amber-600 shadow-sm" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"}`}
+                      onClick={() => setFaturaQuitada("fatura_quitada")}
+                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${faturaQuitada === "fatura_quitada" ? "bg-amber-600 text-white border-amber-600 shadow-sm" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"}`}
                     >
-                      Sim
+                      Fatura Quitada
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFaturaQuitada("nao")}
-                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${faturaQuitada === "nao" ? "bg-amber-600 text-white border-amber-600 shadow-sm" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"}`}
+                      onClick={() => setFaturaQuitada("fatura_nao_quitada")}
+                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${faturaQuitada === "fatura_nao_quitada" ? "bg-amber-600 text-white border-amber-600 shadow-sm" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"}`}
                     >
-                      Não
+                      Não Quitada
                     </button>
                   </div>
                 </div>
