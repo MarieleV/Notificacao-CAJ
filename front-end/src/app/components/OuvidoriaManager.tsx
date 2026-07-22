@@ -1195,7 +1195,12 @@ export function OuvidoriaManager() {
                 icon={CheckCircle2}
                 title="Revisão e Edição do Parecer"
                 description={reviewMode === "preview" ? "Assim ficará o texto final. Clique em \"Editar\" para ajustar algum detalhe." : "Modo de edição: use **palavra** para marcar negrito."}
-                className="animate-fadeIn !border-emerald-200"
+                className={`animate-fadeIn ${
+                  decisao === "deferir" ? "!border-emerald-200" :
+                  decisao === "parcial" ? "!border-amber-200" :
+                  decisao === "indeferir" ? "!border-red-200" :
+                  "!border-gray-200"
+                }`}
                 headerAction={
                   <div className="flex items-center gap-2 mt-3 md:mt-0 w-full justify-between md:justify-end">
                     <button
