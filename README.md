@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💧 Notificação CAJ
+# 💧 CAJ SISTEMA
 
 ### Sistema de Gestão Administrativa e Jurídica
 
