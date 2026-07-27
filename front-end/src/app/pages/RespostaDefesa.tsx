@@ -5,8 +5,8 @@ import {
   MessageSquareReply
 } from "lucide-react";
 import { calculateEndDate } from "../lib/dates";
-import { DatePicker } from "./shared/DatePicker";
-import { SectionBlock } from "./shared/SectionBlock";
+import { DatePicker } from "../components/shared/DatePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
 
 // === BASE DE DADOS DOS TEXTOS PREDEFINIDOS ===
 const DEFESAS_TEMPLATES = [
@@ -146,7 +146,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   cadastral: "bg-purple-100 text-purple-800 border-purple-200",
 };
 
-export function RespostaDefesaManager() {
+export function RespostaDefesa() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

@@ -8,10 +8,10 @@ import {
 // --- IMPORTAÇÕES DA NOVA ARQUITETURA ---
 import { parseMonthYear, labelMonth } from "../lib/dates";
 import { maskMonthYear, maskBRL, fmtBRL } from "../lib/masks";
-import { DatePicker } from "./shared/DatePicker";
-import { MonthYearPicker } from "./shared/MonthYearPicker";
-import { MonthYearRangePicker } from "./shared/MonthYearRangePicker";
-import { SectionBlock } from "./shared/SectionBlock";
+import { DatePicker } from "../components/shared/DatePicker";
+import { MonthYearPicker } from "../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ const K1_DATA = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function FineCalculator() {
+export function CalculadoraMulta() {
   const [configOpen, setConfigOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 

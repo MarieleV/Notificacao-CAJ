@@ -8,10 +8,10 @@ import {
 // --- IMPORTAÇÕES DA NOVA ARQUITETURA ---
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../lib/dates";
 import { formatName } from "../lib/masks";
-import { DatePicker } from "./shared/DatePicker";
-import { MonthYearPicker } from "./shared/MonthYearPicker";
-import { MonthYearRangePicker } from "./shared/MonthYearRangePicker";
-import { SectionBlock } from "./shared/SectionBlock";
+import { DatePicker } from "../components/shared/DatePicker";
+import { MonthYearPicker } from "../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
 
 // === FUNCIONÁRIOS: nome + matrícula (ordem alfabética por nome) ===
 interface Funcionario {
@@ -115,7 +115,7 @@ function EditableCopyBlock({ defaultText }: { defaultText: string }) {
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export function OuvidoriaManager() {
+export function ProcessoOuvidoria() {
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<"idle" | "generated">("idle");
   const [generatedText, setGeneratedText] = useState("");

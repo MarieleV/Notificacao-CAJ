@@ -1,19 +1,19 @@
 import { createBrowserRouter } from "react-router";
 import { Layout } from "./components/Layout";
-import { NotificationDrafter } from "./components/NotificationDrafter";
-import { RespostaDefesaManager } from "./components/RespostaDefesaManager";
-import { FineCalculator } from "./components/FineCalculator";
-import { OuvidoriaManager } from "./components/OuvidoriaManager";
+import { CalculadoraMulta } from './pages/CalculadoraMulta';
+import { RedatorNotificacao } from './pages/RedatorNotificacao';
+import { ProcessoOuvidoria } from './pages/ProcessoOuvidoria';
+import { RespostaDefesa } from './pages/RespostaDefesa';
 
 export const router = createBrowserRouter([
   {
     path: "/",
     Component: Layout,
     children: [
-      { index: true, Component: NotificationDrafter },
-      { path: "multas", Component: FineCalculator },
-      { path: "ouvidoria", Component: OuvidoriaManager },
-      { path: "resposta-defesa", Component: RespostaDefesaManager },
+      { index: true, Component: RedatorNotificacao },
+      { path: "multas", Component: CalculadoraMulta },
+      { path: "ouvidoria", Component: ProcessoOuvidoria },
+      { path: "resposta-defesa", Component: RespostaDefesa },
     ],
   },
 ]);

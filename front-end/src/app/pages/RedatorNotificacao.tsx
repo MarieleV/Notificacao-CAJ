@@ -4,8 +4,8 @@ import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck,
 } from "lucide-react";
-import { DatePicker } from "./shared/DatePicker";
-import { SectionBlock } from "./shared/SectionBlock";
+import { DatePicker } from "../components/shared/DatePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
 
 // === FUNCIONÁRIOS: nome + matrícula (ordem alfabética por nome) ===
 interface Funcionario {
@@ -218,7 +218,7 @@ interface FileModalState {
   message: string;
 }
 
-export function NotificationDrafter() {
+export function RedatorNotificacao() {
   const [apiKey, setApiKey] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
