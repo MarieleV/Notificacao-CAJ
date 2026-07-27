@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ElementType } from "react";
 import {
   ChevronDown, ChevronUp, Plus, Trash2,
   Calculator, ClipboardList, Info, AlertCircle, Droplets,
   FileText, Copy, CheckCircle2, RefreshCw, Lock, Search
 } from "lucide-react";
 
-// --- IMPORTAÇÕES DA NOVA ARQUITETURA ---
 import { parseMonthYear, labelMonth } from "../lib/dates";
 import { maskMonthYear, maskBRL, fmtBRL } from "../lib/masks";
 import { DatePicker } from "../components/shared/DatePicker";
@@ -13,9 +12,17 @@ import { MonthYearPicker } from "../components/shared/MonthYearPicker";
 import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
 import { SectionBlock } from "../components/shared/SectionBlock";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// Importando os dados estáticos separados
+import { 
+  VIGENCIAS_AGUA, 
+  VIGENCIAS_K1, 
+  TARIFF_DATA, 
+  K1_DATA 
+} from "../lib/tarifas";
 
-type IrregularRow = {
+// ─── Tipagens (TypeScript) ───────────────────────────────────────────────────
+
+export interface IrregularRow {
   id: number;
   monthYear: string;
   consumption: string;
@@ -23,171 +30,106 @@ type IrregularRow = {
   chargedWater: string;
   chargedService: string;
   chargedSewage: string;         
-};
+}
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface ApiDataResponse {
+  totals: {
+    totalM3: number;
+    grandCorrect: number;
+    grandCharged: number;
+    grandDiff: number;
+  };
+  rows: Array<{
+    id: number;
+    hasError: boolean;
+    correctWater: number | null;
+    correctService: number | null;
+    totalCorrect: number | null;
+    chargedWater: number;
+    chargedService: number;
+    totalCharged: number;
+    diff: number | null;
+  }>;
+  waterReportText: string;
+  sewageReportText: string;
+}
+
+// ─── Subcomponentes (DRY - Don't Repeat Yourself) ────────────────────────────
+
+const GridInput = ({ hasError, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { hasError?: boolean }) => (
+  <input
+    {...props}
+    className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all h-[34px] ${
+      hasError
+        ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
+        : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20 bg-white"
+    } ${props.className || ""}`}
+  />
+);
+
+interface KpiCardProps {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: ElementType;
+  theme: "default" | "blue" | "red" | "emerald";
+}
+
+function KpiCard({ title, value, subtitle, icon: Icon, theme }: KpiCardProps) {
+  // Agora usamos as strings completas, mantendo as exatas cores originais do seu design
+  const themes = {
+    default: {
+      wrapper: "border-gray-100 bg-[#f8fafe]",
+      icon: "text-[#1a5fa8]",
+      title: "text-gray-500",
+      value: "text-[#0b1e35]",
+      subtitle: "text-gray-400"
+    },
+    blue: {
+      wrapper: "border-[#c3ddf8] bg-[#eef6ff]",
+      icon: "text-[#1a5fa8]",
+      title: "text-[#1a5fa8]",
+      value: "text-[#1a5fa8]",
+      subtitle: "text-[#4a7fa5]"
+    },
+    red: {
+      wrapper: "border-red-200 bg-red-50",
+      icon: "text-red-500",
+      title: "text-red-500",
+      value: "text-red-600",
+      subtitle: "text-red-400"
+    },
+    emerald: {
+      wrapper: "border-emerald-200 bg-emerald-50",
+      icon: "text-emerald-600",
+      title: "text-emerald-700",
+      value: "text-emerald-700",
+      subtitle: "text-emerald-600"
+    }
+  };
+  
+  const active = themes[theme];
+
+  return (
+    <div className={`rounded-xl border p-4 transition-colors ${active.wrapper}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} className={active.icon} />
+        <p className={`text-[10px] font-semibold uppercase tracking-wider ${active.title}`}>
+          {title}
+        </p>
+      </div>
+      <p className={`text-2xl font-bold tabular-nums ${active.value}`}>
+        {value}
+      </p>
+      <p className={`text-[10px] mt-1 ${active.subtitle}`}>{subtitle}</p>
+    </div>
+  );
+}
+
+// ─── Componente Principal ────────────────────────────────────────────────────
 
 let uid = 1;
 const newId = () => uid++;
-
-// ─── Base de Dados Fixa (Somente Leitura) ────────────────────────────────────
-
-const VIGENCIAS_AGUA = [
-  "01/03/2025 Atual",
-  "11/12/2024 a 28/02/2025",
-  "01/03/2024 a 10/12/2024",
-  "01/03/2023 a 29/02/2024"
-];
-
-const VIGENCIAS_K1 = [
-  "15/07/2025 Atual",
-  "20/01/2023 a 14/07/2025"
-];
-
-// Matriz de Tarifas por Vigência
-const TARIFF_DATA: Record<string, Record<string, { serviceRate: string, tiers: any[] }>> = {
-  "01/03/2025 Atual": {
-    "Residencial": {
-      serviceRate: "34,93",
-      tiers: [
-        { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,49" },
-        { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,89" },
-        { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-        { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-        { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-      ]
-    },
-    "Residencial Tarifa Social": {
-      serviceRate: "10,48",
-      tiers: [
-        { id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,45" },
-        { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "4,95" },
-        { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-        { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-        { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-      ]
-    },
-    "Residencial Social Especial": {
-      serviceRate: "10,48",
-      tiers: [
-        { id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,30" },
-        { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,95" },
-        { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "13,18" },
-        { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "13,63" }
-      ]
-    },
-    "Comercial": {
-      serviceRate: "58,20",
-      tiers: [
-        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-      ]
-    },
-    "Comercial Entidade Beneficiente": {
-      serviceRate: "29,11",
-      tiers: [
-        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,00" },
-        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,03" },
-        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "6,23" },
-        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "6,36" },
-        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,44" },
-        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,50" }
-      ]
-    },
-    "Industrial": {
-      serviceRate: "58,20",
-      tiers: [
-        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-      ]
-    },
-    "Pública": {
-      serviceRate: "58,20",
-      tiers: [
-        { id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,98" },
-        { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "2,06" },
-        { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "12,42" },
-        { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "12,75" },
-        { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "12,86" },
-        { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,97" }
-      ]
-    }
-  },
-  "11/12/2024 a 28/02/2025": {
-    "Residencial": { serviceRate: "31,96", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,35" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Residencial Tarifa Social": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,40" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Residencial Social Especial": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,28" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Comercial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
-    "Comercial Entidade Beneficiente": { serviceRate: "26,63", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,95" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,98" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,80" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,90" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,00" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,10" }] },
-    "Industrial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
-    "Pública": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] }
-  },
-  "01/03/2024 a 10/12/2024": {
-    "Residencial": { serviceRate: "31,96", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,35" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Residencial Tarifa Social": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,40" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "9,00" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Residencial Social Especial": { serviceRate: "9,58", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,28" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "9,05" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "12,00" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "12,50" }] },
-    "Comercial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
-    "Comercial Entidade Beneficiente": { serviceRate: "26,63", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,95" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,98" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,80" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,90" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "6,00" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "6,10" }] },
-    "Industrial": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] },
-    "Pública": { serviceRate: "53,25", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,80" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "11,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "11,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "11,90" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "12,00" }] }
-  },
-  "01/03/2023 a 29/02/2024": {
-    "Residencial": { serviceRate: "30,55", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "1,30" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "8,65" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
-    "Residencial Tarifa Social": { serviceRate: "9,16", tiers: [{ id: 1, min: 0, max: 10, label: "Até 10 m³", value: "0,39" }, { id: 2, min: 11, max: 15, label: "De 11 a 15 m³", value: "8,65" }, { id: 3, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 4, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 5, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
-    "Residencial Social Especial": { serviceRate: "9,16", tiers: [{ id: 1, min: 0, max: 15, label: "Até 15 m³", value: "0,26" }, { id: 2, min: 16, max: 25, label: "De 16 a 25 m³", value: "8,70" }, { id: 3, min: 26, max: 35, label: "De 26 a 35 m³", value: "11,53" }, { id: 4, min: 36, max: "Infinity", label: "Acima de 35 m³", value: "11,92" }] },
-    "Comercial": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] },
-    "Comercial Entidade Beneficiente": { serviceRate: "25,45", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "0,85" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "0,90" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "5,25" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "5,40" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "5,45" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "5,55" }] },
-    "Industrial": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] },
-    "Pública": { serviceRate: "50,90", tiers: [{ id: 1, min: 0, max: 5, label: "Até 5 m³", value: "1,73" }, { id: 2, min: 6, max: 10, label: "De 6 a 10 m³", value: "1,81" }, { id: 3, min: 11, max: 15, label: "De 11 a 15 m³", value: "10,50" }, { id: 4, min: 16, max: 25, label: "De 16 a 25 m³", value: "10,80" }, { id: 5, min: 26, max: 50, label: "De 26 a 50 m³", value: "10,95" }, { id: 6, min: 51, max: "Infinity", label: "Acima de 50 m³", value: "11,10" }] }
-  }
-};
-
-const K1_DATA = [
-  { category: "Residencial", activity: "Casa", k1: "1,00" },
-  { category: "Residencial", activity: "Cond. Minha Casa Minha Vida", k1: "1,00" },
-  { category: "Residencial", activity: "Condomínio Fechado", k1: "1,00" },
-  { category: "Residencial", activity: "Consumo por Rateio", k1: "1,00" },
-  { category: "Residencial", activity: "Prédio", k1: "1,00" },
-  { category: "Residencial", activity: "Residencial - diversos, não especificados", k1: "1,00" },
-  { category: "Comercial", activity: "Comercial - diversos, não especificados", k1: "1,00" },
-  { category: "Comercial", activity: "Esporte", k1: "1,00" },
-  { category: "Comercial", activity: "Lojas, Mini-mercado e pequenos comércios", k1: "1,00" },
-  { category: "Comercial", activity: "Salão de Beleza/Barbearia/Estética", k1: "1,00" },
-  { category: "Comercial", activity: "Hotel/Motel", k1: "1,03" },
-  { category: "Comercial", activity: "Petshop/Veterinária/Agropecuária", k1: "1,11" },
-  { category: "Comercial", activity: "Lavandeira", k1: "1,24" },
-  { category: "Comercial", activity: "Lavação/Posto de Gasolina", k1: "1,53" },
-  { category: "Comercial", activity: "Shopping/Centro Comercial", k1: "1,53" },
-  { category: "Comercial", activity: "Bar/Restaurante/Espaço de Eventos", k1: "1,55" },
-  { category: "Comercial", activity: "Mercado e Similares", k1: "1,65" },
-  { category: "Industrial", activity: "Industrias - contribui somente esgoto doméstico", k1: "1,00" },
-  { category: "Industrial", activity: "Industrias - diversos, não especificados", k1: "1,02" },
-  { category: "Industrial", activity: "Ind. Borracha", k1: "1,10" },
-  { category: "Industrial", activity: "Ind. Metal/Mecânica", k1: "1,10" },
-  { category: "Industrial", activity: "Ind. Elétrica", k1: "1,14" },
-  { category: "Industrial", activity: "Ind. Mineradora", k1: "1,15" },
-  { category: "Industrial", activity: "Ind. Têxtil", k1: "1,19" },
-  { category: "Industrial", activity: "Ind. Plástico", k1: "1,25" },
-  { category: "Industrial", activity: "Condomínio Industrial", k1: "1,30" },
-  { category: "Industrial", activity: "Ind. Química", k1: "1,35" },
-  { category: "Industrial", activity: "Ind. Papel", k1: "1,45" },
-  { category: "Industrial", activity: "Ind. Alimentos", k1: "1,55" },
-  { category: "Industrial", activity: "Ind. Construção", k1: "1,68" },
-  { category: "Industrial", activity: "Aterro Sanitário", k1: "1,68" },
-  { category: "Público", activity: "Usos públicos (Hospitais, Escolas, Praças, etc)", k1: "1,00" },
-  { category: "Público", activity: "Unidades prisionais com preparação de refeições", k1: "1,55" },
-];
-
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CalculadoraMulta() {
   const [configOpen, setConfigOpen] = useState(false);
@@ -207,19 +149,15 @@ export function CalculadoraMulta() {
     };
   }, [configOpen]);
 
-  // Estados de Configuração (Água)
+  // Estados de Configuração
   const [selectedVigenciaAgua, setSelectedVigenciaAgua] = useState(VIGENCIAS_AGUA[0]);
   const [selectedTariff, setSelectedTariff] = useState("Residencial");
-
-  // Estados de Configuração (Esgoto)
   const [selectedVigenciaK1, setSelectedVigenciaK1] = useState(VIGENCIAS_K1[0]);
   const [selectedK1Category, setSelectedK1Category] = useState("Residencial");
   const [selectedK1Activity, setSelectedK1Activity] = useState("Casa");
 
-  // Estado das Linhas
+  // Estado das Linhas e Período
   const [rows, setRows] = useState<IrregularRow[]>([]);
-
-  // Gerador de período (Range Picker)
   const [periodRange, setPeriodRange] = useState("");
 
   // Campos complementares do texto
@@ -234,8 +172,9 @@ export function CalculadoraMulta() {
   const [copiedWater, setCopiedWater] = useState(false);
   const [copiedSewage, setCopiedSewage] = useState(false);
 
-  // ─── Derivando os parâmetros baseados nas seleções ──────────────────────────
-  
+  const [apiData, setApiData] = useState<ApiDataResponse | null>(null);
+
+  // Derivando os parâmetros
   const currentTariffData = TARIFF_DATA[selectedVigenciaAgua]?.[selectedTariff] || { serviceRate: "0,00", tiers: [] };
   const currentK1Data = K1_DATA.find(i => i.activity === selectedK1Activity && i.category === selectedK1Category);
   const k1Factor = currentK1Data ? currentK1Data.k1 : "1,00";
@@ -259,8 +198,6 @@ export function CalculadoraMulta() {
     setSelectedK1Activity(activity);
   }
 
-  // ─── Handlers de Linhas Irregulares ──────────────────────────────────────
-
   function addRow() {
     setRows((p) => [...p, { 
       id: newId(), monthYear: "", consumption: "",
@@ -272,8 +209,6 @@ export function CalculadoraMulta() {
 
   function handleGeneratePeriod(rangeVal: string) {
     if (!rangeVal) return;
-
-    // O Range Picker agora devolve "MM/AAAA a MM/AAAA"
     const parts = rangeVal.split(" a ");
     const start = parseMonthYear(parts[0]);
     const end = parts.length > 1 ? parseMonthYear(parts[1]) : start;
@@ -286,18 +221,16 @@ export function CalculadoraMulta() {
     while (current <= end) {
       const mm = String(current.getMonth() + 1).padStart(2, "0");
       const yyyy = current.getFullYear();
-      const monthYearStr = `${mm}/${yyyy}`;
-
+      
       generatedRows.push({
         id: newId(),
-        monthYear: monthYearStr,
+        monthYear: `${mm}/${yyyy}`,
         consumption: "",
         irregularConsumption: "",
         chargedWater: "",
         chargedService: "",
         chargedSewage: ""
       });
-
       current.setMonth(current.getMonth() + 1);
     }
 
@@ -313,11 +246,7 @@ export function CalculadoraMulta() {
   }
 
   const AUTOFILL_FIELDS: (keyof IrregularRow)[] = [
-    "consumption",
-    "irregularConsumption",
-    "chargedWater",
-    "chargedService",
-    "chargedSewage",
+    "consumption", "irregularConsumption", "chargedWater", "chargedService", "chargedSewage"
   ];
 
   function changeRow(id: number, field: keyof IrregularRow, val: string) {
@@ -350,9 +279,6 @@ export function CalculadoraMulta() {
       });
     });
   }
-
-  // ─── Integração com Back-end ──────────────────────────────────────────────
-  const [apiData, setApiData] = useState<any>(null);
 
   useEffect(() => {
     const delay = setTimeout(() => fetchCalculations(), 600);
@@ -390,15 +316,13 @@ export function CalculadoraMulta() {
     }
   }
 
-  // ─── Pontes Seguras ───────────────────────────────────────────────────────
-  
   const calcRows = rows.map((row) => {
     const apiCalc = apiData?.rows?.find((r: any) => r.id === row.id);
-    if (apiCalc) return { ...apiCalc, row };
+    if (apiCalc) return { ...apiCalc, row, consumption: row.consumption || "0" };
     
     return {
-      row, hasError: false, consumption: 0, correctWater: null, correctService: null,
-      totalCorrect: null, chargedWater: 0, chargedService: 0, totalCharged: 0, diff: null, m3Rate: null
+      row, hasError: false, consumption: row.consumption || "0", correctWater: null, correctService: null,
+      totalCorrect: null, chargedWater: 0, chargedService: 0, totalCharged: 0, diff: null
     };
   });
 
@@ -419,25 +343,21 @@ export function CalculadoraMulta() {
 
   function handleCopy(text: string, setCopiedState: React.Dispatch<React.SetStateAction<boolean>>) {
     if (!text) return;
-    try {
+    navigator.clipboard.writeText(text).catch(() => {
       const el = document.createElement("textarea");
       el.value = text;
-      el.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
       document.body.appendChild(el);
-      el.focus();
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-    } catch {}
+    });
     setCopiedState(true);
     setTimeout(() => setCopiedState(false), 2000);
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
     <div className="h-full flex flex-col">
-      {/* Top bar */}
+      {/* ── BARRA SUPERIOR RESTAURADA ── */}
       <div className="relative bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm z-50">
         <div>
           <div className="flex items-center gap-2">
@@ -465,7 +385,6 @@ export function CalculadoraMulta() {
 
           {configOpen && (
             <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[550px] max-w-xl bg-white border border-gray-200 rounded-xl shadow-2xl cursor-default origin-top-right z-50 flex flex-col max-h-[80vh]">
-              
               <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                 <div>
                   <h2 className="text-[#0b1e35] font-bold text-base flex items-center gap-2">
@@ -478,8 +397,6 @@ export function CalculadoraMulta() {
               </div>
               
               <div className="flex flex-col gap-5 px-6 py-5 overflow-y-auto">
-                
-                {/* ── BLOCO 1: ÁGUA ── */}
                 <div className="bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
                   <div className="flex items-center gap-2 border-b border-[#c3ddf8] pb-2 mb-3">
                     <Droplets size={15} className="text-[#1a5fa8]" />
@@ -527,7 +444,6 @@ export function CalculadoraMulta() {
                   </div>
                 </div>
 
-                {/* ── BLOCO 2: ESGOTO (K1) ── */}
                 <div className="bg-[#f8fafe] p-4 rounded-xl border border-[#dce9f7]">
                   <div className="flex items-center gap-2 border-b border-[#c3ddf8] pb-2 mb-3">
                     <Info size={15} className="text-[#1a5fa8]" />
@@ -570,7 +486,6 @@ export function CalculadoraMulta() {
                       </p>
                     </div>
                 </div>
-
               </div>
             </div>
           )}
@@ -620,48 +535,40 @@ export function CalculadoraMulta() {
                 return (
                   <div key={row.id}>
                     <div className="grid grid-cols-[130px_1fr_1fr_1fr_1fr_40px] gap-3 items-center">
-                      <input
+                      <GridInput
                         value={row.monthYear}
                         onChange={(e) => changeRow(row.id, "monthYear", e.target.value)}
                         placeholder="MM/AAAA"
                         maxLength={7}
-                        className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all ${
-                          dateError
-                            ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
-                            : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20"
-                        }`}
+                        hasError={dateError}
                       />
-                      <input
+                      <GridInput
                         value={row.consumption}
                         onChange={(e) => changeRow(row.id, "consumption", e.target.value)}
                         onBlur={() => idx === 0 && cascadeFillFromFirstRow("consumption")}
                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                         placeholder="Ex: 20"
-                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                       />
-                      <input
+                      <GridInput
                         value={row.irregularConsumption}
                         onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value)}
                         onBlur={() => idx === 0 && cascadeFillFromFirstRow("irregularConsumption")}
                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                         placeholder="Ex: 15"
-                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                       />
-                      <input
+                      <GridInput
                         value={row.chargedWater}
                         onChange={(e) => changeRow(row.id, "chargedWater", e.target.value)}
                         onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedWater")}
                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                         placeholder="Ex: 13,60"
-                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                       />
-                      <input
+                      <GridInput
                         value={row.chargedService}
                         onChange={(e) => changeRow(row.id, "chargedService", e.target.value)}
                         onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedService")}
                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                         placeholder="Ex: 31,96"
-                        className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
                       />
                       <button
                         onClick={() => removeRow(row.id)}
@@ -692,6 +599,7 @@ export function CalculadoraMulta() {
               </div>
             )}
 
+            {/* ── BOTÕES RESTAURADOS ── */}
             <div className="mt-4 flex justify-center">
               <button
                 onClick={addRow}
@@ -727,13 +635,12 @@ export function CalculadoraMulta() {
                     <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-500 flex items-center h-[34px]">
                       {row.monthYear || "Mês não preenchido"}
                     </div>
-                    <input
+                    <GridInput
                       value={row.chargedSewage}
                       onChange={(e) => changeRow(row.id, "chargedSewage", e.target.value)}
                       onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedSewage")}
                       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                       placeholder="Ex: 10,88"
-                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:border-[#1a5fa8] focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all h-[34px]"
                     />
                   </div>
                 </div>
@@ -754,7 +661,7 @@ export function CalculadoraMulta() {
             </div>
           </SectionBlock>
 
-          {/* ── Bloco 3: Tabela de Resultados ─────────────────────────────────── */}
+          {/* ── Bloco 3: Tabela de Resultados RESTAURADA ─────────────────────────────────── */}
           <SectionBlock
             icon={Calculator}
             title="Resultado Detalhado por Mês"
@@ -766,11 +673,11 @@ export function CalculadoraMulta() {
                   <tr className="bg-[#f8fafe] border-y border-gray-100">
                     <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Mês<br/>Irregular</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider leading-tight">Consumo<br/>(m³)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight border-l border-white">Valor Água<br/>(Correto)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>(Correto)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight border-l border-white">Valor Água<br/>Correto</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight">Serviço<br/>Correto</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] leading-tight border-r border-white">Total<br/>Correto</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>(Errado)</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>(Errado)</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Água Cobrada<br/>Errado</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight">Serv. Cobrado<br/>Errado</th>
                     <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 leading-tight border-r border-white">Total<br/>Errado</th>
                     <th className="px-6 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider leading-tight">Diferença</th>
                   </tr>
@@ -852,54 +759,41 @@ export function CalculadoraMulta() {
             </div>
           </SectionBlock>
 
-          {/* ── Bloco 4: Painel de KPIs ───────────────────────────────────────── */}
+          {/* ── Bloco 4: Painel de KPIs REFATORADO ───────────────────────────────────────── */}
           <SectionBlock
             icon={ClipboardList}
-            title="Painel de Resumo - Correspondente aos Meses de Irregularidade"
+            title="Painel de Resumo"
             description="Base para lançamento financeiro ou notificação extrajudicial"
           >
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-gray-100 bg-[#f8fafe] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Droplets size={14} className="text-[#1a5fa8]" />
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de m³</p>
-                </div>
-                <p className="text-2xl font-bold text-[#0b1e35] tabular-nums">{totalM3}</p>
-                <p className="text-[10px] text-gray-400 mt-1">metros cúbicos irregulares</p>
-              </div>
-
-              <div className="rounded-xl border border-[#c3ddf8] bg-[#eef6ff] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calculator size={14} className="text-[#1a5fa8]" />
-                  <p className="text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider">Valor Correto</p>
-                </div>
-                <p className="text-2xl font-bold text-[#1a5fa8] tabular-nums">{fmtBRL(grandCorrect)}</p>
-                <p className="text-[10px] text-[#4a7fa5] mt-1">o que deveria ser cobrado</p>
-              </div>
-
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle size={14} className="text-red-500" />
-                  <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Cobrado (Errado)</p>
-                </div>
-                <p className="text-2xl font-bold text-red-600 tabular-nums">{fmtBRL(grandCharged)}</p>
-                <p className="text-[10px] text-red-400 mt-1">antes da regularização</p>
-              </div>
-
-              <div className={`rounded-xl border p-4 ${grandDiff >= 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <ClipboardList size={14} className={grandDiff >= 0 ? "text-emerald-600" : "text-red-500"} />
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${grandDiff >= 0 ? "text-emerald-700" : "text-red-500"}`}>
-                    Diferença a Lançar
-                  </p>
-                </div>
-                <p className={`text-2xl font-bold tabular-nums ${grandDiff >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                  {fmtBRL(Math.abs(grandDiff))}
-                </p>
-                <p className={`text-[10px] mt-1 ${grandDiff >= 0 ? "text-emerald-600" : "text-red-400"}`}>
-                  {grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"}
-                </p>
-              </div>
+              <KpiCard 
+                title="Total de m³" 
+                value={totalM3} 
+                subtitle="metros cúbicos irregulares" 
+                icon={Droplets} 
+                theme="default" 
+              />
+              <KpiCard 
+                title="Valor Correto" 
+                value={fmtBRL(grandCorrect)} 
+                subtitle="o que deveria ser cobrado" 
+                icon={Calculator} 
+                theme="blue" 
+              />
+              <KpiCard 
+                title="Cobrado" 
+                value={fmtBRL(grandCharged)} 
+                subtitle="antes da regularização" 
+                icon={AlertCircle} 
+                theme="red" 
+              />
+              <KpiCard 
+                title="Diferença a Lançar" 
+                value={fmtBRL(Math.abs(grandDiff))} 
+                subtitle={grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"} 
+                icon={ClipboardList} 
+                theme={grandDiff >= 0 ? "emerald" : "red"} 
+              />
             </div>
 
             {validRows.length > 0 && (
@@ -916,7 +810,7 @@ export function CalculadoraMulta() {
             )}
           </SectionBlock>
 
-          {/* ── Bloco 5: Texto de Apuração ───────────────────────────────────── */}
+          {/* ── Bloco 5: Texto de Apuração RESTAURADO ───────────────────────────────────── */}
           <SectionBlock
             icon={FileText}
             title="Texto de Apuração"
