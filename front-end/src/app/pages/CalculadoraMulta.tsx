@@ -36,7 +36,7 @@ const parseCurrency = (val: string) => {
 const GridInput = ({ hasError, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { hasError?: boolean }) => (
   <input
     {...props}
-    className={`w-full px-2 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all h-[34px] ${
+    className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all h-[34px] placeholder-gray-400 ${
       hasError
         ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
         : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20 bg-white"
@@ -301,14 +301,14 @@ Volume total recuperado: ${results.totalM3} m³.`;
 
   // ─── Renderização das Tabelas de Entrada ────────────────────────────────────
 
-  const renderEntryTable = (title: string, desc: string, type: "water" | "sewage") => {
+  const renderEntryTable = (stepNum: number, title: string, desc: string, type: "water" | "sewage") => {
     const rows = type === "water" ? waterRows : sewageRows;
     const period = type === "water" ? waterPeriod : sewagePeriod;
     const setPeriod = type === "water" ? setWaterPeriod : setSewagePeriod;
     
     return (
       <SectionBlock
-        icon={Plus}
+        number={stepNum}
         title={title}
         description={desc}
         headerAction={
@@ -341,7 +341,7 @@ Volume total recuperado: ${results.totalM3} m³.`;
                 const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
                 return (
                   <div key={row.id}>
-                    <div className="grid grid-cols-[90px_80px_80px_1fr_1fr_1fr_1fr_40px] gap-2 items-center">
+                    <div className="grid grid-cols-[90px_80px_80px_1fr_1fr_1fr_1fr_40px] gap-2 items-center group">
                       <GridInput
                         value={row.monthYear}
                         onChange={(e) => changeRow(row.id, "monthYear", e.target.value, type)}
@@ -391,7 +391,7 @@ Volume total recuperado: ${results.totalM3} m³.`;
                       />
                       <button
                         onClick={() => removeRow(row.id, type)}
-                        className="text-gray-300 hover:text-red-400 transition-colors justify-self-center"
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors justify-self-center opacity-50 group-hover:opacity-100"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -407,18 +407,25 @@ Volume total recuperado: ${results.totalM3} m³.`;
             </div>
             
             {rows.length === 0 && (
-              <div className="py-6 text-center text-gray-300 text-sm">
+              <div className="py-8 text-center text-gray-300 text-sm">
                 Utilize o gerador de período acima ou clique abaixo para adicionar manualmente.
               </div>
             )}
             
-            <div className="mt-3 flex justify-start">
+            <div className="mt-4 flex justify-center">
               <button
                 onClick={() => addRow(type)}
-                className="flex items-center gap-1.5 text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
+                className="text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
               >
-                <Plus size={12} /> Adicionar linha avulsa
+                Adicionar mês avulso manualmente
               </button>
+            </div>
+
+            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#4a7fa5]">
+                Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo - <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
+              </p>
             </div>
           </div>
         </div>
@@ -429,92 +436,86 @@ Volume total recuperado: ${results.totalM3} m³.`;
   // ─── Renderização dos Resultados ─────────────────────────────────────────────
 
   const renderResultSection = (title: string, results: typeof waterResults, isSewage: boolean) => {
+    const qtdMeses = results.calcRows.length;
+    const textoMeses = qtdMeses === 1 ? "1 mês" : `${qtdMeses} meses`;
+
+    if (qtdMeses === 0) return null;
+
     return (
-      <>
-        <div className="flex items-center gap-2 pt-2">
-          {isSewage ? <Droplets size={22} className="text-amber-700" /> : <Droplets size={22} className="text-[#1a5fa8]" />}
-          <h2 className="text-xl font-bold text-[#0b1e35]">{title}</h2>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-fadeIn">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-[#f8fafe]">
+          {isSewage ? <Droplets size={16} className="text-amber-700" /> : <Droplets size={16} className="text-[#1a5fa8]" />}
+          <h3 className="text-sm font-bold text-[#0b1e35]">{title}</h3>
         </div>
 
-        <SectionBlock icon={Calculator} title={`Detalhamento Mês a Mês - ${isSewage ? 'Esgoto' : 'Água'}`}>
-          <div className="overflow-x-auto -mx-6">
+        <div className="p-6 space-y-6">
+          <div className="overflow-x-auto -mx-2">
             <table className="w-full text-sm min-w-[800px]">
               <thead>
-                <tr className="bg-[#f8fafe] border-y border-gray-100">
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mês</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cons. (m³)</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-l border-white">Valor<br/>Correto</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff]">Serviço<br/>Correto</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-r border-white">Total<br/>Correto</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50">Valor<br/>Errado</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50">Serviço<br/>Errado</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 border-r border-white">Total<br/>Errado</th>
-                  <th className="px-6 py-3 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Diferença</th>
+                <tr className="border-b border-gray-200">
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mês</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cons. (m³)</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-l border-white rounded-tl-md">Valor Correto</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff]">Serviço Correto</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-r border-white rounded-tr-md">Total Correto</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 rounded-tl-md">Valor Errado</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50">Serviço Errado</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-bold text-red-500 uppercase tracking-wider bg-red-50 rounded-tr-md">Total Errado</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Diferença</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {results.calcRows.map((c) => {
                   const positive = c.diff >= 0;
                   return (
                     <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-[#0b1e35] whitespace-nowrap">
+                      <td className="px-4 py-2.5 font-medium text-[#0b1e35] whitespace-nowrap">
                         {labelMonth(c.row.monthYear)}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-gray-700">
                         {c.row.irregularConsumption || "0"} m³
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
                         {c.row.correctValue ? `R$ ${c.row.correctValue}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
                         {c.row.correctService ? `R$ ${c.row.correctService}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
                         {fmtBRL(c.totalCorrect)}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-red-600 bg-red-50/30">
                         {c.row.chargedValue ? `R$ ${c.row.chargedValue}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-red-600 bg-red-50/30">
                         {c.row.chargedService ? `R$ ${c.row.chargedService}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
                         {fmtBRL(c.totalCharged)}
                       </td>
-                      <td className={`px-6 py-3 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                      <td className={`px-4 py-2.5 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
                         {fmtBRL(c.diff)}
                       </td>
                     </tr>
                   );
                 })}
-                {results.calcRows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-gray-300 text-sm">
-                      Nenhum dado lançado para calcular.
-                    </td>
-                  </tr>
-                )}
               </tbody>
-              {results.calcRows.length > 0 && (
-                <tfoot>
-                  <tr className="border-t-2 border-gray-200 bg-[#f8fafe]">
-                    <td className="px-6 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{results.totalM3} m³</td>
-                    <td colSpan={2} className="bg-[#eef6ff]/60"></td>
-                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60">{fmtBRL(results.grandCorrect)}</td>
-                    <td colSpan={2} className="bg-red-50/40"></td>
-                    <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40">{fmtBRL(results.grandCharged)}</td>
-                    <td className={`px-6 py-3 text-right tabular-nums text-sm font-bold ${results.grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                      {fmtBRL(results.grandDiff)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+              <tfoot>
+                <tr className="border-t-2 border-gray-300 bg-gray-50">
+                  <td className="px-4 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{results.totalM3} m³</td>
+                  <td colSpan={2} className="bg-[#eef6ff]/60"></td>
+                  <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60 rounded-b-md">{fmtBRL(results.grandCorrect)}</td>
+                  <td colSpan={2} className="bg-red-50/40"></td>
+                  <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40 rounded-b-md">{fmtBRL(results.grandCharged)}</td>
+                  <td className={`px-4 py-3 text-right tabular-nums text-sm font-bold ${results.grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    {fmtBRL(results.grandDiff)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-        </SectionBlock>
 
-        <SectionBlock icon={ClipboardList} title={`Painel de Resumo - ${isSewage ? 'Esgoto' : 'Água'}`}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard 
               title="Total de m³" 
@@ -545,8 +546,18 @@ Volume total recuperado: ${results.totalM3} m³.`;
               theme={results.grandDiff >= 0 ? "emerald" : "red"} 
             />
           </div>
-        </SectionBlock>
-      </>
+
+          <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
+            <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-[#4a7fa5]">
+              <strong>Resumo:</strong> Nos {textoMeses} de irregularidade apurados,
+              o valor correto total seria de <strong>{fmtBRL(results.grandCorrect)}</strong>,
+              porém foi cobrado apenas <strong>{fmtBRL(results.grandCharged)}</strong>.
+              A diferença de <strong>{fmtBRL(Math.abs(results.grandDiff))}</strong> representa o ajuste financeiro a ser lançado referente ao consumo irregular de <strong>{results.totalM3} m³</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -565,27 +576,41 @@ Volume total recuperado: ${results.totalM3} m³.`;
       </div>
 
       <div className="flex-1 overflow-auto">
-        {/* AQUI ESTÁ A CLASSE MAX-W-5XL E SPACE-Y-6 IGUAL AO REDATOR */}
-        <div className="p-8 max-w-5xl mx-auto space-y-6">
+        <div className="p-8 max-w-5xl mx-auto space-y-10">
           
-          {renderEntryTable("Lançamento: Água", "Insira os valores corretos (calculados externamente) e os valores cobrados.", "water")}
-          {renderResultSection("Resultados da Água", waterResults, false)}
+          {/* =========================================
+              BLOCO DA ÁGUA
+          ========================================= */}
+          <div className="space-y-6">
+            {renderEntryTable(1, "Lançamento de Água", "Insira os valores corretos (calculados externamente) e os valores cobrados.", "water")}
+            {renderResultSection("Apuração Detalhada - Água", waterResults, false)}
+          </div>
 
-          <hr className="border-dashed border-gray-200" />
+          <hr className="border-gray-200" />
 
-          {renderEntryTable("Lançamento: Esgoto", "Insira os valores corretos e cobrados especificamente para o esgoto.", "sewage")}
-          {renderResultSection("Resultados do Esgoto", sewageResults, true)}
+          {/* =========================================
+              BLOCO DO ESGOTO
+          ========================================= */}
+          <div className="space-y-6">
+            {renderEntryTable(2, "Lançamento de Esgoto", "Insira os valores corretos e cobrados especificamente para o esgoto.", "sewage")}
+            {renderResultSection("Apuração Detalhada - Esgoto", sewageResults, true)}
+          </div>
 
-          <hr className="border-dashed border-gray-200" />
+          <hr className="border-gray-200" />
 
+          {/* =========================================
+              BLOCO DE TEXTOS (LAUDO)
+          ========================================= */}
           <SectionBlock
-            icon={FileText}
-            title="Texto de Apuração"
-            description="Gerado com base nos cálculos - editável e copiável"
+            number={3}
+            title="Emissão de Laudos de Apuração"
+            description="Insira os dados complementares para gerar o texto final copiável"
           >
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold text-gray-600 mb-3">Dados complementares para o texto</p>
+            <div className="space-y-6">
+              <div className="mb-8">
+                <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <FileText size={14} className="text-[#1a5fa8]"/> Dados Complementares do Laudo
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -610,7 +635,7 @@ Volume total recuperado: ${results.totalM3} m³.`;
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Consumo para base de cálculo (m³)
+                      Consumo base (m³)
                     </label>
                     <input
                       value={baseConsumption}
@@ -631,30 +656,38 @@ Volume total recuperado: ${results.totalM3} m³.`;
                     />
                   </div>
                 </div>
+
+                <div className="mt-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-2 flex items-start gap-2">
+                  <Info size={12} className="text-[#1a5fa8] mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-[#4a7fa5]">
+                    Os valores de <strong>período</strong>, <strong>valor correto</strong>, <strong>valor cobrado</strong>,
+                    <strong> diferença</strong> e <strong>volume total recuperado</strong> são preenchidos automaticamente a partir dos cálculos das tabelas acima.
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
                 {/* Laudo da Água */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-gray-600">Laudo de Água</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Água</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleGenerateText("water")}
                         disabled={waterRows.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
+                        className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm"
                       >
-                        <RefreshCw size={13} /> Gerar
+                        <RefreshCw size={12} /> Gerar
                       </button>
                       <button
                         onClick={() => handleCopy(waterReportText, setCopiedWater)}
                         disabled={!waterReportText}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
+                        className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all"
                       >
                         {copiedWater ? (
-                          <><CheckCircle2 size={13} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
+                          <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
                         ) : (
-                          <><Copy size={13} /> Copiar</>
+                          <><Copy size={12} /> Copiar</>
                         )}
                       </button>
                     </div>
@@ -668,32 +701,32 @@ Volume total recuperado: ${results.totalM3} m³.`;
                         : "O texto da Água aparecerá aqui."
                     }
                     rows={12}
-                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono"
+                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner"
                     spellCheck={false}
                   />
                 </div>
 
                 {/* Laudo do Esgoto */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-gray-600">Laudo de Esgoto</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Esgoto</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleGenerateText("sewage")}
                         disabled={sewageRows.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
+                        className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm"
                       >
-                        <RefreshCw size={13} /> Gerar
+                        <RefreshCw size={12} /> Gerar
                       </button>
                       <button
                         onClick={() => handleCopy(sewageReportText, setCopiedSewage)}
                         disabled={!sewageReportText}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-all"
+                        className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all"
                       >
                         {copiedSewage ? (
-                          <><CheckCircle2 size={13} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
+                          <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
                         ) : (
-                          <><Copy size={13} /> Copiar</>
+                          <><Copy size={12} /> Copiar</>
                         )}
                       </button>
                     </div>
@@ -707,15 +740,15 @@ Volume total recuperado: ${results.totalM3} m³.`;
                         : "O texto do Esgoto aparecerá aqui."
                     }
                     rows={12}
-                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono"
+                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner"
                     spellCheck={false}
                   />
                 </div>
               </div>
               
-              <p className="mt-1.5 text-[11px] text-gray-400 flex items-center gap-1.5">
+              <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5">
                 <Info size={11} />
-                Clique dentro de qualquer um dos textos para editar manualmente antes de copiar.
+                Dica: Você pode clicar dentro de qualquer um dos textos gerados para ajustá-los manualmente antes de copiar.
               </p>
             </div>
           </SectionBlock>
