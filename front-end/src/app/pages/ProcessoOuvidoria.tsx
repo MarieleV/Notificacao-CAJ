@@ -293,9 +293,9 @@ export function ProcessoOuvidoria() {
 
   const getParte1Text = () => {
     const hoje = new Date().toLocaleDateString("pt-BR");
-    if (canalResposta === "email") return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"}, em ${hoje} sobre teor do docto anexado neste protocolo.`;
+    if (canalResposta === "email") return `Cliente informado pelo e-mail ${clienteEmail || "[E-MAIL]"}, em ${hoje} sobre teor do docto anexado neste protocolo.`;
     if (canalResposta === "telefone") return `Informar cliente pelo Telefone: ${clienteTelefone || "[TELEFONE]"}, sobre teor do docto anexado neste protocolo.`;
-    return `Informar cliente pelo e-mail ${clienteEmail || "[E-MAIL]"} em ${hoje} e Telefone: ${clienteTelefone || "[TELEFONE]"} sobre teor do docto anexado neste protocolo.`;
+    return `Cliente informado pelo e-mail ${clienteEmail || "[E-MAIL]"} em ${hoje} e Telefone: ${clienteTelefone || "[TELEFONE]"} sobre teor do docto anexado neste protocolo.`;
   };
 
   const copyToClipboardSansys = (text: string) => {
