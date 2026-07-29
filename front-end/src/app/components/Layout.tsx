@@ -57,11 +57,11 @@ export function Layout() {
         {/* Logo / Header */}
         <div className="p-6 border-b border-[#1a3a5c]">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-[#1a5fa8] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-[#1a5fa8] flex items-center justify-center overflow-hidden">
               <img 
-                src="/logo.resolucao.boa.jpg" 
+                src="/logo.resolucao.boa.png" 
                 alt="Logo CAJ" 
-                className="w-9 h-9 rounded-lg object-contain bg-white p-0.5"
+                className="w-full h-full object-cover" 
               />
             </div>
             <div>
