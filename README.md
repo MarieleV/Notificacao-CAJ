@@ -23,7 +23,7 @@ Sistema desenvolvido para a **Companhia Águas de Joinville (CAJ)**, com foco na
 
 <div align="center">
 
-### 🧭 Sumário
+### 📑 Sumário
 
 [Principais Funcionalidades](#-principais-funcionalidades) • [Tecnologias Utilizadas](#-tecnologias-utilizadas) • [Como Rodar Localmente](#-como-rodar-o-projeto-localmente) • [Variáveis de Ambiente](#-variáveis-de-ambiente) • [Estrutura do Projeto](#-estrutura-do-projeto)
 
