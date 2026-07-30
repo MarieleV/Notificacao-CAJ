@@ -4,12 +4,12 @@ import {
   Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw
 } from "lucide-react";
 
-import { parseMonthYear, labelMonth } from "../lib/dates";
-import { maskMonthYear, maskBRL, fmtBRL } from "../lib/masks";
-import { DatePicker } from "../components/shared/DatePicker";
-import { MonthYearPicker } from "../components/shared/MonthYearPicker";
-import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
-import { SectionBlock } from "../components/shared/SectionBlock";
+import { parseMonthYear, labelMonth } from "../../utils/dates";
+import { maskMonthYear, maskBRL, fmtBRL } from "../../utils/masks";
+import { DatePicker } from "../../components/shared/DatePicker";
+import { MonthYearPicker } from "../../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "../../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "../../components/shared/SectionBlock";
 
 // ─── Tipagens (TypeScript) ───────────────────────────────────────────────────
 

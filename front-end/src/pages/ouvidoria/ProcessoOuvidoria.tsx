@@ -5,15 +5,15 @@ import {
   MessageSquare, Calculator, X
 } from "lucide-react";
 
-import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../lib/dates";
-import { formatName } from "../lib/masks";
-import { DatePicker } from "../components/shared/DatePicker";
-import { MonthYearPicker } from "../components/shared/MonthYearPicker";
-import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
-import { SectionBlock } from "../components/shared/SectionBlock";
+import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../../utils/dates";
+import { formatName } from "../../utils/masks";
+import { DatePicker } from "../../components/shared/DatePicker";
+import { MonthYearPicker } from "../../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "../../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "../../components/shared/SectionBlock";
 
 // Importando dados estáticos e tipos da nova arquitetura
-import { FUNCIONARIOS, DecisaoType, TipoCasoType, DefesaType } from "../lib/ouvidoria";
+import { FUNCIONARIOS, DecisaoType, TipoCasoType, DefesaType } from "../../services/ouvidoria";
 
 // ─── Componente: Bloco Editável e Copiável com Altura Dinâmica (Guia Sansys) ───
 function EditableCopyBlock({ defaultText }: { defaultText: string }) {

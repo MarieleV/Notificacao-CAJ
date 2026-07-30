@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { parseFullDate, labelFullDate, WEEKDAYS_SHORT } from "../../lib/dates";
+import { parseFullDate, labelFullDate, WEEKDAYS_SHORT } from "../../../utils/dates";
 
 interface DatePickerProps {
   value: string;

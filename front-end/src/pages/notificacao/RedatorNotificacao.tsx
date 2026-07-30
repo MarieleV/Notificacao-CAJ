@@ -5,11 +5,11 @@ import {
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck,
 } from "lucide-react";
 
-import { DatePicker } from "../components/shared/DatePicker";
-import { SectionBlock } from "../components/shared/SectionBlock";
+import { DatePicker } from "../../components/shared/DatePicker";
+import { SectionBlock } from "../../components/shared/SectionBlock";
 
 // Importando os dados estáticos separados
-import { FUNCIONARIOS, INFRACTION_CODES, CATEGORY_COLORS } from "../lib/notificacoes";
+import { FUNCIONARIOS, INFRACTION_CODES, CATEGORY_COLORS } from "../../services/notificacoes";
 
 type PenaltyVariant = "multa" | "multaCP";
 
