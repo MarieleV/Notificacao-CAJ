@@ -200,9 +200,9 @@ export function useRedatorNotificacao() {
       
       setGeneratedText(data.texto_gerado);
       setStep("generated");
-    } catch (error) {
-      console.error(error);
-      alert("Falha ao gerar o documento. Verifique se o servidor está funcionando corretamente.");
+    } catch (error: any) {
+      console.error("Erro detalhado da API:", error);
+      alert(`Falha ao gerar o documento. Erro: ${error.message}`);
     } finally {
       setLoading(false);
     }
