@@ -1,7 +1,9 @@
 // mudar URL para o endpoint correto da API
 const BASE_URL = "https://notificacao-caj-7ncb-git-refa-f03ee1-marieles-projects-ec100d86.vercel.app/api";
 
-// Definindo os tipos de dados que vamos enviar (TypeScript brilha aqui)
+{ /* ----------------- Tela de Geração de Notificação --------------------- */ }
+
+// Definindo os tipos de dados que vamos enviar 
 export interface GerarNotificacaoPayload {
   api_key: string;
   textos_base: string[];
@@ -69,3 +71,34 @@ export async function exportarPdfApi(payload: ExportarDocumentoPayload) {
 
   return response.blob(); // Retorna o arquivo binário
 }
+
+{ /* ----------------- Tela de Processo Ouvidoria --------------------- */ }
+
+export interface ExportarParecerPayload {
+  texto_final: string;
+  numeroProcesso: string;
+  tipoCaso: string;
+  decisao: string | null;
+}
+
+export const exportarParecerPDF = async (payload: ExportarParecerPayload): Promise<Blob> => {
+  const response = await fetch(`${BASE_URL}/exportar_parecer_pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error("Erro ao gerar PDF no servidor.");
+  return response.blob();
+};
+
+export const exportarParecerWord = async (payload: ExportarParecerPayload): Promise<Blob> => {
+  const response = await fetch(`${BASE_URL}/exportar_parecer_word`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error("Erro ao gerar Word no servidor.");
+  return response.blob();
+};
