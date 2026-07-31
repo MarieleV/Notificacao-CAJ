@@ -1,4 +1,4 @@
-
+// mudar URL para o endpoint correto da API
 const BASE_URL = "https://notificacao-caj-7ncb-git-refa-f03ee1-marieles-projects-ec100d86.vercel.app/api";
 
 // Definindo os tipos de dados que vamos enviar (TypeScript brilha aqui)
