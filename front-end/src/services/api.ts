@@ -1,5 +1,5 @@
 
-const BASE_URL = "https://notificacao-caj.vercel.app/api";
+const BASE_URL = "https://notificacao-caj-7ncb-git-refa-f03ee1-marieles-projects-ec100d86.vercel.app/api";
 
 // Definindo os tipos de dados que vamos enviar (TypeScript brilha aqui)
 export interface GerarNotificacaoPayload {
