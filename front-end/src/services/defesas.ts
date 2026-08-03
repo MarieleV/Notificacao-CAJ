@@ -141,3 +141,42 @@ export const DEFESAS_TEMPLATES: DefesaTemplate[] = [
     category: "infraestrutura",
   }
 ];
+
+// --- NOVA PARTE: COMUNICAÇÃO COM A API ---
+
+export interface ExportPayload {
+  texto_final: string;
+  protocolo: string;
+  autoInfracao: string;
+  matricula: string;
+}
+
+const API_URL = "https://notificacao-caj.vercel.app/api";
+
+export const exportarParecerWord = async (payload: ExportPayload): Promise<Blob> => {
+  const response = await fetch(`${API_URL}/exportar_parecer_word`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  
+  if (!response.ok) {
+    throw new Error("Erro ao gerar Word no servidor.");
+  }
+  
+  return response.blob();
+};
+
+export const exportarParecerPDF = async (payload: ExportPayload): Promise<Blob> => {
+  const response = await fetch(`${API_URL}/exportar_parecer_pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  
+  if (!response.ok) {
+    throw new Error("Erro ao gerar PDF no servidor.");
+  }
+  
+  return response.blob();
+};

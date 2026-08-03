@@ -1,0 +1,20 @@
+import { createHashRouter } from "react-router"; 
+import { Layout } from "../components/layout/Layout";
+import { CalculadoraMulta } from "../pages/calculadora/CalculadoraMulta";
+import { RedatorNotificacao } from "../pages/notificacao/RedatorNotificacao";
+import { ProcessoOuvidoria } from "../pages/ouvidoria/ProcessoOuvidoria";
+import { RespostaDefesa } from "../pages/defesa/RespostaDefesa";
+
+
+export const router = createHashRouter([
+  {
+    path: "/",
+    Component: Layout,
+    children: [
+      { index: true, Component: RedatorNotificacao },
+      { path: "multas", Component: CalculadoraMulta },
+      { path: "ouvidoria", Component: ProcessoOuvidoria },
+      { path: "resposta-defesa", Component: RespostaDefesa },
+    ],
+  },
+]);
