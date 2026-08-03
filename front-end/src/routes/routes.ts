@@ -1,11 +1,12 @@
-import { createBrowserRouter } from "react-router"; // Caso esteja na web, o pacote correto costuma ser react-router-dom
+import { createHashRouter } from "react-router"; 
 import { Layout } from "../components/layout/Layout";
 import { CalculadoraMulta } from "../pages/calculadora/CalculadoraMulta";
 import { RedatorNotificacao } from "../pages/notificacao/RedatorNotificacao";
 import { ProcessoOuvidoria } from "../pages/ouvidoria/ProcessoOuvidoria";
 import { RespostaDefesa } from "../pages/defesa/RespostaDefesa";
 
-export const router = createBrowserRouter([
+
+export const router = createHashRouter([
   {
     path: "/",
     Component: Layout,
