@@ -39,7 +39,7 @@ export async function gerarNotificacaoApi(payload: GerarNotificacaoPayload) {
     throw new Error("Erro na comunicação com o servidor ao gerar notificação");
   }
 
-  return response.json(); // Retorna o objeto { texto_gerado: "..." }
+  return response.json();
 }
 
 // 2. Serviço para Exportar Word
@@ -54,7 +54,7 @@ export async function exportarWordApi(payload: ExportarDocumentoPayload) {
     throw new Error("Erro ao gerar arquivo Word");
   }
 
-  return response.blob(); // Retorna o arquivo binário
+  return response.blob(); 
 }
 
 // 3. Serviço para Exportar PDF
@@ -69,7 +69,7 @@ export async function exportarPdfApi(payload: ExportarDocumentoPayload) {
     throw new Error("Erro ao gerar arquivo PDF");
   }
 
-  return response.blob(); // Retorna o arquivo binário
+  return response.blob(); 
 }
 
 { /* ----------------- Tela de Processo Ouvidoria --------------------- */ }
