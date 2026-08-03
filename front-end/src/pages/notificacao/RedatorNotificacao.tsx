@@ -295,23 +295,51 @@ const Cabecalho = ({ apiKey, setApiKey }: { apiKey: string, setApiKey: (v: strin
 const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload }: any) => (
   <div className="mb-6 bg-[#f8fafe] border border-[#dce9f7] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
     <div>
-      <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1"><FileText size={14}/> Carregar Base de Dados</h3>
+      <h3 className="text-xs font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-1">
+        <FileText size={14}/> Carregar Base de Dados
+      </h3>
       <p className="text-[10px] text-gray-500">Faça o upload do Excel/CSV para habilitar a busca automática por Matrícula.</p>
     </div>
-    <div className="w-full sm:w-auto">
+    
+    {/* Contêiner em flex para forçar o botão e o texto a ficarem na mesma linha */}
+    <div className="w-full sm:w-auto flex items-center gap-3">
+      
+      {/* O input nativo fica oculto (hidden), ele faz apenas o trabalho "invisível" */}
       <input
+        id="upload-base"
         type="file"
         accept=".csv, .xlsx, .xls"
         onChange={onUpload}
         disabled={fileLoading}
-        className="w-full text-[11px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-[#1a5fa8] file:text-white hover:file:bg-[#154d8a] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="hidden"
       />
-      {fileName && (
-        <p className="mt-1.5 text-[11px] text-[#1a5fa8] flex items-center gap-1 truncate max-w-[260px]">
-          <FileText size={11} className="flex-shrink-0" />
-          <span className="truncate">{fileName}</span>
-        </p>
-      )}
+      
+      {/* O label se conecta ao input pelo "htmlFor" e assume a aparência do botão */}
+      <label
+        htmlFor="upload-base"
+        className={`px-3 py-1.5 rounded-md text-[11px] font-semibold text-white transition-colors flex-shrink-0 ${
+          fileLoading 
+            ? "bg-[#1a5fa8]/50 cursor-not-allowed" 
+            : "bg-[#1a5fa8] hover:bg-[#154d8a] cursor-pointer"
+        }`}
+      >
+        Escolher arquivo
+      </label>
+
+      {/* A área do nome do arquivo, agora perfeitamente alinhada à direita do botão */}
+      <div className="min-w-[120px] max-w-[260px]">
+        {fileName ? (
+          <p className="text-[11px] text-[#1a5fa8] flex items-center gap-1.5 font-medium truncate">
+            <FileText size={11} className="flex-shrink-0" />
+            <span className="truncate">{fileName}</span>
+          </p>
+        ) : (
+          <p className="text-[11px] text-gray-400 italic truncate">
+            Nenhum arquivo...
+          </p>
+        )}
+      </div>
+      
     </div>
   </div>
 );
