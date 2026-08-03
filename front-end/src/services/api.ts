@@ -1,5 +1,5 @@
 // mudar URL para o endpoint correto da API
-const BASE_URL = "https://notificacao-caj-7ncb-git-refa-f03ee1-marieles-projects-ec100d86.vercel.app/api";
+const BASE_URL = "https://notificacao-caj-7ncb.vercel.app/api";
 
 { /* ----------------- Tela de Geração de Notificação --------------------- */ }
 
