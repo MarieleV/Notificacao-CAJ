@@ -180,11 +180,11 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div>
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nome Completo do Morador</label>
-          <input value={morador} onChange={(e) => setMorador(formatName(e.target.value))} placeholder="Ex: Nome Completo do Usuário" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+          <input value={morador} onChange={(e) => setMorador(formatName(e.target.value))} placeholder="Digite seu nome completo..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
         </div>
         <div>
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Matrícula</label>
-          <input value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="Ex: 1298382-9" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+          <input value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="0000000-0" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
         </div>
         <div>
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Origem do Processo</label>
@@ -205,14 +205,14 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
         </div>
         <div>
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nº do Processo / Manifesto</label>
-          <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Protocolo de recurso" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+          <input value={numProcesso} onChange={(e) => setNumProcesso(e.target.value)} placeholder="Digite o protocolo de recurso..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div>
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Auto de Infração (A.I.) Vinculado</label>
-          <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="Ex: XXXXXXXX" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+          <input value={numAutoInfracao} onChange={(e) => setNumAutoInfracao(e.target.value)} placeholder="0000.0000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
         </div>
         <div className="relative">
           <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Analista Responsável</label>
@@ -514,7 +514,7 @@ function Sessao4Variaveis({ state }: { state: ProcessoState }) {
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Defesa</label>
-              <input value={protDefesa} onChange={(e) => setProtDefesa(e.target.value)} placeholder="Ex: 998877" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
+              <input value={protDefesa} onChange={(e) => setProtDefesa(e.target.value)} placeholder="0000.0000" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Data Indeferimento</label>
@@ -522,7 +522,7 @@ function Sessao4Variaveis({ state }: { state: ProcessoState }) {
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-indigo-700 uppercase tracking-wider mb-1">Nº Prot. Indeferimento</label>
-              <input value={protIndeferimento} onChange={(e) => setProtIndeferimento(e.target.value)} placeholder="Ex: 112233" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
+              <input value={protIndeferimento} onChange={(e) => setProtIndeferimento(e.target.value)} placeholder="0000.0000" className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all" />
             </div>
           </div>
         )}
