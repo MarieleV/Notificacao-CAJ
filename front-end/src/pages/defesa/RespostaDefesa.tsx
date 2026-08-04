@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import {
   Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Search, Calculator,
-  MessageSquareReply
+  MessageSquareReply, Check
 } from "lucide-react";
 
 import { calculateEndDate } from "../../utils/dates";
@@ -32,9 +32,18 @@ export function RespostaDefesa() {
   const [calcPrazo, setCalcPrazo] = useState<string>("15");
   const [calcCustomPrazo, setCalcCustomPrazo] = useState<string>("");
   const [calcDataInicial, setCalcDataInicial] = useState<string>("");
+  const [calcCopiado, setCalcCopiado] = useState(false);
 
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
+
+  // Função para copiar a data da calculadora
+  const handleCopiarDataCalc = () => {
+    if (!calcDataFinal) return;
+    navigator.clipboard.writeText(calcDataFinal);
+    setCalcCopiado(true);
+    setTimeout(() => setCalcCopiado(false), 2000);
+  };
 
   // Permite selecionar apenas UM código por vez.
   const toggleCode = (code: string) => {
@@ -218,11 +227,30 @@ export function RespostaDefesa() {
                   </div>
                 </div>
 
+                {/* Bloco interativo de cópia da Data Final */}
                 <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
-                  <span className={`text-sm font-bold ${calcDataFinal ? "text-[#1a5fa8]" : "text-gray-400"}`}>
-                    {calcDataFinal || "--/--/----"}
-                  </span>
+                  
+                  {calcDataFinal ? (
+                    <button 
+                      onClick={handleCopiarDataCalc}
+                      title="Copiar data"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-[#1a5fa8] hover:shadow-md transition-all group outline-none focus:ring-2 focus:ring-blue-100 active:scale-95"
+                    >
+                      <span className="text-sm font-bold text-[#1a5fa8]">
+                        {calcDataFinal}
+                      </span>
+                      {calcCopiado ? (
+                        <Check size={16} className="text-emerald-500" />
+                      ) : (
+                        <Copy size={16} className="text-blue-300 group-hover:text-[#1a5fa8] transition-colors" />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-sm font-bold text-gray-400 mr-2">
+                      --/--/----
+                    </span>
+                  )}
                 </div>
               </div>
 
