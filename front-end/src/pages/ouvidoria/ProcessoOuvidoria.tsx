@@ -2,8 +2,10 @@
 import {
   Sparkles, Copy, CheckCircle2, Scale, FileCheck, FileX, Clock, 
   HelpCircle, FileText, File, Info, ChevronDown, ChevronUp, 
-  MessageSquare, Calculator, X
+  MessageSquare, Calculator, X, Check
 } from "lucide-react";
+
+import { useState } from 'react';
 
 import { get60BusinessDaysFromToday } from "../../utils/dates";
 import { formatName } from "../../utils/masks";
@@ -50,6 +52,17 @@ function Header({ state }: { state: ProcessoState }) {
     calculatorRef, showCalculator, setShowCalculator, calcDataInicial, setCalcDataInicial,
     calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataFinal
   } = state;
+
+  // Estado para controlar o feedback visual da cópia
+  const [copiado, setCopiado] = useState(false);
+
+  // Função para copiar a data calculada
+  const handleCopiarData = () => {
+    if (!calcDataFinal) return;
+    navigator.clipboard.writeText(calcDataFinal);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000); // Volta ao normal após 2 segundos
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
@@ -114,11 +127,30 @@ function Header({ state }: { state: ProcessoState }) {
                 </div>
               </div>
 
+              {/* Botão interativo de copiar Data Final */}
               <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
-                <span className={`text-sm font-bold ${calcDataFinal ? "text-[#1a5fa8]" : "text-gray-400"}`}>
-                  {calcDataFinal || "--/--/----"}
-                </span>
+                
+                {calcDataFinal ? (
+                  <button 
+                    onClick={handleCopiarData}
+                    title="Copiar data"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-[#1a5fa8] hover:shadow-md transition-all group outline-none focus:ring-2 focus:ring-blue-100 active:scale-95"
+                  >
+                    <span className="text-sm font-bold text-[#1a5fa8]">
+                      {calcDataFinal}
+                    </span>
+                    {copiado ? (
+                      <Check size={16} className="text-emerald-500" />
+                    ) : (
+                      <Copy size={16} className="text-blue-300 group-hover:text-[#1a5fa8] transition-colors" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-sm font-bold text-gray-400 mr-2">
+                    --/--/----
+                  </span>
+                )}
               </div>
             </div>
 
