@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../utils/dates";
 import { formatName } from "../utils/masks";
-import { FUNCIONARIOS, DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
+import { FUNCIONARIOS } from "../utils/funcionarios";
+import { DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
 import { exportarParecerPDF, exportarParecerWord } from "../services/api";
 
 export function useProcessoOuvidoria() {

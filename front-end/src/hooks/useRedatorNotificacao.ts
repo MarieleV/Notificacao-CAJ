@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { FUNCIONARIOS, INFRACTION_CODES } from "../services/notificacoes";
+import { FUNCIONARIOS } from "../utils/funcionarios";
+import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 
 export type PenaltyVariant = "multa" | "multaCP";
