@@ -1,4 +1,3 @@
-// src/pages/notificacao/RedatorNotificacao.tsx
 import { useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
