@@ -1,4 +1,3 @@
-// ele é tsx porque retorna tag JSX de dentro dele
 import { useState, useRef, useEffect } from "react";
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../utils/dates";
 import { formatName } from "../utils/masks";

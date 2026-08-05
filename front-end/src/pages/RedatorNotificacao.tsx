@@ -5,10 +5,10 @@ import {
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck,
 } from "lucide-react";
 
-import { DatePicker } from "../../components/shared/DatePicker";
-import { SectionBlock } from "../../components/shared/SectionBlock";
-import { CATEGORY_COLORS } from "../../services/notificacoes";
-import { useRedatorNotificacao, FileModalState } from "../../hooks/useRedatorNotificacao";
+import { DatePicker } from "../components/shared/DatePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
+import { CATEGORY_COLORS } from "../services/notificacoes";
+import { useRedatorNotificacao, FileModalState } from "../hooks/useRedatorNotificacao";
 
 export function RedatorNotificacao() {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);

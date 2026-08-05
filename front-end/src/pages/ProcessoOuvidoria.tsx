@@ -7,16 +7,16 @@ import {
 
 import { useState } from 'react';
 
-import { get60BusinessDaysFromToday } from "../../utils/dates";
-import { formatName } from "../../utils/masks";
+import { get60BusinessDaysFromToday } from "../utils/dates";
+import { formatName } from "../utils/masks";
 
-import { DatePicker } from "../../components/shared/DatePicker";
-import { MonthYearPicker } from "../../components/shared/MonthYearPicker";
-import { MonthYearRangePicker } from "../../components/shared/MonthYearRangePicker";
-import { SectionBlock } from "../../components/shared/SectionBlock";
-import { EditableCopyBlock } from "../../components/ouvidoria/EditableCopyBlock";
+import { DatePicker } from "../components/shared/DatePicker";
+import { MonthYearPicker } from "../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
+import { EditableCopyBlock } from "../components/ouvidoria/EditableCopyBlock";
 
-import { useProcessoOuvidoria } from "../../hooks/useProcessoOuvidoria";
+import { useProcessoOuvidoria } from "../hooks/useProcessoOuvidoria";
 
 // ─── TIPAGEM MÁGICA ──────────────────────────────────────────────────────────
 // Isso extrai automaticamente todas as tipagens do seu hook, sem precisarmos

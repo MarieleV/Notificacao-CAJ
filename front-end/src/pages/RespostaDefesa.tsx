@@ -5,12 +5,12 @@ import {
   MessageSquareReply, Check
 } from "lucide-react";
 
-import { calculateEndDate } from "../../utils/dates";
-import { DatePicker } from "../../components/shared/DatePicker";
-import { SectionBlock } from "../../components/shared/SectionBlock";
+import { calculateEndDate } from "../utils/dates";
+import { DatePicker } from "../components/shared/DatePicker";
+import { SectionBlock } from "../components/shared/SectionBlock";
 
 // Importando os dados estáticos separados
-import { DEFESAS_TEMPLATES, CATEGORY_COLORS } from "../../services/defesas";
+import { DEFESAS_TEMPLATES, CATEGORY_COLORS } from "../services/defesas";
 
 export function RespostaDefesa() {
   const [dropdownOpen, setDropdownOpen] = useState(false);

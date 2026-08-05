@@ -4,15 +4,15 @@ import {
   Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw
 } from "lucide-react";
 
-import { parseMonthYear, labelMonth } from "../../utils/dates";
-import { fmtBRL } from "../../utils/masks";
-import { DatePicker } from "../../components/shared/DatePicker";
-import { MonthYearPicker } from "../../components/shared/MonthYearPicker";
-import { MonthYearRangePicker } from "../../components/shared/MonthYearRangePicker";
-import { SectionBlock } from "../../components/shared/SectionBlock";
+import { parseMonthYear, labelMonth } from "./../utils/dates";
+import { fmtBRL } from "./../utils/masks";
+import { DatePicker } from "./../components/shared/DatePicker";
+import { MonthYearPicker } from "./../components/shared/MonthYearPicker";
+import { MonthYearRangePicker } from "./../components/shared/MonthYearRangePicker";
+import { SectionBlock } from "./../components/shared/SectionBlock";
 
 // 1. Importando o Cérebro
-import { useCalculadoraMulta } from "../../hooks/useCalculadoraMulta";
+import { useCalculadoraMulta } from "./../hooks/useCalculadoraMulta";
 
 // ─── Subcomponentes (DRY) ────────────────────────────────────────────────────
 

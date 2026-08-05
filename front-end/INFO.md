@@ -1,8 +1,10 @@
 ### Configurando o Front-end
 
-Abra um terminal e navegue até a pasta do front-end:
-
 ```bash
+
+# Abra um terminal e navegue até a pasta do front-end:
+cd front-end
+
 # Instale todas as dependências do projeto
 npm install
 
