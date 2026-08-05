@@ -1,4 +1,3 @@
-// src/hooks/useCalculadoraMulta.ts
 import { useState } from "react";
 import { parseMonthYear } from "../utils/dates";
 import { maskMonthYear, maskBRL, fmtBRL } from "../utils/masks";

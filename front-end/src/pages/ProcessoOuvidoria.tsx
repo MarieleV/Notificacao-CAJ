@@ -1,4 +1,3 @@
-// src/pages/ouvidoria/ProcessoOuvidoria.tsx
 import {
   Sparkles, Copy, CheckCircle2, Scale, FileCheck, FileX, Clock, 
   HelpCircle, FileText, File, Info, ChevronDown, ChevronUp, 
