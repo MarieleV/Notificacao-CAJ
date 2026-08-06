@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSessionStorage } from "./useSessionStorage";
 import { parseMonthYear } from "../utils/dates";
 import { maskMonthYear, maskBRL, fmtBRL } from "../utils/masks";
 
@@ -22,27 +23,23 @@ const parseCurrency = (val: string) => {
 };
 
 export function useCalculadoraMulta() {
-  // ─── Estados de Linhas e Períodos ───
-  const [waterRows, setWaterRows] = useState<ManualRow[]>([]);
-  const [sewageRows, setSewageRows] = useState<ManualRow[]>([]);
+  // ─── Estados com Persistência (Session Storage) ───
+  const [waterRows, setWaterRows] = useSessionStorage<ManualRow[]>("calc_waterRows", []);
+  const [sewageRows, setSewageRows] = useSessionStorage<ManualRow[]>("calc_sewageRows", []);
   
-  const [waterPeriod, setWaterPeriod] = useState("");
-  const [sewagePeriod, setSewagePeriod] = useState("");
+  const [waterPeriod, setWaterPeriod] = useSessionStorage("calc_waterPeriod", "");
+  const [sewagePeriod, setSewagePeriod] = useSessionStorage("calc_sewagePeriod", "");
 
-  // ─── Estados do Texto de Apuração ───
-  const [aiNumber, setAiNumber] = useState("");
-  const [removalDate, setRemovalDate] = useState("");
-  const [baseConsumption, setBaseConsumption] = useState("");
-  const [postRegRef, setPostRegRef] = useState("");
+  const [aiNumber, setAiNumber] = useSessionStorage("calc_aiNumber", "");
+  const [removalDate, setRemovalDate] = useSessionStorage("calc_removalDate", "");
+  const [baseConsumption, setBaseConsumption] = useSessionStorage("calc_baseConsumption", "");
+  const [postRegRef, setPostRegRef] = useSessionStorage("calc_postRegRef", "");
   
+  // ─── Estados Temporários (Sem Persistência) ───
   const [waterReportText, setWaterReportText] = useState("");
   const [sewageReportText, setSewageReportText] = useState("");
   const [copiedWater, setCopiedWater] = useState(false);
   const [copiedSewage, setCopiedSewage] = useState(false);
-
-  const AUTOFILL_FIELDS: (keyof ManualRow)[] = [
-    "consumption", "irregularConsumption", "correctValue", "correctService", "chargedValue", "chargedService"
-  ];
 
   // ─── Lógica de Manuseio das Linhas ───
   function handleGeneratePeriod(rangeVal: string, type: "water" | "sewage") {
@@ -112,20 +109,25 @@ export function useCalculadoraMulta() {
     }));
   }
 
-  function cascadeFillFromFirstRow(field: keyof ManualRow, type: "water" | "sewage") {
-    if (!AUTOFILL_FIELDS.includes(field)) return;
+  // ─── Lógica do "Arrastar do Excel" ───
+  function applyFillRange(type: "water" | "sewage", field: keyof ManualRow, startIdx: number, endIdx: number, val: string) {
+    const min = Math.min(startIdx, endIdx);
+    const max = Math.max(startIdx, endIdx);
     const setFn = type === "water" ? setWaterRows : setSewageRows;
     
-    setFn(p => {
-      if (p.length === 0) return p;
-      const value = p[0][field] as string;
-      if (!value) return p;
-      return p.map((r, i) => {
-        if (i === 0) return r;
-        if (r[field] === "") return { ...r, [field]: value };
-        return r;
-      });
-    });
+    setFn(prev => prev.map((r, i) => {
+      if (i >= min && i <= max) {
+        let formattedVal = val;
+        // Aplica a máscara correta para o campo replicado
+        if (field === "consumption" || field === "irregularConsumption") {
+          formattedVal = val.replace(/[^0-9,]/g, "");
+        } else if (["correctValue", "correctService", "chargedValue", "chargedService"].includes(field)) {
+          formattedVal = maskBRL(val);
+        }
+        return { ...r, [field]: formattedVal };
+      }
+      return r;
+    }));
   }
 
   // ─── Motor de Cálculo ───
@@ -139,20 +141,25 @@ export function useCalculadoraMulta() {
       const correctServ = parseCurrency(row.correctService);
       const chargedVal = parseCurrency(row.chargedValue);
       const chargedServ = parseCurrency(row.chargedService);
+      
+      const consReg = parseFloat(row.consumption.replace(",", ".")) || 0;
       const consIrreg = parseFloat(row.irregularConsumption.replace(",", ".")) || 0;
+      
+      const diffM3 = Number((consReg - consIrreg).toFixed(2));
 
       const totalCorrect = correctVal + correctServ;
       const totalCharged = chargedVal + chargedServ;
       const diff = totalCorrect - totalCharged;
 
-      totalM3 += consIrreg;
+      totalM3 += diffM3;
       grandCorrect += totalCorrect;
       grandCharged += totalCharged;
 
-      return { row, totalCorrect, totalCharged, diff };
+      return { row, totalCorrect, totalCharged, diff, diffM3 };
     });
 
     const grandDiff = grandCorrect - grandCharged;
+    totalM3 = Number(totalM3.toFixed(2));
 
     return { calcRows, totalM3, grandCorrect, grandCharged, grandDiff };
   }
@@ -179,6 +186,8 @@ export function useCalculadoraMulta() {
     const textRef = postRegRef || "[MM/AAAA]";
     const textMeses = qtdMeses === 1 ? "1 mês" : `${qtdMeses} meses`;
 
+    const formattedTotalM3 = String(results.totalM3).replace(".", ",");
+
     const generatedString = `Cálculo do consumo estimado de ${titleType} ref. ${textAi}.
 Data da retirada da irregularidade: ${textData}.
 ${textMeses}, com consumo impactado pela violação: ${startMonth} até ${endMonth}.
@@ -186,8 +195,7 @@ Maior consumo mês cheio lido após a regularização: ${textConsumoBase} m³ RE
 Valor total do consumo estimado no período: ${fmtBRL(results.grandCorrect)}.
 Valor pago pelo cliente no período da irregularidade: ${fmtBRL(results.grandCharged)}.
 Valor a ser lançado: ${fmtBRL(results.grandDiff)}.
-Volume faturado no mês impactado pela violação: ${textConsumoBase} m³.
-Volume total recuperado: ${results.totalM3} m³.`;
+Volume total recuperado: ${formattedTotalM3} m³.`;
 
     if (isWater) {
       setWaterReportText(generatedString);
@@ -210,35 +218,17 @@ Volume total recuperado: ${results.totalM3} m³.`;
     setTimeout(() => setCopiedState(false), 2000);
   }
 
-  // ─── Exportando os Recursos ───
   return {
-    // Estados Water
-    waterRows,
-    waterPeriod, setWaterPeriod,
-    waterReportText, setWaterReportText,
-    copiedWater, setCopiedWater,
-    waterResults,
+    waterRows, waterPeriod, setWaterPeriod,
+    waterReportText, setWaterReportText, copiedWater, setCopiedWater, waterResults,
     
-    // Estados Sewage
-    sewageRows,
-    sewagePeriod, setSewagePeriod,
-    sewageReportText, setSewageReportText,
-    copiedSewage, setCopiedSewage,
-    sewageResults,
+    sewageRows, sewagePeriod, setSewagePeriod,
+    sewageReportText, setSewageReportText, copiedSewage, setCopiedSewage, sewageResults,
 
-    // Estados Auxiliares
-    aiNumber, setAiNumber,
-    removalDate, setRemovalDate,
-    baseConsumption, setBaseConsumption,
-    postRegRef, setPostRegRef,
+    aiNumber, setAiNumber, removalDate, setRemovalDate,
+    baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
 
-    // Funções
-    handleGeneratePeriod,
-    addRow,
-    removeRow,
-    changeRow,
-    cascadeFillFromFirstRow,
-    handleGenerateText,
-    handleCopy
+    handleGeneratePeriod, addRow, removeRow, changeRow,
+    applyFillRange, handleGenerateText, handleCopy
   };
 }

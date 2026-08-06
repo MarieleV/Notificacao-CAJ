@@ -1,26 +1,27 @@
 import { useState } from "react";
+import { useSessionStorage } from "./useSessionStorage"; // <-- Importando o hook
 import { calculateEndDate } from "../utils/dates";
 import { DEFESAS_TEMPLATES, exportarParecerWord, exportarParecerPDF } from "../services/defesas";
 
 export function useRespostaDefesa() {
-  // 1. Estados da Interface
+  // 1. Estados da Interface (Efêmeros)
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [step, setStep] = useState<"idle" | "generated">("idle");
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
   const [copied, setCopied] = useState(false);
-
-  // 2. Estados dos Dados (Formulário)
-  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const [defesaAI, setDefesaAI] = useState("");
-  const [motivoIndeferimento, setMotivoIndeferimento] = useState("");
-  const [generatedText, setGeneratedText] = useState("");
-
-  // 3. Estados da Calculadora (Podem virar um hook separado no futuro, mas aqui já limpa bem)
   const [showCalculator, setShowCalculator] = useState(false);
-  const [calcPrazo, setCalcPrazo] = useState<string>("15");
-  const [calcCustomPrazo, setCalcCustomPrazo] = useState<string>("");
-  const [calcDataInicial, setCalcDataInicial] = useState<string>("");
+
+  // 2. Estados dos Dados (Persistidos)
+  const [step, setStep] = useSessionStorage<"idle" | "generated">("defesa_step", "idle");
+  const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("defesa_selectedCodes", []);
+  const [defesaAI, setDefesaAI] = useSessionStorage("defesa_defesaAI", "");
+  const [motivoIndeferimento, setMotivoIndeferimento] = useSessionStorage("defesa_motivoIndeferimento", "");
+  const [generatedText, setGeneratedText] = useSessionStorage("defesa_generatedText", "");
+
+  // 3. Estados da Calculadora (Persistidos)
+  const [calcPrazo, setCalcPrazo] = useSessionStorage<string>("defesa_calcPrazo", "15");
+  const [calcCustomPrazo, setCalcCustomPrazo] = useSessionStorage<string>("defesa_calcCustomPrazo", "");
+  const [calcDataInicial, setCalcDataInicial] = useSessionStorage<string>("defesa_calcDataInicial", "");
 
   // --- LÓGICA DERIVADA (Cálculos e Filtros) ---
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);

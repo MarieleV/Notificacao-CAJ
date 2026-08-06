@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSessionStorage } from "./useSessionStorage";
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../utils/dates";
 import { formatName } from "../utils/masks";
 import { FUNCIONARIOS } from "../utils/funcionarios";
@@ -6,73 +7,76 @@ import { DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
 import { exportarParecerPDF, exportarParecerWord } from "../services/api";
 
 export function useProcessoOuvidoria() {
+  // --- ESTADOS VISUAIS DA TELA (Não precisam ser salvos na sessão) ---
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<"idle" | "generated">("idle");
   const [generatedText, setGeneratedText] = useState("");
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-  // --- CONTROLE DE FLUXO ---
-  const [isRecurso, setIsRecurso] = useState<boolean>(true);
-  const [historicoDefesa, setHistoricoDefesa] = useState<DefesaType>("sem_defesa");
-
-  // --- ESTADOS DOS CAMPOS DO PROCESSO ---
-  const [matricula, setMatricula] = useState("");
-  const [morador, setMorador] = useState("");
-  const [tipoManifestacao, setTipoManifestacao] = useState("Recurso Administrativo");
-  const [numProcesso, setNumProcesso] = useState("");
-  const [numAutoInfracao, setNumAutoInfracao] = useState("");
-  const [dataEmissaoFatura, setDataEmissaoFatura] = useState("");
-  const [dataManifestacao, setDataManifestacao] = useState("");
-  
-  // --- ESTADOS DE FUNCIONÁRIO ---
-  const [funcionario, setFuncionario] = useState("");
-  const [funcionarioBusca, setFuncionarioBusca] = useState("");
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
-  
-  // --- CONFIGURAÇÃO DO CASO ---
-  const [tipoCaso, setTipoCaso] = useState<TipoCasoType>("leitura");
-  const [decisao, setDecisao] = useState<DecisaoType>(null);
-  const [tipoServico, setTipoServico] = useState<"voluntario" | "involuntario">("involuntario");
-
-  // Novos estados para a seleção de Deferimento Específico
-  const [deferirMotivo, setDeferirMotivo] = useState<"la_padronizada" | "fato_novo" | null>(null);
-  const [fatoNovoStatus, setFatoNovoStatus] = useState<"notificado" | "multado" | null>(null);
-  const [faturaQuitada, setFaturaQuitada] = useState<"fatura_quitada" | "fatura_nao_quitada" | null>(null);
-  
-  // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente) ---
-  const [dataGeracaoAI, setDataGeracaoAI] = useState("");
-  const [mesesSemAcesso, setMesesSemAcesso] = useState("");
-  const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useState("");
-  const [protServico, setProtServico] = useState("");
-  const [recebedorCorreios, setRecebedorCorreios] = useState("");
-  const [dataRecebimentoAR, setDataRecebimentoAR] = useState("");
-  const [dataAplicacaoSancao, setDataAplicacaoSancao] = useState("");
-  const [dataDecisaoAnterior, setDataDecisaoAnterior] = useState("");
-  const [faturaReferencia, setFaturaReferencia] = useState("");
-  const [dataDefesa, setDataDefesa] = useState("");
-  const [protDefesa, setProtDefesa] = useState("");
-  const [dataIndeferimento, setDataIndeferimento] = useState("");
-  const [protIndeferimento, setProtIndeferimento] = useState("");
-
-  const [dataRecebimentoAI, setDataRecebimentoAI] = useState("");
-  const [tipoRecebimentoAI, setTipoRecebimentoAI] = useState("Correios");
-
-  // --- ESTADOS: TRATATIVAS SANSYS ---
   const [guiaSansysOpen, setGuiaSansysOpen] = useState(false);
-  const [canalResposta, setCanalResposta] = useState("email");
-  const [clienteEmail, setClienteEmail] = useState("");
-  const [clienteTelefone, setClienteTelefone] = useState("");
-  const [aplicaIN83, setAplicaIN83] = useState(true);
-  const [temRestituicao, setTemRestituicao] = useState(false);
-  const [statusMulta426, setStatusMulta426] = useState("aplicada");
-  const [tipoIndeferido, setTipoIndeferido] = useState("padrao");
-  const [protContatoAtivo, setProtContatoAtivo] = useState("");
-  const [faturaAlterada, setFaturaAlterada] = useState(false);
-
-  // --- ESTADOS DA CALCULADORA DE PRAZOS ---
   const [showCalculator, setShowCalculator] = useState(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
+
+  // --- CONTROLE DE FLUXO (Persistidos) ---
+  const [isRecurso, setIsRecurso] = useSessionStorage<boolean>("ouv_isRecurso", true);
+  const [historicoDefesa, setHistoricoDefesa] = useSessionStorage<DefesaType>("ouv_historicoDefesa", "sem_defesa");
+
+  // --- ESTADOS DOS CAMPOS DO PROCESSO (Persistidos) ---
+  const [matricula, setMatricula] = useSessionStorage("ouv_matricula", "");
+  const [morador, setMorador] = useSessionStorage("ouv_morador", "");
+  const [tipoManifestacao, setTipoManifestacao] = useSessionStorage("ouv_tipoManifestacao", "Recurso Administrativo");
+  const [numProcesso, setNumProcesso] = useSessionStorage("ouv_numProcesso", "");
+  const [numAutoInfracao, setNumAutoInfracao] = useSessionStorage("ouv_numAutoInfracao", "");
+  const [dataEmissaoFatura, setDataEmissaoFatura] = useSessionStorage("ouv_dataEmissaoFatura", "");
+  const [dataManifestacao, setDataManifestacao] = useSessionStorage("ouv_dataManifestacao", "");
+  
+  // --- ESTADOS DE FUNCIONÁRIO (Persistidos) ---
+  const [funcionario, setFuncionario] = useSessionStorage("ouv_funcionario", "");
+  const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("ouv_funcionarioBusca", "");
+  
+  // --- CONFIGURAÇÃO DO CASO (Persistidos) ---
+  const [tipoCaso, setTipoCaso] = useSessionStorage<TipoCasoType>("ouv_tipoCaso", "leitura");
+  const [decisao, setDecisao] = useSessionStorage<DecisaoType>("ouv_decisao", null);
+  const [tipoServico, setTipoServico] = useSessionStorage<"voluntario" | "involuntario">("ouv_tipoServico", "involuntario");
+
+  // Novos estados para a seleção de Deferimento Específico
+  const [deferirMotivo, setDeferirMotivo] = useSessionStorage<"la_padronizada" | "fato_novo" | null>("ouv_deferirMotivo", null);
+  const [fatoNovoStatus, setFatoNovoStatus] = useSessionStorage<"notificado" | "multado" | null>("ouv_fatoNovoStatus", null);
+  const [faturaQuitada, setFaturaQuitada] = useSessionStorage<"fatura_quitada" | "fatura_nao_quitada" | null>("ouv_faturaQuitada", null);
+  
+  // --- VARIÁVEIS DOS TEMPLATES (Exibidas condicionalmente - Persistidas) ---
+  const [dataGeracaoAI, setDataGeracaoAI] = useSessionStorage("ouv_dataGeracaoAI", "");
+  const [mesesSemAcesso, setMesesSemAcesso] = useSessionStorage("ouv_mesesSemAcesso", "");
+  const [dataConstatacaoInfracao, setDataConstatacaoInfracao] = useSessionStorage("ouv_dataConstatacaoInfracao", "");
+  const [protServico, setProtServico] = useSessionStorage("ouv_protServico", "");
+  const [recebedorCorreios, setRecebedorCorreios] = useSessionStorage("ouv_recebedorCorreios", "");
+  const [dataRecebimentoAR, setDataRecebimentoAR] = useSessionStorage("ouv_dataRecebimentoAR", "");
+  const [dataAplicacaoSancao, setDataAplicacaoSancao] = useSessionStorage("ouv_dataAplicacaoSancao", "");
+  const [dataDecisaoAnterior, setDataDecisaoAnterior] = useSessionStorage("ouv_dataDecisaoAnterior", "");
+  const [faturaReferencia, setFaturaReferencia] = useSessionStorage("ouv_faturaReferencia", "");
+  const [dataDefesa, setDataDefesa] = useSessionStorage("ouv_dataDefesa", "");
+  const [protDefesa, setProtDefesa] = useSessionStorage("ouv_protDefesa", "");
+  const [dataIndeferimento, setDataIndeferimento] = useSessionStorage("ouv_dataIndeferimento", "");
+  const [protIndeferimento, setProtIndeferimento] = useSessionStorage("ouv_protIndeferimento", "");
+  const [dataRecebimentoAI, setDataRecebimentoAI] = useSessionStorage("ouv_dataRecebimentoAI", "");
+  const [tipoRecebimentoAI, setTipoRecebimentoAI] = useSessionStorage("ouv_tipoRecebimentoAI", "Correios");
+
+  // --- ESTADOS: TRATATIVAS SANSYS (Persistidos) ---
+  const [canalResposta, setCanalResposta] = useSessionStorage("ouv_canalResposta", "email");
+  const [clienteEmail, setClienteEmail] = useSessionStorage("ouv_clienteEmail", "");
+  const [clienteTelefone, setClienteTelefone] = useSessionStorage("ouv_clienteTelefone", "");
+  const [aplicaIN83, setAplicaIN83] = useSessionStorage("ouv_aplicaIN83", true);
+  const [temRestituicao, setTemRestituicao] = useSessionStorage("ouv_temRestituicao", false);
+  const [statusMulta426, setStatusMulta426] = useSessionStorage("ouv_statusMulta426", "aplicada");
+  const [tipoIndeferido, setTipoIndeferido] = useSessionStorage("ouv_tipoIndeferido", "padrao");
+  const [protContatoAtivo, setProtContatoAtivo] = useSessionStorage("ouv_protContatoAtivo", "");
+  const [faturaAlterada, setFaturaAlterada] = useSessionStorage("ouv_faturaAlterada", false);
+
+  // --- ESTADOS DA CALCULADORA DE PRAZOS (Persistidos) ---
+  const [calcPrazo, setCalcPrazo] = useSessionStorage<string>("ouv_calcPrazo", "15");
+  const [calcCustomPrazo, setCalcCustomPrazo] = useSessionStorage<string>("ouv_calcCustomPrazo", "");
+  const [calcDataInicial, setCalcDataInicial] = useSessionStorage<string>("ouv_calcDataInicial", "");
 
   useEffect(() => {
     function handleClickOutsideCalculator(event: MouseEvent) {
@@ -84,10 +88,6 @@ export function useProcessoOuvidoria() {
     return () => document.removeEventListener("mousedown", handleClickOutsideCalculator);
   }, [showCalculator]);
   
-  const [calcPrazo, setCalcPrazo] = useState<string>("15");
-  const [calcCustomPrazo, setCalcCustomPrazo] = useState<string>("");
-  const [calcDataInicial, setCalcDataInicial] = useState<string>("");
-
   // --- CÁLCULOS E DERIVAÇÕES ---
   const diasUteisDif = getBusinessDaysDifference(dataEmissaoFatura, dataManifestacao);
   const isForaDoPrazo = dataEmissaoFatura && dataManifestacao && diasUteisDif > 30;
