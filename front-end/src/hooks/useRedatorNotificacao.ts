@@ -275,6 +275,27 @@ export function useRedatorNotificacao() {
     }
   };
 
+  function limparTela() {
+    if (!window.confirm("Tem certeza que deseja limpar o formulário? Sua planilha continuará carregada.")) return;
+    
+    setStep("idle");
+    setGeneratedText("");
+    setSelectedCodes([]);
+    setPenaltyVariant("multa");
+    setMatricula("");
+    setMatriculaBuscada("");
+    setDataConstatacao("");
+    setProtocolo("");
+    setAutoInfracao("");
+    setEquipe("");
+    setFuncionario("");
+    setFuncionarioBusca("");
+    setClienteData({
+      nomeCliente: "", logradouro: "", bairro: "", cep: "",
+      localizacao: "", categoriaTarifa: "", numeroHidrometro: ""
+    });
+  }
+
   return {
     // States
     apiKey, setApiKey, dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
@@ -292,6 +313,6 @@ export function useRedatorNotificacao() {
     
     // Handlers
     toggleCode, handleFileUpload, handleSearchMatricula,
-    handleGenerate, handleCopy, handleDownload, handleDownloadPDF
+    handleGenerate, handleCopy, handleDownload, handleDownloadPDF, limparTela
   };
 }

@@ -1,7 +1,7 @@
 import {
   Sparkles, Copy, CheckCircle2, Scale, FileCheck, FileX, Clock, 
   HelpCircle, FileText, File, Info, ChevronDown, ChevronUp, 
-  MessageSquare, Calculator, X, Check
+  MessageSquare, Calculator, X, Check, Eraser
 } from "lucide-react";
 
 import { useState } from 'react';
@@ -49,7 +49,8 @@ export function ProcessoOuvidoria() {
 function Header({ state }: { state: ProcessoState }) {
   const {
     calculatorRef, showCalculator, setShowCalculator, calcDataInicial, setCalcDataInicial,
-    calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataFinal
+    calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataFinal,
+    limparTela // <-- 1. Extraímos a função do hook
   } = state;
 
   // Estado para controlar o feedback visual da cópia
@@ -73,93 +74,104 @@ function Header({ state }: { state: ProcessoState }) {
         <p className="text-gray-500 text-sm mt-0.5">Gestão de Pareceres Locais e Determinísticos</p>
       </div>
 
-      <div ref={calculatorRef} className="relative">
-        <button 
-          onClick={() => setShowCalculator((v) => !v)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
-            showCalculator ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" : "bg-white border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] shadow-sm"
-          }`}
+      <div className="flex items-center gap-3">
+        {/* BOTÃO LIMPAR TELA - POSICIONADO ANTES DA CALCULADORA */}
+        <button
+          onClick={limparTela}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
         >
-          <Calculator size={16} />
-          Calculadora de Dias Úteis
+          <Eraser size={16} />
+          Limpar Tela
         </button>
 
-        {showCalculator && (
-          <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[380px] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden origin-top-right z-50 animate-slideUp">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calculator size={18} className="text-[#1a5fa8]" />
-                <h2 className="text-[#0b1e35] font-bold text-sm">Calculadora de Dias Úteis</h2>
-              </div>
-              <button onClick={() => setShowCalculator(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
+        <div ref={calculatorRef} className="relative">
+          <button 
+            onClick={() => setShowCalculator((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
+              showCalculator ? "bg-[#eef6ff] border-[#1a5fa8] text-[#1a5fa8]" : "bg-white border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] shadow-sm"
+            }`}
+          >
+            <Calculator size={16} />
+            Calculadora de Dias Úteis
+          </button>
 
-            <div className="p-6 space-y-5">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data Inicial</label>
-                <DatePicker value={calcDataInicial} onChange={setCalcDataInicial} placeholder="DD/MM/AAAA" />
+          {showCalculator && (
+            <div className="absolute top-full right-0 mt-3 w-full sm:min-w-[380px] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden origin-top-right z-50 animate-slideUp">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator size={18} className="text-[#1a5fa8]" />
+                  <h2 className="text-[#0b1e35] font-bold text-sm">Calculadora de Dias Úteis</h2>
+                </div>
+                <button onClick={() => setShowCalculator(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={18} />
+                </button>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prazo de Resposta</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <select 
-                    value={calcPrazo} 
-                    onChange={(e) => setCalcPrazo(e.target.value)}
-                    className="col-span-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] transition-all"
-                  >
-                    <option value="15">15 dias úteis</option>
-                    <option value="30">30 dias úteis</option>
-                    <option value="45">45 dias úteis</option>
-                    <option value="60">60 dias úteis</option>
-                    <option value="90">90 dias úteis</option>
-                    <option value="X">X dias úteis (Personalizar)</option>
-                  </select>
-                  {calcPrazo === "X" && (
-                    <input 
-                      type="number" min="1" value={calcCustomPrazo} onChange={(e) => setCalcCustomPrazo(e.target.value)}
-                      placeholder="Qtd. dias"
-                      className="col-span-2 w-full px-3 py-2 border border-[#1a5fa8] rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]"
-                    />
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data Inicial</label>
+                  <DatePicker value={calcDataInicial} onChange={setCalcDataInicial} placeholder="DD/MM/AAAA" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prazo de Resposta</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select 
+                      value={calcPrazo} 
+                      onChange={(e) => setCalcPrazo(e.target.value)}
+                      className="col-span-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-[#1a5fa8] transition-all"
+                    >
+                      <option value="15">15 dias úteis</option>
+                      <option value="30">30 dias úteis</option>
+                      <option value="45">45 dias úteis</option>
+                      <option value="60">60 dias úteis</option>
+                      <option value="90">90 dias úteis</option>
+                      <option value="X">X dias úteis (Personalizar)</option>
+                    </select>
+                    {calcPrazo === "X" && (
+                      <input 
+                        type="number" min="1" value={calcCustomPrazo} onChange={(e) => setCalcCustomPrazo(e.target.value)}
+                        placeholder="Qtd. dias"
+                        className="col-span-2 w-full px-3 py-2 border border-[#1a5fa8] rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#1a5fa8]"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Botão interativo de copiar Data Final */}
+                <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
+                  
+                  {calcDataFinal ? (
+                    <button 
+                      onClick={handleCopiarData}
+                      title="Copiar data"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-[#1a5fa8] hover:shadow-md transition-all group outline-none focus:ring-2 focus:ring-blue-100 active:scale-95"
+                    >
+                      <span className="text-sm font-bold text-[#1a5fa8]">
+                        {calcDataFinal}
+                      </span>
+                      {copiado ? (
+                        <Check size={16} className="text-emerald-500" />
+                      ) : (
+                        <Copy size={16} className="text-blue-300 group-hover:text-[#1a5fa8] transition-colors" />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-sm font-bold text-gray-400 mr-2">
+                      --/--/----
+                    </span>
                   )}
                 </div>
               </div>
 
-              {/* Botão interativo de copiar Data Final */}
-              <div className="bg-[#f8fafe] border border-blue-100 rounded-xl p-4 flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500">Data Final Calculada:</span>
-                
-                {calcDataFinal ? (
-                  <button 
-                    onClick={handleCopiarData}
-                    title="Copiar data"
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-[#1a5fa8] hover:shadow-md transition-all group outline-none focus:ring-2 focus:ring-blue-100 active:scale-95"
-                  >
-                    <span className="text-sm font-bold text-[#1a5fa8]">
-                      {calcDataFinal}
-                    </span>
-                    {copiado ? (
-                      <Check size={16} className="text-emerald-500" />
-                    ) : (
-                      <Copy size={16} className="text-blue-300 group-hover:text-[#1a5fa8] transition-colors" />
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-sm font-bold text-gray-400 mr-2">
-                    --/--/----
-                  </span>
-                )}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                 <button onClick={() => setShowCalculator(false)} className="px-5 py-2 bg-[#1a5fa8] text-white text-xs font-bold rounded-lg hover:bg-[#154d8a] transition-all">
+                   Entendido
+                 </button>
               </div>
             </div>
-
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-               <button onClick={() => setShowCalculator(false)} className="px-5 py-2 bg-[#1a5fa8] text-white text-xs font-bold rounded-lg hover:bg-[#154d8a] transition-all">
-                 Entendido
-               </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

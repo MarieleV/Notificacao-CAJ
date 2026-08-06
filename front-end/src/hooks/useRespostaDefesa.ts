@@ -104,6 +104,19 @@ export function useRespostaDefesa() {
     }
   };
 
+  function limparTela() {
+    if (!window.confirm("Tem certeza que deseja limpar a tela?")) return;
+    
+    setStep("idle");
+    setSelectedCodes([]);
+    setDefesaAI("");
+    setMotivoIndeferimento("");
+    setGeneratedText("");
+    setCalcPrazo("15");
+    setCalcCustomPrazo("");
+    setCalcDataInicial("");
+  }
+
   return {
     // Estados expostos para a UI
     dropdownOpen, setDropdownOpen,
@@ -119,6 +132,6 @@ export function useRespostaDefesa() {
     calcDataFinal,
     selectedCodes, selectedItems, filteredCodes, camposObrigatoriosVazios,
     // Ações expostas
-    toggleCode, handleGenerate, handleCopy, handleDownloadWord, handleDownloadPDF
+    toggleCode, handleGenerate, handleCopy, handleDownloadWord, handleDownloadPDF, limparTela
   };
 }

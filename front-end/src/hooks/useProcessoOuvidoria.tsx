@@ -434,6 +434,57 @@ export function useProcessoOuvidoria() {
     }
   };
 
+  function limparTela() {
+    if (!window.confirm("Tem certeza que deseja limpar todos os dados do processo?")) return;
+    
+    setStep("idle");
+    setGeneratedText("");
+    setIsRecurso(true);
+    setHistoricoDefesa("sem_defesa");
+    setMatricula("");
+    setMorador("");
+    setTipoManifestacao("Recurso Administrativo");
+    setNumProcesso("");
+    setNumAutoInfracao("");
+    setDataEmissaoFatura("");
+    setDataManifestacao("");
+    setFuncionario("");
+    setFuncionarioBusca("");
+    setTipoCaso("leitura");
+    setDecisao(null);
+    setTipoServico("involuntario");
+    setDeferirMotivo(null);
+    setFatoNovoStatus(null);
+    setFaturaQuitada(null);
+    setDataGeracaoAI("");
+    setMesesSemAcesso("");
+    setDataConstatacaoInfracao("");
+    setProtServico("");
+    setRecebedorCorreios("");
+    setDataRecebimentoAR("");
+    setDataAplicacaoSancao("");
+    setDataDecisaoAnterior("");
+    setFaturaReferencia("");
+    setDataDefesa("");
+    setProtDefesa("");
+    setDataIndeferimento("");
+    setProtIndeferimento("");
+    setDataRecebimentoAI("");
+    setTipoRecebimentoAI("Correios");
+    setCanalResposta("email");
+    setClienteEmail("");
+    setClienteTelefone("");
+    setAplicaIN83(true);
+    setTemRestituicao(false);
+    setStatusMulta426("aplicada");
+    setTipoIndeferido("padrao");
+    setProtContatoAtivo("");
+    setFaturaAlterada(false);
+    setCalcPrazo("15");
+    setCalcCustomPrazo("");
+    setCalcDataInicial("");
+  }
+
   return {
     // Estados visuais
     step, setStep, copied, setCopied, reviewMode, setReviewMode, generatedText, setGeneratedText,
@@ -474,6 +525,6 @@ export function useProcessoOuvidoria() {
     
     // Funções
     handleTipoCasoChange, handleDecisaoChange, getParte1Text, getParte2Text,
-    handleGenerateParecer, handleDownloadPDF, handleDownloadWord, handleCopy, renderFormattedPreview, stripBoldMarkers
+    handleGenerateParecer, handleDownloadPDF, handleDownloadWord, handleCopy, renderFormattedPreview, stripBoldMarkers, limparTela
   };
 }

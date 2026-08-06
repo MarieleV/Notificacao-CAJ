@@ -218,6 +218,21 @@ Volume total recuperado: ${formattedTotalM3} m³.`;
     setTimeout(() => setCopiedState(false), 2000);
   }
 
+  function limparTela() {
+    if (!window.confirm("Tem certeza que deseja limpar todos os dados da calculadora?")) return;
+    
+    setWaterRows([]);
+    setSewageRows([]);
+    setWaterPeriod("");
+    setSewagePeriod("");
+    setAiNumber("");
+    setRemovalDate("");
+    setBaseConsumption("");
+    setPostRegRef("");
+    setWaterReportText("");
+    setSewageReportText("");
+  }
+
   return {
     waterRows, waterPeriod, setWaterPeriod,
     waterReportText, setWaterReportText, copiedWater, setCopiedWater, waterResults,
@@ -229,6 +244,6 @@ Volume total recuperado: ${formattedTotalM3} m³.`;
     baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
 
     handleGeneratePeriod, addRow, removeRow, changeRow,
-    applyFillRange, handleGenerateText, handleCopy
+    applyFillRange, handleGenerateText, handleCopy, limparTela
   };
 }

@@ -1,7 +1,7 @@
 import { ElementType, useState, useEffect } from "react";
 import {
   Trash2, Calculator, ClipboardList, AlertCircle, 
-  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw
+  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw, Eraser
 } from "lucide-react";
 
 import { parseMonthYear, labelMonth } from "./../utils/dates";
@@ -63,7 +63,7 @@ export function CalculadoraMulta() {
     waterRows, waterPeriod, setWaterPeriod, waterReportText, setWaterReportText, copiedWater, setCopiedWater, waterResults,
     sewageRows, sewagePeriod, setSewagePeriod, sewageReportText, setSewageReportText, copiedSewage, setCopiedSewage, sewageResults,
     aiNumber, setAiNumber, removalDate, setRemovalDate, baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
-    handleGeneratePeriod, addRow, removeRow, changeRow, applyFillRange, handleGenerateText, handleCopy
+    handleGeneratePeriod, addRow, removeRow, changeRow, applyFillRange, handleGenerateText, handleCopy, limparTela
   } = useCalculadoraMulta();
 
   // Estado para controlar o "arrastar" (Drag-to-Fill) estilo Excel
@@ -338,6 +338,15 @@ export function CalculadoraMulta() {
             Apuração do valor correto vs. cobrado
           </p>
         </div>
+        
+        {/* BOTÃO LIMPAR TELA AQUI NO CABEÇALHO */}
+        <button
+          onClick={limparTela}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
+        >
+          <Eraser size={16} />
+          Limpar Tela
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto">

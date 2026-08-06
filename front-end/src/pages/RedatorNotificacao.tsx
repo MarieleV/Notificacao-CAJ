@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck,
+  ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck, Eraser
 } from "lucide-react";
 
 import { DatePicker } from "../components/shared/DatePicker";
@@ -22,7 +22,11 @@ export function RedatorNotificacao() {
       <FeedbackModal modal={hook.fileModal} onClose={() => hook.setFileModal(null)} />
       
       {/* 2. Cabeçalho */}
-      <Cabecalho apiKey={hook.apiKey} setApiKey={hook.setApiKey} />
+      <Cabecalho 
+        apiKey={hook.apiKey} 
+        setApiKey={hook.setApiKey} 
+        limparTela={hook.limparTela} // <-- Passando a função para o cabeçalho
+      />
 
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
@@ -267,7 +271,7 @@ const FeedbackModal = ({ modal, onClose }: { modal: FileModalState | null, onClo
   );
 };
 
-const Cabecalho = ({ apiKey, setApiKey }: { apiKey: string, setApiKey: (v: string) => void }) => (
+const Cabecalho = ({ apiKey, setApiKey, limparTela }: { apiKey: string, setApiKey: (v: string) => void, limparTela: () => void }) => (
   <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
     <div>
       <div className="flex items-center gap-2">
@@ -277,6 +281,15 @@ const Cabecalho = ({ apiKey, setApiKey }: { apiKey: string, setApiKey: (v: strin
       <p className="text-gray-500 text-sm mt-0.5">Assistente de redação jurídica com Inteligência Artificial</p>
     </div>
     <div className="flex items-center gap-3">
+      {/* BOTÃO LIMPAR TELA AQUI NO CABEÇALHO */}
+      <button
+        onClick={limparTela}
+        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
+      >
+        <Eraser size={16} />
+        Limpar Tela
+      </button>
+
       <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:border-[#1a5fa8] transition-colors">
         <Key size={14} className="text-gray-400 mr-2" />
         <input
