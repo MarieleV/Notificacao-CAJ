@@ -1,4 +1,4 @@
-import { ElementType } from "react";
+import { ElementType, useState, useEffect } from "react";
 import {
   Trash2, Calculator, ClipboardList, AlertCircle, 
   Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw
@@ -11,8 +11,7 @@ import { MonthYearPicker } from "./../components/shared/MonthYearPicker";
 import { MonthYearRangePicker } from "./../components/shared/MonthYearRangePicker";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 
-// 1. Importando o Cérebro
-import { useCalculadoraMulta } from "./../hooks/useCalculadoraMulta";
+import { useCalculadoraMulta, ManualRow } from "./../hooks/useCalculadoraMulta";
 
 // ─── Subcomponentes (DRY) ────────────────────────────────────────────────────
 
@@ -37,34 +36,10 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, subtitle, icon: Icon, theme }: KpiCardProps) {
   const themes = {
-    default: {
-      wrapper: "border-gray-100 bg-[#f8fafe]",
-      icon: "text-[#1a5fa8]",
-      title: "text-gray-500",
-      value: "text-[#0b1e35]",
-      subtitle: "text-gray-400"
-    },
-    blue: {
-      wrapper: "border-[#c3ddf8] bg-[#eef6ff]",
-      icon: "text-[#1a5fa8]",
-      title: "text-[#1a5fa8]",
-      value: "text-[#1a5fa8]",
-      subtitle: "text-[#4a7fa5]"
-    },
-    red: {
-      wrapper: "border-red-200 bg-red-50",
-      icon: "text-red-500",
-      title: "text-red-500",
-      value: "text-red-600",
-      subtitle: "text-red-400"
-    },
-    emerald: {
-      wrapper: "border-emerald-200 bg-emerald-50",
-      icon: "text-emerald-600",
-      title: "text-emerald-700",
-      value: "text-emerald-700",
-      subtitle: "text-emerald-600"
-    }
+    default: { wrapper: "border-gray-100 bg-[#f8fafe]", icon: "text-[#1a5fa8]", title: "text-gray-500", value: "text-[#0b1e35]", subtitle: "text-gray-400" },
+    blue: { wrapper: "border-[#c3ddf8] bg-[#eef6ff]", icon: "text-[#1a5fa8]", title: "text-[#1a5fa8]", value: "text-[#1a5fa8]", subtitle: "text-[#4a7fa5]" },
+    red: { wrapper: "border-red-200 bg-red-50", icon: "text-red-500", title: "text-red-500", value: "text-red-600", subtitle: "text-red-400" },
+    emerald: { wrapper: "border-emerald-200 bg-emerald-50", icon: "text-emerald-600", title: "text-emerald-700", value: "text-emerald-700", subtitle: "text-emerald-600" }
   };
   
   const active = themes[theme];
@@ -73,13 +48,9 @@ function KpiCard({ title, value, subtitle, icon: Icon, theme }: KpiCardProps) {
     <div className={`rounded-xl border p-4 transition-colors ${active.wrapper}`}>
       <div className="flex items-center gap-2 mb-2">
         <Icon size={14} className={active.icon} />
-        <p className={`text-[10px] font-semibold uppercase tracking-wider ${active.title}`}>
-          {title}
-        </p>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider ${active.title}`}>{title}</p>
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${active.value}`}>
-        {value}
-      </p>
+      <p className={`text-2xl font-bold tabular-nums ${active.value}`}>{value}</p>
       <p className={`text-[10px] mt-1 ${active.subtitle}`}>{subtitle}</p>
     </div>
   );
@@ -88,13 +59,30 @@ function KpiCard({ title, value, subtitle, icon: Icon, theme }: KpiCardProps) {
 // ─── Componente Principal ────────────────────────────────────────────────────
 
 export function CalculadoraMulta() {
-  // 2. Extraindo o que precisamos do Hook
   const {
     waterRows, waterPeriod, setWaterPeriod, waterReportText, setWaterReportText, copiedWater, setCopiedWater, waterResults,
     sewageRows, sewagePeriod, setSewagePeriod, sewageReportText, setSewageReportText, copiedSewage, setCopiedSewage, sewageResults,
     aiNumber, setAiNumber, removalDate, setRemovalDate, baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
-    handleGeneratePeriod, addRow, removeRow, changeRow, cascadeFillFromFirstRow, handleGenerateText, handleCopy
+    handleGeneratePeriod, addRow, removeRow, changeRow, applyFillRange, handleGenerateText, handleCopy
   } = useCalculadoraMulta();
+
+  // Estado para controlar o "arrastar" (Drag-to-Fill) estilo Excel
+  const [dragFill, setDragFill] = useState<{
+    active: boolean; type: "water" | "sewage" | null; field: keyof ManualRow | null;
+    startIdx: number; currentIdx: number; val: string;
+  }>({ active: false, type: null, field: null, startIdx: -1, currentIdx: -1, val: "" });
+
+  // Dispara a aplicação dos dados quando o usuário solta o clique do mouse
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (dragFill.active && dragFill.field && dragFill.type) {
+        applyFillRange(dragFill.type, dragFill.field, dragFill.startIdx, dragFill.currentIdx, dragFill.val);
+        setDragFill({ active: false, type: null, field: null, startIdx: -1, currentIdx: -1, val: "" });
+      }
+    };
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, [dragFill, applyFillRange]);
 
   // ─── Renderização das Tabelas de Entrada ────────────────────────────────────
 
@@ -105,17 +93,11 @@ export function CalculadoraMulta() {
     
     return (
       <SectionBlock
-        number={stepNum}
-        title={title}
-        description={desc}
+        number={stepNum} title={title} description={desc}
         headerAction={
           <div className="w-full max-w-[240px]">
             <MonthYearRangePicker 
-              value={period} 
-              onChange={(val) => {
-                setPeriod(val);
-                if (val) handleGeneratePeriod(val, type); 
-              }} 
+              value={period} onChange={(val) => { setPeriod(val); if (val) handleGeneratePeriod(val, type); }} 
               placeholder="Adicione um período..." 
             />
           </div>
@@ -125,8 +107,7 @@ export function CalculadoraMulta() {
           <div className="min-w-[900px]">
             <div className="grid grid-cols-[90px_80px_80px_1fr_1fr_1fr_1fr_40px] gap-2 mb-2 px-1">
               {[
-                "Mês/Ano", "Cons. Reg.", "Cons. Irreg.", 
-                "Valor Correto", "Serviço Correto", 
+                "Mês/Ano", "Cons. Reg.", "Cons. Irreg.", "Valor Correto", "Serviço Correto", 
                 "Valor Cobrado Errado", "Serv. Cobrado Errado", ""
               ].map((h, i) => (
                 <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{h}</div>
@@ -136,56 +117,69 @@ export function CalculadoraMulta() {
             <div className="space-y-2">
               {rows.map((row, idx) => {
                 const dateError = row.monthYear.length === 7 && !parseMonthYear(row.monthYear);
+                
+                // Célula inteligente: sabe pular linha e possui o quadradinho de arrastar
+                const renderCell = (field: keyof ManualRow, val: string, placeholder: string, customClass: string) => {
+                  const isDraggingThis = dragFill.active && dragFill.type === type && dragFill.field === field;
+                  const isHighlighted = isDraggingThis && idx >= Math.min(dragFill.startIdx, dragFill.currentIdx) && idx <= Math.max(dragFill.startIdx, dragFill.currentIdx);
+                  
+                  return (
+                    <div 
+                      className="relative group/cell"
+                      onMouseEnter={() => {
+                        if (dragFill.active && dragFill.type === type && dragFill.field === field) {
+                          setDragFill(prev => ({ ...prev, currentIdx: idx }));
+                        }
+                      }}
+                    >
+                      <GridInput
+                        id={`input-${type}-${field}-${idx}`} // ID dinâmico para navegação
+                        value={val}
+                        onChange={(e) => changeRow(row.id, field, e.target.value, type)}
+                        placeholder={placeholder}
+                        className={`${customClass} ${isHighlighted ? "!bg-[#dce9f7] !border-[#1a5fa8]" : ""}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`input-${type}-${field}-${idx + 1}`)?.focus();
+                          }
+                        }}
+                      />
+                      {/* Quadradinho azul estilo Excel */}
+                      <div 
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#1a5fa8] border-[0.5px] border-white cursor-ns-resize opacity-0 group-hover/cell:opacity-100 transition-opacity z-10 shadow-sm"
+                        onMouseDown={(e) => {
+                           e.preventDefault(); // Evita selecionar o texto enquanto arrasta
+                           setDragFill({ active: true, type, field, startIdx: idx, currentIdx: idx, val: val });
+                        }}
+                      />
+                    </div>
+                  );
+                };
+
                 return (
                   <div key={row.id}>
                     <div className="grid grid-cols-[90px_80px_80px_1fr_1fr_1fr_1fr_40px] gap-2 items-center group">
                       <GridInput
+                        id={`input-${type}-monthYear-${idx}`}
                         value={row.monthYear}
                         onChange={(e) => changeRow(row.id, "monthYear", e.target.value, type)}
                         placeholder="MM/AAAA"
                         maxLength={7}
                         hasError={dateError}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.getElementById(`input-${type}-monthYear-${idx + 1}`)?.focus();
+                          }
+                        }}
                       />
-                      <GridInput
-                        value={row.consumption}
-                        onChange={(e) => changeRow(row.id, "consumption", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("consumption", type)}
-                        placeholder="Ex: 20"
-                      />
-                      <GridInput
-                        value={row.irregularConsumption}
-                        onChange={(e) => changeRow(row.id, "irregularConsumption", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("irregularConsumption", type)}
-                        placeholder="Ex: 15"
-                      />
-                      <GridInput
-                        value={row.correctValue}
-                        onChange={(e) => changeRow(row.id, "correctValue", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("correctValue", type)}
-                        placeholder="R$ Correto"
-                        className="bg-[#eef6ff]/30 border-[#c3ddf8]"
-                      />
-                      <GridInput
-                        value={row.correctService}
-                        onChange={(e) => changeRow(row.id, "correctService", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("correctService", type)}
-                        placeholder="R$ Serv. Cor."
-                        className="bg-[#eef6ff]/30 border-[#c3ddf8]"
-                      />
-                      <GridInput
-                        value={row.chargedValue}
-                        onChange={(e) => changeRow(row.id, "chargedValue", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedValue", type)}
-                        placeholder="R$ Cobrado"
-                        className="bg-red-50/50 border-red-200"
-                      />
-                      <GridInput
-                        value={row.chargedService}
-                        onChange={(e) => changeRow(row.id, "chargedService", e.target.value, type)}
-                        onBlur={() => idx === 0 && cascadeFillFromFirstRow("chargedService", type)}
-                        placeholder="R$ Serv. Cob."
-                        className="bg-red-50/50 border-red-200"
-                      />
+                      {renderCell("consumption", row.consumption, "Ex: 20", "")}
+                      {renderCell("irregularConsumption", row.irregularConsumption, "Ex: 15", "")}
+                      {renderCell("correctValue", row.correctValue, "R$ Correto", "bg-[#eef6ff]/30 border-[#c3ddf8]")}
+                      {renderCell("correctService", row.correctService, "R$ Serv. Cor.", "bg-[#eef6ff]/30 border-[#c3ddf8]")}
+                      {renderCell("chargedValue", row.chargedValue, "R$ Cobrado", "bg-red-50/50 border-red-200")}
+                      {renderCell("chargedService", row.chargedService, "R$ Serv. Cob.", "bg-red-50/50 border-red-200")}
                       <button
                         onClick={() => removeRow(row.id, type)}
                         className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors justify-self-center opacity-50 group-hover:opacity-100"
@@ -219,9 +213,10 @@ export function CalculadoraMulta() {
             </div>
 
             <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-              <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[#4a7fa5]">
-                Preencha a <strong>1ª linha</strong> e os valores se repetirão nas linhas vazias abaixo - <strong>você pode editar</strong> qualquer uma <strong>individualmente</strong>, se necessário.
+              <Info size={16} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#4a7fa5] leading-relaxed">
+                <strong>Dicas de Produtividade:</strong> Use a tecla <strong>Enter</strong> para pular rapidamente para a célula de baixo.
+                Para copiar um valor para outras linhas, passe o mouse sobre o campo preenchido e <strong>clique e arraste o quadradinho azul</strong> no canto inferior direito (como no Excel).
               </p>
             </div>
           </div>
@@ -251,14 +246,14 @@ export function CalculadoraMulta() {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mês</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cons. (m³)</th>
+                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vol. Recup. (m³)</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-l border-white rounded-tl-md">Valor Correto</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff]">Serviço Correto</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-r border-white rounded-tr-md">Total Correto</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 rounded-tl-md">Valor Errado</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50">Serviço Errado</th>
                   <th className="px-3 py-2.5 text-right text-[11px] font-bold text-red-500 uppercase tracking-wider bg-red-50 rounded-tr-md">Total Errado</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Diferença</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Diferença R$</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -270,7 +265,7 @@ export function CalculadoraMulta() {
                         {labelMonth(c.row.monthYear)}
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-gray-700">
-                        {c.row.irregularConsumption || "0"} m³
+                        {String(c.diffM3).replace(".", ",")} m³
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
                         {c.row.correctValue ? `R$ ${c.row.correctValue}` : "R$ 0,00"}
@@ -300,7 +295,7 @@ export function CalculadoraMulta() {
               <tfoot>
                 <tr className="border-t-2 border-gray-300 bg-gray-50">
                   <td className="px-4 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
-                  <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{results.totalM3} m³</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{String(results.totalM3).replace(".", ",")} m³</td>
                   <td colSpan={2} className="bg-[#eef6ff]/60"></td>
                   <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60 rounded-b-md">{fmtBRL(results.grandCorrect)}</td>
                   <td colSpan={2} className="bg-red-50/40"></td>
@@ -314,43 +309,16 @@ export function CalculadoraMulta() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard 
-              title="Total de m³" 
-              value={results.totalM3} 
-              subtitle="metros cúbicos irregulares" 
-              icon={Droplets} 
-              theme="default" 
-            />
-            <KpiCard 
-              title="Valor Correto" 
-              value={fmtBRL(results.grandCorrect)} 
-              subtitle="soma dos valores corretos" 
-              icon={Calculator} 
-              theme="blue" 
-            />
-            <KpiCard 
-              title="Cobrado" 
-              value={fmtBRL(results.grandCharged)} 
-              subtitle="soma dos valores errados" 
-              icon={AlertCircle} 
-              theme="red" 
-            />
-            <KpiCard 
-              title="Diferença a Lançar" 
-              value={fmtBRL(Math.abs(results.grandDiff))} 
-              subtitle={results.grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"} 
-              icon={ClipboardList} 
-              theme={results.grandDiff >= 0 ? "emerald" : "red"} 
-            />
+            <KpiCard title="Vol. Recuperado" value={`${String(results.totalM3).replace(".", ",")} m³`} subtitle="diferença (reg. - irreg.)" icon={Droplets} theme="default" />
+            <KpiCard title="Valor Correto" value={fmtBRL(results.grandCorrect)} subtitle="soma dos valores corretos" icon={Calculator} theme="blue" />
+            <KpiCard title="Cobrado" value={fmtBRL(results.grandCharged)} subtitle="soma dos valores errados" icon={AlertCircle} theme="red" />
+            <KpiCard title="Diferença a Lançar" value={fmtBRL(Math.abs(results.grandDiff))} subtitle={results.grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"} icon={ClipboardList} theme={results.grandDiff >= 0 ? "emerald" : "red"} />
           </div>
 
           <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
             <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
             <p className="text-xs text-[#4a7fa5]">
-              <strong>Resumo:</strong> Nos {textoMeses} de irregularidade apurados,
-              o valor correto total seria de <strong>{fmtBRL(results.grandCorrect)}</strong>,
-              porém foi cobrado apenas <strong>{fmtBRL(results.grandCharged)}</strong>.
-              A diferença de <strong>{fmtBRL(Math.abs(results.grandDiff))}</strong> representa o ajuste financeiro a ser lançado referente ao consumo irregular de <strong>{results.totalM3} m³</strong>.
+              <strong>Resumo:</strong> Nos {textoMeses} de irregularidade apurados, o valor correto total seria de <strong>{fmtBRL(results.grandCorrect)}</strong>, porém foi cobrado apenas <strong>{fmtBRL(results.grandCharged)}</strong>. A diferença financeira de <strong>{fmtBRL(Math.abs(results.grandDiff))}</strong> representa o ajuste a ser lançado referente ao volume recuperado de <strong>{String(results.totalM3).replace(".", ",")} m³</strong>.
             </p>
           </div>
         </div>
@@ -375,9 +343,6 @@ export function CalculadoraMulta() {
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-10">
           
-          {/* =========================================
-              BLOCO DA ÁGUA
-          ========================================= */}
           <div className="space-y-6">
             {renderEntryTable(1, "Lançamento de Água", "Insira os valores corretos (calculados externamente) e os valores cobrados.", "water")}
             {renderResultSection("Apuração Detalhada - Água", waterResults, false)}
@@ -385,9 +350,6 @@ export function CalculadoraMulta() {
 
           <hr className="border-gray-200" />
 
-          {/* =========================================
-              BLOCO DO ESGOTO
-          ========================================= */}
           <div className="space-y-6">
             {renderEntryTable(2, "Lançamento de Esgoto", "Insira os valores corretos e cobrados especificamente para o esgoto.", "sewage")}
             {renderResultSection("Apuração Detalhada - Esgoto", sewageResults, true)}
@@ -395,14 +357,7 @@ export function CalculadoraMulta() {
 
           <hr className="border-gray-200" />
 
-          {/* =========================================
-              BLOCO DE TEXTOS (LAUDO)
-          ========================================= */}
-          <SectionBlock
-            number={3}
-            title="Emissão de Laudos de Apuração"
-            description="Insira os dados complementares para gerar o texto final copiável"
-          >
+          <SectionBlock number={3} title="Emissão de Laudos de Apuração" description="Insira os dados complementares para gerar o texto final copiável">
             <div className="space-y-6">
               <div className="mb-8">
                 <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -410,47 +365,20 @@ export function CalculadoraMulta() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Número do AI
-                    </label>
-                    <input
-                      value={aiNumber}
-                      onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))}
-                      placeholder="Ex: 14036735"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Número do AI</label>
+                    <input value={aiNumber} onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 14036735" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Data de Retirada (Corte)
-                    </label>
-                    <DatePicker
-                      value={removalDate}
-                      onChange={setRemovalDate}
-                      placeholder="DD/MM/AAAA"
-                    />
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data de Retirada (Corte)</label>
+                    <DatePicker value={removalDate} onChange={setRemovalDate} placeholder="DD/MM/AAAA" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Consumo base (m³)
-                    </label>
-                    <input
-                      value={baseConsumption}
-                      onChange={(e) => setBaseConsumption(e.target.value.replace(/\D/g, ""))}
-                      placeholder="Ex: 49"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all"
-                    />
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Consumo base (m³)</label>
+                    <input value={baseConsumption} onChange={(e) => setBaseConsumption(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 49" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Mês de Referência
-                    </label>
-                    <MonthYearPicker
-                      value={postRegRef}
-                      onChange={setPostRegRef}
-                      placeholder="MM/AAAA"
-                      size="md"
-                    />
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Mês de Referência</label>
+                    <MonthYearPicker value={postRegRef} onChange={setPostRegRef} placeholder="MM/AAAA" size="md" />
                   </div>
                 </div>
 
@@ -464,82 +392,34 @@ export function CalculadoraMulta() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-                {/* Laudo da Água */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Água</label>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleGenerateText("water")}
-                        disabled={waterRows.length === 0}
-                        className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm"
-                      >
+                      <button onClick={() => handleGenerateText("water")} disabled={waterRows.length === 0} className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm">
                         <RefreshCw size={12} /> Gerar
                       </button>
-                      <button
-                        onClick={() => handleCopy(waterReportText, setCopiedWater)}
-                        disabled={!waterReportText}
-                        className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all"
-                      >
-                        {copiedWater ? (
-                          <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
-                        ) : (
-                          <><Copy size={12} /> Copiar</>
-                        )}
+                      <button onClick={() => handleCopy(waterReportText, setCopiedWater)} disabled={!waterReportText} className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all">
+                        {copiedWater ? <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></> : <><Copy size={12} /> Copiar</>}
                       </button>
                     </div>
                   </div>
-                  <textarea
-                    value={waterReportText}
-                    onChange={(e) => setWaterReportText(e.target.value)}
-                    placeholder={
-                      waterRows.length === 0
-                        ? "Adicione meses na tabela de Água e clique em [Gerar]..."
-                        : "O texto da Água aparecerá aqui."
-                    }
-                    rows={12}
-                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner"
-                    spellCheck={false}
-                  />
+                  <textarea value={waterReportText} onChange={(e) => setWaterReportText(e.target.value)} placeholder={waterRows.length === 0 ? "Adicione meses na tabela de Água e clique em [Gerar]..." : "O texto da Água aparecerá aqui."} rows={12} className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner" spellCheck={false} />
                 </div>
 
-                {/* Laudo do Esgoto */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Esgoto</label>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleGenerateText("sewage")}
-                        disabled={sewageRows.length === 0}
-                        className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm"
-                      >
+                      <button onClick={() => handleGenerateText("sewage")} disabled={sewageRows.length === 0} className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm">
                         <RefreshCw size={12} /> Gerar
                       </button>
-                      <button
-                        onClick={() => handleCopy(sewageReportText, setCopiedSewage)}
-                        disabled={!sewageReportText}
-                        className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all"
-                      >
-                        {copiedSewage ? (
-                          <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></>
-                        ) : (
-                          <><Copy size={12} /> Copiar</>
-                        )}
+                      <button onClick={() => handleCopy(sewageReportText, setCopiedSewage)} disabled={!sewageReportText} className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all">
+                        {copiedSewage ? <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></> : <><Copy size={12} /> Copiar</>}
                       </button>
                     </div>
                   </div>
-                  <textarea
-                    value={sewageReportText}
-                    onChange={(e) => setSewageReportText(e.target.value)}
-                    placeholder={
-                      sewageRows.length === 0
-                        ? "Adicione meses na tabela de Esgoto e clique em [Gerar]..."
-                        : "O texto do Esgoto aparecerá aqui."
-                    }
-                    rows={12}
-                    className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner"
-                    spellCheck={false}
-                  />
+                  <textarea value={sewageReportText} onChange={(e) => setSewageReportText(e.target.value)} placeholder={sewageRows.length === 0 ? "Adicione meses na tabela de Esgoto e clique em [Gerar]..." : "O texto do Esgoto aparecerá aqui."} rows={12} className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner" spellCheck={false} />
                 </div>
               </div>
               

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
+import { useSessionStorage } from "./useSessionStorage"; // <-- Hook importado
 import { FUNCIONARIOS } from "../utils/funcionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
@@ -13,40 +14,49 @@ export interface FileModalState {
 }
 
 export function useRedatorNotificacao() {
-  // Configurações e UI States
-  const [apiKey, setApiKey] = useState("");
+  // =========================================================================
+  // UI States (Efêmeros - não precisam de persistência)
+  // =========================================================================
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
-  const [step, setStep] = useState<"idle" | "generated">("idle");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  
-  // Seleção de Códigos
-  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const [penaltyVariant, setPenaltyVariant] = useState<PenaltyVariant>("multa");
-
-  // Planilha e Arquivos
-  const [excelData, setExcelData] = useState<any[]>([]);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-
-  // Formulário
-  const [matricula, setMatricula] = useState("");
-  const [matriculaBuscada, setMatriculaBuscada] = useState("");
-  const [dataConstatacao, setDataConstatacao] = useState("");
-  const [protocolo, setProtocolo] = useState("");
-  const [autoInfracao, setAutoInfracao] = useState("");
-  const [equipe, setEquipe] = useState("");
-  
-  // Funcionário
-  const [funcionario, setFuncionario] = useState("");
-  const [funcionarioBusca, setFuncionarioBusca] = useState("");
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
+  // =========================================================================
+  // Business States (Persistidos no Session Storage)
+  // =========================================================================
+  
+  // Configurações e Passo
+  const [apiKey, setApiKey] = useSessionStorage("redator_apiKey", "");
+  const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
+  const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
+  
+  // Seleção de Códigos
+  const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
+  const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
+
+  // Planilha e Arquivos (Mantém a planilha carregada ao navegar entre telas)
+  const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
+  const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
+
+  // Formulário
+  const [matricula, setMatricula] = useSessionStorage("redator_matricula", "");
+  const [matriculaBuscada, setMatriculaBuscada] = useSessionStorage("redator_matriculaBuscada", "");
+  const [dataConstatacao, setDataConstatacao] = useSessionStorage("redator_dataConstatacao", "");
+  const [protocolo, setProtocolo] = useSessionStorage("redator_protocolo", "");
+  const [autoInfracao, setAutoInfracao] = useSessionStorage("redator_autoInfracao", "");
+  const [equipe, setEquipe] = useSessionStorage("redator_equipe", "");
+  
+  // Funcionário
+  const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
+  const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("redator_funcionarioBusca", "");
+
   // Dados do Cliente
-  const [clienteData, setClienteData] = useState({
+  const [clienteData, setClienteData] = useSessionStorage("redator_clienteData", {
     nomeCliente: "",
     logradouro: "",
     bairro: "",
@@ -55,8 +65,6 @@ export function useRedatorNotificacao() {
     categoriaTarifa: "",
     numeroHidrometro: ""
   });
-
-  const [generatedText, setGeneratedText] = useState("");
 
   // =========================================================================
   // DADOS DERIVADOS (Computed State)
@@ -189,7 +197,6 @@ export function useRedatorNotificacao() {
     );
 
     try {
-      // Usando o serviço em vez do fetch direto
       const data = await gerarNotificacaoApi({
         api_key: apiKey,
         textos_base: textosBase,
@@ -215,7 +222,6 @@ export function useRedatorNotificacao() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Pequena função auxiliar para evitar repetir código de download (Opcional, mas recomendado)
   const baixarArquivoBrowser = (blob: Blob, nomeArquivo: string) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -233,7 +239,6 @@ export function useRedatorNotificacao() {
       return;
     }
     try {
-      // Usando o serviço em vez do fetch
       const blob = await exportarWordApi({
         texto_final: generatedText,
         protocolo,
@@ -255,7 +260,6 @@ export function useRedatorNotificacao() {
       return;
     }
     try {
-      // Usando o serviço em vez do fetch
       const blob = await exportarPdfApi({
         texto_final: generatedText,
         protocolo,
@@ -270,7 +274,6 @@ export function useRedatorNotificacao() {
       alert("Erro ao baixar o arquivo PDF. Verifique se a rota no back-end já foi criada.");
     }
   };
-
 
   return {
     // States
