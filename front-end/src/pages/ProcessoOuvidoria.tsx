@@ -352,7 +352,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
             <button type="button" onClick={() => handleDecisaoChange("deferir")} className={`h-full p-4 rounded-xl border-2 text-left transition-all ${decisao === "deferir" ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               <div className="flex items-center gap-2 mb-1">
                 <FileCheck className={decisao === "deferir" ? "text-emerald-600" : "text-gray-400"} size={20} />
-                <span className="font-bold text-sm">1. Deferir (Retificar)</span>
+                <span className="font-bold text-sm">1. Deferir</span>
               </div>
               <p className="text-xs text-gray-500">Cancela as penalidades. Padronização realizada cfe protocolo.</p>
             </button>
@@ -372,7 +372,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
             <button type="button" onClick={() => handleDecisaoChange("indeferir")} className={`h-full p-4 rounded-xl border-2 text-left transition-all ${decisao === "indeferir" ? "border-red-500 bg-red-50 text-red-900 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               <div className="flex items-center gap-2 mb-1">
                 <FileX className={decisao === "indeferir" ? "text-red-600" : "text-gray-400"} size={20} />
-                <span className="font-bold text-sm">3. Indeferir (Ratificar)</span>
+                <span className="font-bold text-sm">3. Indeferir</span>
               </div>
               <p className="text-xs text-gray-500">Mantém integralmente as penalidades e orienta o parcelamento.</p>
             </button>
