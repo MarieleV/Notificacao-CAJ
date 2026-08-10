@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Google Gemini" />
 </p>
 
-**[🔗 Acesse o Sistema Front-end em Produção](https://notificacao-caj-7ncb.vercel.app)**
+**[🔗 Acesse o Sistema em Produção](https://notificacao-caj-7ncb.vercel.app)**
 
 </div>
 
