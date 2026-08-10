@@ -1,29 +1,35 @@
-### Configurando o Back-end
+### Configuração do Ambiente Back-end
 
-Em um novo terminal, navegue até a pasta do back-end:
+Para inicializar a configuração do ambiente de desenvolvimento, acesse o diretório raiz do back-end via terminal e execute os comandos descritos a seguir:
 
 ```bash
-# Instale todas as dependências do projeto
+# Instalação de todas as dependências do projeto
 npm install
 
-# Configure as variáveis de ambiente (veja a seção abaixo)
+# Criação do arquivo de configuração de variáveis de ambiente
 cp .env.example .env
 
-# Inicie o servidor
+# Inicialização do servidor 
 npm run start
+
 ```
 
-O back-end ficará disponível em `http://localhost:3000` (ajuste conforme a configuração do projeto).
+Por padrão, a API estará acessível através do endereço `http://localhost:3000` (a porta pode ser redefinida conforme a configuração do ambiente).
 
-> ⚠️ Ajuste as portas e comandos acima conforme os scripts definidos nos respectivos `package.json` do front-end e do back-end.
+> **Nota:** Recomenda-se a verificação dos scripts definidos no arquivo `package.json` para certificar-se dos comandos exatos de inicialização e build do projeto.
 
-## 🔐 Variáveis de Ambiente
+---
 
-No back-end, crie um arquivo `.env` com as seguintes variáveis:
+### Variáveis de Ambiente
+
+Para o funcionamento adequado dos microsserviços e integrações, é imprescindível a configuração do arquivo `.env` na raiz do diretório do back-end.
+
+Defina os seguintes parâmetros de ambiente:
 
 ```env
-GEMINI_API_KEY=sua_chave_da_api_gemini
+GEMINI_API_KEY=inserir_chave_api_valida_gemini
 PORT=3000
+
 ```
 
-> Nunca versione o arquivo `.env` — mantenha-o listado no `.gitignore`.
+> **Aviso de Segurança:** O arquivo `.env` armazena credenciais e dados sensíveis da aplicação. Sob nenhuma circunstância este arquivo deve ser versionado em repositórios (públicos ou privados). Assegure-se de que a extensão esteja devidamente declarada no arquivo `.gitignore`.
