@@ -1,20 +1,21 @@
 <div align="center">
+  <img src="https://img.icons8.com/fluency/96/water.png" alt="Ícone de Água" width="80"/>
+  
+  <h1>CAJ Sistema</h1>
+  <h3>Sistema de Gestão Administrativa, Jurídica e Financeira</h3>
 
-# 💧 CAJ SISTEMA
+  <p>
+    <img src="https://img.shields.io/badge/status-em%20desenvolvimento-orange?style=for-the-badge" alt="Status: Em Desenvolvimento" />
+    <img src="https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E" alt="Vite" />
+    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+    <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
+    <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+    <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Google Gemini" />
+  </p>
 
-### Sistema de Gestão Administrativa, Jurídica e Financeira
-
-<p>
-  <img src="https://img.shields.io/badge/status-em%20desenvolvimento-orange?style=for-the-badge" alt="Status: Em Desenvolvimento" />
-  <img src="https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E" alt="Vite" />
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
-  <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Google Gemini" />
-</p>
-
-**[🔗 Acesse o Sistema Front-end em Produção](https://notificacao-caj-7ncb.vercel.app)**
-
+  <p>
+    <b><a href="https://notificacao-caj-7ncb.vercel.app">🔗 Acesse o Sistema em Produção</a></b>
+  </p>
 </div>
 
 ---
