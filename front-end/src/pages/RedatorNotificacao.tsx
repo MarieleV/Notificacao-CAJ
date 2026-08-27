@@ -106,12 +106,28 @@ export function RedatorNotificacao() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
-                  <input 
+                  <input
                     type="text"
-                    value={hook.dataConstatacao} 
-                    onChange={(e) => hook.setDataConstatacao(e.target.value)} 
-                    placeholder="DD/MM/AAAA" 
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all" 
+                    value={hook.dataConstatacao}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      
+                      // Verifica se o usuário está digitando APENAS números e barras (Máscara Ativa)
+                      if (/^[\d/]*$/.test(val)) {
+                        const digits = val.replace(/\D/g, "").slice(0, 8); // Pega só os números (máx 8)
+                        let masked = digits;
+                        
+                        if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
+                        if (digits.length > 4) masked = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+                        
+                        hook.setDataConstatacao(masked);
+                      } else {
+                        // Se ele digitou espaço, vírgula, letras ou "e", a máscara desliga e vira Texto Livre
+                        hook.setDataConstatacao(val);
+                      }
+                    }}
+                    placeholder="DD/MM/AAAA"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all"
                   />
                 </div>
                 <div>
