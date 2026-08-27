@@ -106,7 +106,13 @@ export function RedatorNotificacao() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
-                  <DatePicker value={hook.dataConstatacao} onChange={hook.setDataConstatacao} placeholder="DD/MM/AAAA" />
+                  <input 
+                    type="text"
+                    value={hook.dataConstatacao} 
+                    onChange={(e) => hook.setDataConstatacao(e.target.value)} 
+                    placeholder="DD/MM/AAAA" 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] transition-all" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
@@ -468,23 +474,20 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
   <div className="relative">
     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Funcionário</label>
     <input
-      value={hook.funcionario ? `Mat. ${hook.funcionario}` : hook.funcionarioBusca}
+      value={hook.funcionario} // <-- Agora reflete exatamente o que está no estado (livre ou clicado)
       onChange={(e) => {
-        hook.setFuncionario("");
-        hook.setFuncionarioBusca(e.target.value);
+        hook.setFuncionario(e.target.value); // Salva a digitação livre instantaneamente
+        hook.setFuncionarioBusca(e.target.value); // Alimenta o filtro da lista
         hook.setFuncSearchOpen(true);
       }}
       onFocus={() => {
-        if (hook.funcionario) hook.setFuncionarioBusca("");
         hook.setFuncSearchOpen(true);
       }}
       onBlur={() => setTimeout(() => hook.setFuncSearchOpen(false), 200)}
-      placeholder="Pesquisar por nome..."
+      placeholder="Selecione na lista ou digite..."
       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
     />
-    {hook.funcionarioSelecionado && !hook.funcSearchOpen && (
-      <p className="mt-1 text-[10px] text-gray-500 truncate">{hook.funcionarioSelecionado.nome}</p>
-    )}
+    
     {hook.funcSearchOpen && (
       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
         {hook.filteredFuncionarios.map((f: any) => (
@@ -493,7 +496,8 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
             className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] hover:text-[#1a5fa8] cursor-pointer transition-colors"
             onMouseDown={(e) => {
               e.preventDefault();
-              hook.setFuncionario(String(f.matricula));
+              // Se clicar na lista, preenche o campo bonitinho e fecha
+              hook.setFuncionario(`${f.nome} (Mat. ${f.matricula})`);
               hook.setFuncionarioBusca("");
               hook.setFuncSearchOpen(false);
             }}
@@ -502,6 +506,11 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
             <span className="text-[10px] font-mono font-bold text-[#1a5fa8] flex-shrink-0">Mat. {f.matricula}</span>
           </div>
         ))}
+        {hook.filteredFuncionarios.length === 0 && (
+          <div className="px-3 py-2 text-xs text-gray-500 italic">
+            Continue digitando para inserir um texto livre...
+          </div>
+        )}
       </div>
     )}
   </div>
