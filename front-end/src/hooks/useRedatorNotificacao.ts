@@ -51,7 +51,7 @@ export function useRedatorNotificacao() {
   const [autoInfracao, setAutoInfracao] = useSessionStorage("redator_autoInfracao", "");
   const [equipe, setEquipe] = useSessionStorage("redator_equipe", "");
   
-  // Funcionário
+  // Funcionário (Agora salva o texto livre ou o nome completo formatado)
   const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
   const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("redator_funcionarioBusca", "");
 
@@ -87,7 +87,10 @@ export function useRedatorNotificacao() {
     return f.nome.toLowerCase().includes(term) || String(f.matricula).includes(term);
   });
 
-  const funcionarioSelecionado = FUNCIONARIOS.find((f) => String(f.matricula) === funcionario);
+  // Ajustado: Como o campo agora aceita texto livre, evitamos tentar extrair a matrícula
+  // a todo momento. O componente visual de listagem vai tratar o clique e preencher
+  // o estado do funcionário com a string completa desejada.
+  const funcionarioSelecionado = null; 
 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
 
