@@ -7,7 +7,8 @@ import {
   Scale, 
   ChevronRight, 
   ChevronLeft,
-  Building2 
+  Building2,
+  Clock // <-- Ícone novo importado para a nova tela
 } from "lucide-react";
 import { ElementType } from "react";
 
@@ -18,7 +19,7 @@ interface NavItemProps {
   title: string;
   subtitle: string;
   end?: boolean;
-  isCollapsed: boolean; // <-- Nova propriedade
+  isCollapsed: boolean;
 }
 
 function NavItem({ to, icon: Icon, title, subtitle, end = false, isCollapsed }: NavItemProps) {
@@ -145,6 +146,15 @@ export function Layout() {
             icon={Scale} 
             title="Ouvidoria e Recursos" 
             subtitle="Análise de Processos" 
+            isCollapsed={isCollapsed}
+          />
+
+          {/* NOVA TELA ADICIONADA AQUI */}
+          <NavItem 
+            to="/controle-analises" 
+            icon={Clock} 
+            title="Análises Vencidas" 
+            subtitle="Controle de Prazos" 
             isCollapsed={isCollapsed}
           />
         </nav>
