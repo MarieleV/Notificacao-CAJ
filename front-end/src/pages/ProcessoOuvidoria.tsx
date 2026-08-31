@@ -285,7 +285,10 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
 }
 
 function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
-  const { isRecurso, setIsRecurso, handleTipoCasoChange, tipoCaso, tipoServico, setTipoServico } = state;
+  const { 
+    isRecurso, setIsRecurso, handleTipoCasoChange, tipoCaso, 
+    tipoServico, setTipoServico, tipoCorte, setTipoCorte // Agora puxamos o tipoCorte do estado
+  } = state;
 
   return (
     <SectionBlock number={2} title="Tipo de Infração (Objeto)" description="Selecione o enquadramento do fato gerador do auto de infração">
@@ -308,7 +311,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviço</option>
-                <option value="corte_cavalete">Violação de corte de cavalete</option>
+                <option value="corte_cavalete">Violação de Corte</option> {/* Nome Alterado Aqui */}
                 <option value="hd">Hidrômetro danificado</option>
                 <option value="bypass">By-pass/Derivação Clandestina</option>
                 <option value="clandestina">Ligação Clandestina</option>
@@ -317,6 +320,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviços</option>
+                <option value="corte_cavalete">Violação de Corte</option> {/* Adicionado no Não Recurso também */}
                 <option value="la_padronizada">LA Padronizada</option>
                 <option value="la_cadastral">Atualização Cadastral</option>
                 <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
@@ -340,6 +344,20 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
             <button type="button" onClick={() => setTipoServico("voluntario")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "voluntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Voluntário</button>
             <button type="button" onClick={() => setTipoServico("involuntario")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoServico === "involuntario" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Involuntário</button>
+          </div>
+        </div>
+      )}
+
+      {/* NOVO BLOCO: APARECE QUANDO É VIOLAÇÃO DE CORTE */}
+      {tipoCaso === "corte_cavalete" && (
+        <div className="mt-4 p-4 bg-[#fff1f2] border border-[#f8cdd1] rounded-xl animate-fadeIn">
+          <div className="flex items-center gap-2 mb-2">
+            <Info size={14} className="text-rose-600" />
+            <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Qual o tipo de corte?</label>
+          </div>
+          <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
+            <button type="button" onClick={() => setTipoCorte("cavalete")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "cavalete" ? "bg-rose-600 text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Cavalete</button>
+            <button type="button" onClick={() => setTipoCorte("ramal")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "ramal" ? "bg-rose-600 text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Ramal</button>
           </div>
         </div>
       )}
