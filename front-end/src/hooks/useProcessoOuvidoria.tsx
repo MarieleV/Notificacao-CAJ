@@ -42,7 +42,7 @@ export function useProcessoOuvidoria() {
   const [tipoCorte, setTipoCorte] = useSessionStorage<"cavalete" | "ramal">("ouv_tipoCorte", "cavalete");
   const [foiMultado, setFoiMultado] = useSessionStorage<"sim" | "nao">("ouv_foiMultado", "nao");
 
-  const [deferirMotivo, setDeferirMotivo] = useSessionStorage<"la_padronizada" | "fato_novo" | null>("ouv_deferirMotivo", null);
+  const [deferirMotivo, setDeferirMotivo] = useSessionStorage<"la_padronizada" | "fato_novo" | "sem_padronizacao" | null>("ouv_deferirMotivo", null);
   const [fatoNovoStatus, setFatoNovoStatus] = useSessionStorage<"notificado" | "multado" | null>("ouv_fatoNovoStatus", null);
   const [faturaQuitada, setFaturaQuitada] = useSessionStorage<"fatura_quitada" | "fatura_nao_quitada" | null>("ouv_faturaQuitada", null);
   
