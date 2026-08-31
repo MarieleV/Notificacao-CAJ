@@ -435,7 +435,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
          <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
             <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Houve Solicitação para Padronização?</label>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDeferirMotivo("la_padronizada")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "la_padronizada" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Sim (Com Padronização)</button>
+              <button type="button" onClick={() => setDeferirMotivo("la_padronizada")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "la_padronizada" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Com Padronização</button>
               <button type="button" onClick={() => setDeferirMotivo("sem_padronizacao")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "sem_padronizacao" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Não</button>
             </div>
          </div>
@@ -474,7 +474,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
               </div>
               <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                 <button type="button" onClick={() => setFoiMultado("sim")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "sim" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Sim</button>
-                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Não (Apenas Notificado)</button>
+                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Apenas Notificado</button>
               </div>
             </div>
           )}
