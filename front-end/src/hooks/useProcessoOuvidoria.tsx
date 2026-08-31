@@ -39,7 +39,8 @@ export function useProcessoOuvidoria() {
   const [tipoCaso, setTipoCaso] = useSessionStorage<TipoCasoType>("ouv_tipoCaso", "leitura");
   const [decisao, setDecisao] = useSessionStorage<DecisaoType>("ouv_decisao", null);
   const [tipoServico, setTipoServico] = useSessionStorage<"voluntario" | "involuntario">("ouv_tipoServico", "involuntario");
-  const [tipoCorte, setTipoCorte] = useSessionStorage<"cavalete" | "ramal">("ouv_tipoCorte", "cavalete"); // NOVO ESTADO
+  const [tipoCorte, setTipoCorte] = useSessionStorage<"cavalete" | "ramal">("ouv_tipoCorte", "cavalete");
+  const [foiMultado, setFoiMultado] = useSessionStorage<"sim" | "nao">("ouv_foiMultado", "nao");
 
   const [deferirMotivo, setDeferirMotivo] = useSessionStorage<"la_padronizada" | "fato_novo" | null>("ouv_deferirMotivo", null);
   const [fatoNovoStatus, setFatoNovoStatus] = useSessionStorage<"notificado" | "multado" | null>("ouv_fatoNovoStatus", null);
