@@ -436,7 +436,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
             <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Houve Solicitação para Padronização?</label>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setDeferirMotivo("la_padronizada")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "la_padronizada" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Sim (Com Padronização)</button>
-              <button type="button" onClick={() => setDeferirMotivo(null)} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === null ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Não</button>
+              <button type="button" onClick={() => setDeferirMotivo("sem_padronizacao")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "sem_padronizacao" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Não</button>
             </div>
          </div>
       )}
