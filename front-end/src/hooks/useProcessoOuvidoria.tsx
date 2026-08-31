@@ -258,7 +258,7 @@ export function useProcessoOuvidoria() {
           
           if (tipoCaso === "corte_cavalete") {
             // LÓGICA UNIFICADA: Gera as 14 variações (7 para Ramal e 7 para Cavalete)
-            const isMultado = fatoNovoStatus === "multado";
+            const isMultado = foiMultado === "sim";
             const hasDefesa = historicoDefesa === "com_defesa";
             const hasPadronizacao = deferirMotivo === "la_padronizada";
 
@@ -547,6 +547,7 @@ export function useProcessoOuvidoria() {
     setCalcPrazo("15");
     setCalcCustomPrazo("");
     setCalcDataInicial("");
+    setFoiMultado("nao");
   }
 
   return {
@@ -558,6 +559,7 @@ export function useProcessoOuvidoria() {
     numAutoInfracao, setNumAutoInfracao, dataEmissaoFatura, setDataEmissaoFatura,
     dataManifestacao, setDataManifestacao, funcionario, setFuncionario, funcionarioBusca, setFuncionarioBusca,
     tipoCaso, setTipoCaso, decisao, setDecisao, tipoServico, setTipoServico, tipoCorte, setTipoCorte,
+    foiMultado, setFoiMultado, // <-- ADICIONADO AQUI!
     deferirMotivo, setDeferirMotivo, fatoNovoStatus, setFatoNovoStatus, faturaQuitada, setFaturaQuitada,
     dataGeracaoAI, setDataGeracaoAI, mesesSemAcesso, setMesesSemAcesso,
     dataConstatacaoInfracao, setDataConstatacaoInfracao, protServico, setProtServico,
