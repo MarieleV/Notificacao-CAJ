@@ -140,7 +140,7 @@ export function useProcessoOuvidoria() {
   const showRecebedorAR = !isSimples && (!isRecursoLSTC || isIndeferir || isCorte); 
   const showDataRecebimentoAR = isFatoNovo || isHd || isBypass || isClandestina || isProrrogacao || isCorte; 
   
-  const showDataAplicacaoSancao = (isFatoNovo && fatoNovoStatus === "multado") || (!isRecurso && hasDecisaoButtons) || (isCorte && fatoNovoStatus === "multado");
+  const showDataAplicacaoSancao = (isFatoNovo && fatoNovoStatus === "multado") || (!isRecurso && hasDecisaoButtons) || (isCorte && foiMultado === "sim");
   const showDataDecisaoAnterior = (!isRecurso && decisao === "indeferir" && !isSimples) || (isRecurso && (isBypass || isClandestina || isCorte));
   const showFaturaReferencia = !isProrrogacao && !isBypass && !isClandestina;
   const showDefesaCampos = hasDefesaToggle && historicoDefesa === "com_defesa";
