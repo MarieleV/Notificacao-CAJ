@@ -350,14 +350,14 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
 
       {/* NOVO BLOCO: APARECE QUANDO É VIOLAÇÃO DE CORTE */}
       {tipoCaso === "corte_cavalete" && (
-        <div className="mt-4 p-4 bg-[#fff1f2] border border-[#f8cdd1] rounded-xl animate-fadeIn">
+        <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
           <div className="flex items-center gap-2 mb-2">
-            <Info size={14} className="text-rose-600" />
-            <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Qual o tipo de corte?</label>
+            <Info size={14} className="text-[#1a5fa8]" />
+            <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">Qual o tipo de corte?</label>
           </div>
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
-            <button type="button" onClick={() => setTipoCorte("cavalete")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "cavalete" ? "bg-rose-600 text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Cavalete</button>
-            <button type="button" onClick={() => setTipoCorte("ramal")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "ramal" ? "bg-rose-600 text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Ramal</button>
+            <button type="button" onClick={() => setTipoCorte("cavalete")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "cavalete" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Cavalete</button>
+            <button type="button" onClick={() => setTipoCorte("ramal")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "ramal" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Ramal</button>
           </div>
         </div>
       )}
