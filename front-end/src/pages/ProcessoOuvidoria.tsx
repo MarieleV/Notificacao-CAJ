@@ -369,7 +369,8 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
   const {
     showSessao3, numSessao3, hasDecisaoButtons, decisao, handleDecisaoChange, deferirMotivo,
     setDeferirMotivo, setFatoNovoStatus, fatoNovoStatus, faturaQuitada, setFaturaQuitada,
-    hasDefesaToggle, historicoDefesa, setHistoricoDefesa
+    hasDefesaToggle, historicoDefesa, setHistoricoDefesa,
+    tipoCaso, foiMultado, setFoiMultado // <-- NOVOS ESTADOS ADICIONADOS AQUI
   } = state;
 
   if (!showSessao3) return null;
@@ -410,7 +411,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {hasDecisaoButtons && decisao === "deferir" && (
+      {hasDecisaoButtons && decisao === "deferir" && tipoCaso !== "corte_cavalete" && (
         <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
           <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Motivo do Deferimento</label>
           <div className="flex flex-wrap gap-2">
@@ -430,6 +431,16 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
         </div>
       )}
 
+      {hasDecisaoButtons && decisao === "deferir" && tipoCaso === "corte_cavalete" && (
+         <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
+            <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Houve Solicitação para Padronização?</label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setDeferirMotivo("la_padronizada")} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === "la_padronizada" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Sim (Com Padronização)</button>
+              <button type="button" onClick={() => setDeferirMotivo(null)} className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${deferirMotivo === null ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>Não</button>
+            </div>
+         </div>
+      )}
+
       {hasDecisaoButtons && decisao === "parcial" && (
         <div className="mt-4 p-4 border border-amber-200 bg-amber-50 rounded-xl animate-fadeIn">
           <label className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 block">A fatura foi quitada?</label>
@@ -441,7 +452,8 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
       )}
 
       {hasDefesaToggle && (
-        <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6" : "space-y-6"}>
+        <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-4" : "space-y-4"}>
+          
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
             <div className="flex items-center gap-2">
               <Info size={14} className="text-gray-400" />
@@ -452,6 +464,21 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
               <button type="button" onClick={() => setHistoricoDefesa("sem_defesa")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "sem_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Não</button>
             </div>
           </div>
+
+          {/* NOVO BLOCO: MULTA APLICADA */}
+          {tipoCaso === "corte_cavalete" && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <Info size={14} className="text-gray-400" />
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">A multa já foi aplicada?</label>
+              </div>
+              <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                <button type="button" onClick={() => setFoiMultado("sim")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "sim" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Sim</button>
+                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Não (Apenas Notificado)</button>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </SectionBlock>
