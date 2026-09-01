@@ -441,7 +441,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
          </div>
       )}
 
-      {hasDecisaoButtons && decisao === "parcial" && (
+      {hasDecisaoButtons && decisao === "parcial" && tipoCaso !== "corte_cavalete" && (
         <div className="mt-4 p-4 border border-amber-200 bg-amber-50 rounded-xl animate-fadeIn">
           <label className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 block">A fatura foi quitada?</label>
           <div className="flex flex-wrap gap-2">
