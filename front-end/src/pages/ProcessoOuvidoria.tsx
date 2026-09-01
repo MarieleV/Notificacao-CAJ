@@ -431,7 +431,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {hasDecisaoButtons && decisao === "deferir" && tipoCaso === "corte_cavalete" && (
+      {hasDecisaoButtons && (decisao === "deferir" || decisao === "parcial") && tipoCaso === "corte_cavalete" && (
          <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
             <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Houve Solicitação para Padronização?</label>
             <div className="flex flex-wrap gap-2">
