@@ -496,7 +496,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
               </div>
               <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                 <button type="button" onClick={() => setFoiMultado("sim")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "sim" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Sim</button>
-                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Não (Apenas Notificado)</button>
+                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Apenas Notificado</button>
               </div>
             </div>
           )}
