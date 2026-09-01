@@ -369,9 +369,29 @@ export function useProcessoOuvidoria() {
           }
         }
         // ── FLUXO: INDEFERIMENTO ──
+        // ── FLUXO: INDEFERIMENTO ──
         else {
           if (tipoCaso === "corte_cavalete") {
-             tpl = `**[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE -> INDEFERIDO]**`;
+            const isRamal = tipoCorte === "ramal";
+            const inciso = isRamal ? "XXII" : "X";
+            const incisoText = isRamal
+              ? "XXII - Restabelecimento irregular do abastecimento de água em ligações cortadas no ramal;"
+              : "X - Restabelecimento irregular do abastecimento de água em ligações cortadas no cavalete;";
+            
+            const hasDefesa = historicoDefesa === "com_defesa";
+
+            let p1_defesa = "";
+            if (hasDefesa) {
+                p1_defesa = `Foi apresentado defesa em ${tplDataDefesa} (Prot. ${tplProtDefesa}) e foi indeferida em ${tplDataIndeferimento} (Prot. ${tplProtIndeferimento}) e a sanção foi aplicada em ${tplAplicacao}, pois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\n${incisoText}`;
+            } else {
+                p1_defesa = `Como não houve apresentação de defesa nem a padronização obrigatória da ligação de água, a sanção foi aplicada em ${tplAplicacao} e consta na FAT ${tplFatura}.`;
+            }
+
+            const imagemText = isRamal
+              ? "Imagem1: Execução do corte de ramal. Leitura de corte: [0000]\nImagem2: Violação constatada pela reativação da ligação de água sem consentimento da CAJ e aumento do volume de água registrado. Leitura constatada: [0000]"
+              : "Imagem1: Execução do corte de cavalete com instalação de lacres e tubete de corte na cor vermelha. Leitura de corte: [0000]\nImagem2: Violação constatada pela ausência dos lacres, do tubete de corte e aumento do volume de água registrado. Leitura constatada: [0000]";
+
+            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. Objeto:** Multa por Violação do corte ${tipoCorte}\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidade administrativa relativa ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}. Dispositivo legal infringido: Artigo 144, inciso ${inciso} da Resolução 019/2019 - ARIS.\nFato gerador: Violação do corte de ${tipoCorte}\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, por ${tipoRecebimentoAI}, no endereço do imóvel, e recebido por ${tplRecebedor} em ${dataRecebimentoAI || "[DATA]"}.\n\n${p1_defesa}\n\nAnalisando os fatos, há registro de que foi confirmado a violação do corte conforme imagens abaixo.\n\nImagem 1                                                           Imagem 2\n\n${imagemText}\n\n**02. DECISÃO:** RATIFICAR a decisão realizada em ${tplDecisaoAnterior || "[DATA ANTERIOR]"}, MANTENDO a sanção aplicada.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: atendimento@aguasdejoinville.com.br`;
           } else {
             if (tipoCaso === "leitura") {
               tpl = `**Recurso protocolo ${tplProc}**\n**Morador:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** Aplicação de multas referente à impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso XII da Resolução 19/2019 - ARIS.\nFato Gerador: Impedimento involuntário para execução de leituras.\nMeses sem acesso: ${tplMeses}\nO Auto de Infração foi entregue, pelos Correios, no endereço do imóvel, e recebido por ${tplRecebedor}.\n\n${historicoDefesa === "com_defesa" ? `${paragrafoDefesaPrevia}` : ""}\nRevisando os fatos, [MANTEMOS A APLICAÇÃO POIS NÃO HÁ COMPROVAÇÃO DE IMPOSSIBILIDADE TÉCNICA].\n\n**02. DECISÃO:** As sanções impostas encontram-se estritamente amparadas na legislação vigente, em especial na Resolução Normativa ARIS nº 019/2019, que atribui ao usuário a responsabilidade por garantir o livre acesso à ligação para fins de leitura e pela adequação da ligação de água aos padrões técnicos exigidos.\nA previsão legal ou normativa que autoriza o cancelamento das multas regularmente aplicadas por não padronização da ligação de água, é regido pela Instrução Normativa CAJ nº 83/2025.\n\nNesta, consta o prazo de 30 dias úteis, contados da data de emissão da fatura, para solicitar revisão.\nNeste caso, a fatura ${tplFatura} foi emitida em ${dataEmissaoFatura || "[DATA DA EMISSÃO]"} e teria o prazo até dia ${tplDataLimite}. O recurso para revisão da fatura foi solicitado em ${dataManifestacao || "[DATA DA MANIFESTAÇÃO]"}; portanto, fora do prazo.\n\nDiante do exposto, ratifica-se integralmente a decisão proferida pelo Prestador de Serviços, mantendo-se as penalidades aplicadas, por estarem em conformidade com a legislação vigente e devidamente fundamentadas.\nA fatura nº ${tplFatura} permanece inalterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: **atendimento@aguasdejoinville.com.br**.\n\n${buildVantagensText()}`;
