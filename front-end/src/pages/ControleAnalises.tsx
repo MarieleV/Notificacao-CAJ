@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, CheckCircle, Calculator,
-  PieChart, AlertTriangle, FileCheck
+  PieChart, AlertTriangle, FileCheck, Filter
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises } from "./../hooks/useControleAnalises";
@@ -165,72 +165,124 @@ export function ControleAnalises() {
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1a5fa8] transition-colors" />
                     <input
                       type="text"
-                      placeholder="Buscar Matrícula, Código..."
+                      placeholder="Busca Global Rápida..."
                       value={hook.searchTerm}
                       onChange={(e) => hook.setSearchTerm(e.target.value)}
-                      className="w-full sm:w-72 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all shadow-sm"
+                      className="w-full sm:w-72 pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all shadow-sm"
                     />
                   </div>
                 }
               >
-                <div className="overflow-x-auto -mx-6 mb-[-24px]">
-                  <table className="w-full text-sm min-w-[950px]">
-                    <thead className="bg-gray-50 border-y border-gray-200">
+                
+                {/* ─── BARRA DE FILTROS AVANÇADOS (TOOLBAR) ─── */}
+                <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-gray-50/80 border border-gray-200 rounded-xl">
+                  <div className="flex items-center gap-2 mr-2">
+                    <Filter size={14} className="text-gray-400" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
+                  </div>
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Código (Ex: 426, 427)" 
+                    value={hook.filtroCodigo}
+                    onChange={(e) => hook.setFiltroCodigo(e.target.value)}
+                    className="w-40 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Filtrar por Responsável..." 
+                    value={hook.filtroFuncionario}
+                    onChange={(e) => hook.setFiltroFuncionario(e.target.value)}
+                    className="w-56 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+
+                  <div className="relative">
+                    <select 
+                      value={hook.filtroSituacao}
+                      onChange={(e) => hook.setFiltroSituacao(e.target.value)}
+                      className="w-36 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                    >
+                      <option value="Todas">Todas Situações</option>
+                      <option value="Vencida">Vencida</option>
+                      <option value="No Prazo">No Prazo</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── TABELA DE DADOS ─── */}
+                <div className="overflow-x-auto -mx-6 mb-[-24px] pb-6">
+                  <table className="w-full text-sm min-w-[950px] border-collapse">
+                    <thead className="bg-white border-b border-gray-200">
                       <tr>
-                        <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Abertura</th>
-                        <th className="px-4 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Código</th>
-                        <th className="px-4 py-3.5 text-left text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider">Matrícula</th>
-                        <th className="px-4 py-3.5 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">Padronizada</th>
-                        <th className="px-4 py-3.5 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Dias Corridos</th>
-                        <th className="px-4 py-3.5 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Atraso</th>
-                        <th className="px-4 py-3.5 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">Situação</th>
-                        <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Responsável</th>
+                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Abertura</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Código</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Matrícula</th>
+                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Padronizada</th>
+                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Dias Corridos</th>
+                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atraso</th>
+                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Situação</th>
+                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Responsável</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {hook.resultadosFiltrados.map((row) => (
-                        <tr key={row.id} className="hover:bg-blue-50/30 transition-colors group">
-                          <td className="px-6 py-4 text-xs font-medium text-gray-600 whitespace-nowrap">{row.dataAbertura}</td>
-                          <td className="px-4 py-4 text-xs font-mono font-semibold text-gray-500 bg-gray-50/50">{row.codigoServico}</td>
-                          <td className="px-4 py-4 text-sm font-black text-[#0b1e35] group-hover:text-[#1a5fa8] transition-colors">{row.matricula}</td>
+                        <tr key={row.id} className="hover:bg-[#f8fafe] transition-colors group">
+                          
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{row.dataAbertura}</td>
+                          
+                          <td className="px-4 py-4">
+                            <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-mono font-medium border border-gray-200">
+                              {row.codigoServico}
+                            </span>
+                          </td>
+                          
+                          <td className="px-4 py-4 text-sm font-semibold text-[#0b1e35]">{row.matricula}</td>
+                          
                           <td className="px-4 py-4 text-center">
                             {row.padronizada === "Sim" ? (
-                              <span className="inline-flex items-center justify-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                <CheckCircle size={10} strokeWidth={3}/> SIM
+                              <span className="inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-600">
+                                <CheckCircle2 size={14} /> Sim
                               </span>
                             ) : (
-                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">—</span>
+                              <span className="text-gray-300 font-medium text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-4 py-4 text-right text-xs font-medium text-gray-700">{row.diasTranscorridos} dias</td>
+                          
+                          <td className="px-4 py-4 text-right text-xs font-medium text-gray-600">{row.diasTranscorridos} dias</td>
+                          
                           <td className="px-4 py-4 text-right text-xs">
                             {row.diasAtraso > 0 ? (
-                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-black bg-red-50 text-red-600">
-                                +{row.diasAtraso}
-                              </span>
+                              <span className="font-bold text-red-500">{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
                             ) : (
-                              <span className="text-gray-300 font-bold">—</span>
+                              <span className="text-gray-300 font-medium">—</span>
                             )}
                           </td>
+                          
                           <td className="px-4 py-4 text-center">
                             {row.situacao === "Vencida" ? (
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-red-100 text-red-800 shadow-sm border border-red-200">
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
                                 VENCIDA
                               </span>
                             ) : (
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200">
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
                                 NO PRAZO
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[150px]">{row.funcionario}</td>
+                          
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[180px]">{row.funcionario}</td>
                         </tr>
                       ))}
+                      
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
                           <td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
-                            <Search size={32} className="mx-auto text-gray-300 mb-3" />
-                            Nenhum resultado encontrado para a busca.
+                            <Search size={32} className="mx-auto text-gray-200 mb-3" />
+                            Nenhum resultado encontrado para os filtros aplicados.
                           </td>
                         </tr>
                       )}
