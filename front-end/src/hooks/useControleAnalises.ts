@@ -65,7 +65,8 @@ export function useControleAnalises() {
         const ws = wb.Sheets[wsname];
         
         // raw: false força datas a virem formatadas como string (útil para extrair DD/MM/YYYY)
-        const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
+        // range: 4 faz a leitura ignorar as 4 primeiras linhas e usar a linha 5 como cabeçalho
+        const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false, range: 4 });
 
         if (tipo === "OP") setDadosOP(data);
         else setDados989(data);
