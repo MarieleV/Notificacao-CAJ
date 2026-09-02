@@ -65,7 +65,7 @@ export function useControleAnalises() {
         const ws = wb.Sheets[wsname];
         
         // raw: false força datas a virem formatadas como string (útil para extrair DD/MM/YYYY)
-        // range: 4 faz a leitura ignorar as 4 primeiras linhas e usar a linha 5 como cabeçalho
+        // range: 4 faz a leitura ignorar as 4 primeiras linhas (cabeçalho sujo) e usar a linha 5 como título das colunas
         const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false, range: 4 });
 
         if (tipo === "OP") setDadosOP(data);
@@ -96,11 +96,11 @@ export function useControleAnalises() {
       
       dados989.forEach(row => {
         const mat = String(row["Matrícula"] || row["Matricula"] || "").trim();
-        const codigo = String(row["Código"] || row["Codigo"] || "").trim();
+        const codigoRaw = String(row["Código"] || row["Codigo"] || row["Serviço Solicitado"] || "").trim();
         const situacao = String(row["Situação"] || row["Situacao"] || "").trim();
 
-        // Extrai apenas os números do código caso venha algo como "14201 IR - Instalação..."
-        const codNumerico = codigo.split(" ")[0]; 
+        // ETL 989: Extrai apenas os números do código caso venha algo como "14201 - Instalação..."
+        const codNumerico = codigoRaw.split("-")[0].trim().split(" ")[0]; 
 
         if (SITUACOES_VALIDAS_989.has(situacao) && CODIGOS_PADRONIZACAO.has(codNumerico)) {
           matriculasPadronizadas.add(mat);
@@ -114,22 +114,35 @@ export function useControleAnalises() {
       const processados: AnaliseProcessada[] = [];
 
       dadosOP.forEach((row, index) => {
-        // AJUSTE ESSES NOMES ("Data de Abertura", etc) de acordo com o cabeçalho EXATO do seu Excel
-        const dataAberturaRaw = String(row["Data de Abertura"] || row["Data"] || ""); 
-        const codigoServico = String(row["Código"] || row["Serviço"] || "").trim();
+        // --- PROCESSO DE ETL (EXTRAÇÃO E LIMPEZA) ---
+        
+        // A. Puxar os dados brutos lidando com as variações de nomes dos cabeçalhos
+        const dataAberturaRaw = String(row["Data de Solicitação"] || row["Data de Abertura"] || row["Data"] || ""); 
+        const servicoRaw = String(row["Serviço Solicitado"] || row["Código"] || row["Serviço"] || "").trim();
         const matricula = String(row["Matrícula"] || row["Matricula"] || "").trim();
-        const funcionario = String(row["Funcionário"] || row["Funcionario"] || "").trim();
+        const funcionarioRaw = String(row["Funcionário / Equipe"] || row["Usuário Solicitante"] || row["Nome do Proprietário"] || "").trim();
 
-        // Extrai só a data (DD/MM/YYYY) se vier com hora ("DD/MM/YYYY hh:mm")
+        // B. Transformação 1: Limpar a data. De "01/07/2025 09:30:39" para "01/07/2025"
         const dataAberturaLimpa = dataAberturaRaw.split(" ")[0];
 
-        // Se o código não for um dos monitorados, podemos pular (ou incluir como N/A, aqui vou assumir que todos na planilha precisam ser listados ou ignorados se não tiver prazo)
-        const prazoEsperado = PRAZOS_SERVICO[codigoServico];
-        if (!prazoEsperado) return; // Pula serviços que não têm prazo definido na regra
+        // C. Transformação 2: Limpar o serviço. De "426 - CFC - Análise..." para "426"
+        const codigoServico = servicoRaw.split("-")[0].trim().split(" ")[0];
 
+        // D. Transformação 3: Limpar nome do funcionário (remover "1-" caso venha "1-Administrador")
+        const funcionario = funcionarioRaw.replace(/^\d+-/, "").trim();
+
+        // ---------------------------------------------
+
+        // Se o código numérico limpo não for um dos monitorados, ignora e vai para o próximo
+        const prazoEsperado = PRAZOS_SERVICO[codigoServico];
+        if (!prazoEsperado) return; 
+
+        // Regra de Negócio: Cálculo de atraso com dias úteis
         const diasTranscorridos = getBusinessDaysDifference(dataAberturaLimpa, hojeStr);
         const diasAtraso = diasTranscorridos > prazoEsperado ? diasTranscorridos - prazoEsperado : 0;
         const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
+        
+        // Verifica se a matrícula bateu com o relatório 989
         const padronizada = matriculasPadronizadas.has(matricula) ? "Sim" : "Não";
 
         processados.push({
