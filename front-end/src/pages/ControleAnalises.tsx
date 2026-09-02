@@ -1,0 +1,300 @@
+import { 
+  FileText, UploadCloud, CheckCircle2, AlertCircle, 
+  Search, RefreshCw, FileSpreadsheet, Clock, CheckCircle, Calculator,
+  PieChart, AlertTriangle, FileCheck, Filter
+} from "lucide-react";
+import { SectionBlock } from "./../components/shared/SectionBlock";
+import { useControleAnalises } from "./../hooks/useControleAnalises";
+
+// ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
+function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
+  const styles = {
+    primary: "border-blue-100 text-blue-900",
+    success: "border-emerald-100 text-emerald-900",
+    danger: "border-red-100 text-red-900",
+    neutral: "border-gray-200 text-gray-800"
+  };
+  
+  const iconStyles = {
+    primary: "bg-blue-50 text-[#1a5fa8]",
+    success: "bg-emerald-50 text-emerald-600",
+    danger: "bg-red-50 text-red-600",
+    neutral: "bg-gray-100 text-gray-600"
+  };
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl bg-white border p-5 transition-all hover:shadow-md ${styles[type as keyof typeof styles]}`}>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</p>
+        <div className={`p-2 rounded-xl ${iconStyles[type as keyof typeof iconStyles]}`}>
+          <Icon size={16} strokeWidth={2.5} />
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <h3 className="text-3xl font-black tabular-nums tracking-tight">{value}</h3>
+      </div>
+      <p className="text-[11px] font-medium text-gray-400 mt-2">{subtitle}</p>
+    </div>
+  );
+}
+
+// ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
+export function ControleAnalises() {
+  const hook = useControleAnalises();
+
+  const total = hook.resultados.length;
+  const vencidas = hook.resultados.filter(r => r.situacao === "Vencida").length;
+  const noPrazo = total - vencidas;
+  const padronizadas = hook.resultados.filter(r => r.padronizada === "Sim").length;
+
+  return (
+    <div className="h-full flex flex-col">
+      
+      {/* ─── MODAL DE FEEDBACK ─── */}
+      {hook.fileModal && (
+        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col items-center text-center gap-4 transform transition-all scale-100">
+            {hook.fileModal.type === "success" && <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center ring-8 ring-emerald-50/50"><CheckCircle2 size={32} className="text-emerald-500" /></div>}
+            {hook.fileModal.type === "warning" && <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center ring-8 ring-amber-50/50"><AlertTriangle size={32} className="text-amber-500" /></div>}
+            {hook.fileModal.type === "error" && <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center ring-8 ring-red-50/50"><AlertCircle size={32} className="text-red-500" /></div>}
+            
+            <p className="text-sm font-medium text-gray-700 leading-relaxed mt-2">{hook.fileModal.message}</p>
+            
+            <button onClick={() => hook.setFileModal(null)} className="mt-4 w-full py-3 bg-[#0b1e35] hover:bg-[#1a5fa8] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg">
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── CABEÇALHO FIXO ─── */}
+      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
+        <div>
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-[#1a5fa8]" />
+            <h1 className="text-[#0b1e35] font-semibold text-lg">Controle de Análises Vencidas</h1>
+          </div>
+          <p className="text-gray-500 text-sm mt-0.5">Gestão inteligente de prazos e priorização de serviços.</p>
+        </div>
+      </div>
+
+      {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
+      <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
+        <div className="p-8 max-w-[1200px] mx-auto space-y-8">
+
+          {/* SESSÃO 1: UPLOAD (Estilo Dropzone) */}
+          <SectionBlock number={1} title="Importação de Relatórios" description="Carregue as planilhas extraídas do Sansys para realizar o cruzamento de dados">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              
+              {/* Box Upload OP00002 */}
+              <label htmlFor="up-op" className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${hook.fileNameOP ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-blue-200 bg-[#f8fafe] hover:bg-blue-50/50 hover:border-[#1a5fa8]'}`}>
+                <input id="up-op" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "OP")} className="hidden" />
+                
+                {hook.fileNameOP ? (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                      <CheckCircle2 size={24} className="text-emerald-600" />
+                    </div>
+                    <span className="font-bold text-sm text-emerald-800">Relatório OP00002 Anexado</span>
+                    <span className="text-xs text-emerald-600/80 font-medium truncate max-w-[200px] mt-1">{hook.fileNameOP}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud size={24} className="text-[#1a5fa8]" />
+                    </div>
+                    <span className="font-bold text-sm text-[#0b1e35]">Relatório OP00002</span>
+                    <span className="text-xs text-gray-400 font-medium mt-1">Clique para buscar o arquivo</span>
+                  </>
+                )}
+              </label>
+
+              {/* Box Upload 989 */}
+              <label htmlFor="up-989" className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${hook.fileName989 ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
+                <input id="up-989" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989")} className="hidden" />
+                
+                {hook.fileName989 ? (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                      <CheckCircle2 size={24} className="text-emerald-600" />
+                    </div>
+                    <span className="font-bold text-sm text-emerald-800">Relatório 989 Anexado</span>
+                    <span className="text-xs text-emerald-600/80 font-medium truncate max-w-[200px] mt-1">{hook.fileName989}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <FileSpreadsheet size={24} className="text-gray-500" />
+                    </div>
+                    <span className="font-bold text-sm text-[#0b1e35]">Relatório 989 (Opcional)</span>
+                    <span className="text-xs text-gray-400 font-medium mt-1">Base para match de padronização</span>
+                  </>
+                )}
+              </label>
+
+            </div>
+
+            <button
+              onClick={hook.processarDados}
+              disabled={hook.loading || hook.dadosOP.length === 0}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
+            >
+              {hook.loading ? <RefreshCw size={18} className="animate-spin" /> : <Calculator size={18} />}
+              Processar e Analisar Prazos
+            </button>
+          </SectionBlock>
+
+          {/* SESSÃO 2 E 3: RESULTADOS (Só aparece após processar) */}
+          {hook.resultados.length > 0 && (
+            <>
+              {/* KPIS MODERNOS */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 animate-fadeIn">
+                <KpiCard title="Total Analisado" value={total} subtitle="registros válidos" type="primary" icon={PieChart} />
+                <KpiCard title="No Prazo" value={noPrazo} subtitle="dias úteis <= prazo" type="success" icon={CheckCircle2} />
+                <KpiCard title="Vencidas" value={vencidas} subtitle="prazos extrapolados" type="danger" icon={AlertTriangle} />
+                <KpiCard title="Padronizadas" value={padronizadas} subtitle="match via relatório 989" type="neutral" icon={FileCheck} />
+              </div>
+
+              {/* TABELA DE RESULTADOS PREMIUM */}
+              <SectionBlock 
+                icon={FileText} 
+                title="Monitoramento Detalhado" 
+                description="Listagem completa ordenada da mais atrasada para a mais recente"
+                headerAction={
+                  <div className="relative group">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1a5fa8] transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Busca Global Rápida..."
+                      value={hook.searchTerm}
+                      onChange={(e) => hook.setSearchTerm(e.target.value)}
+                      className="w-full sm:w-72 pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all shadow-sm"
+                    />
+                  </div>
+                }
+              >
+                
+                {/* ─── BARRA DE FILTROS AVANÇADOS (TOOLBAR) ─── */}
+                <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-gray-50/80 border border-gray-200 rounded-xl">
+                  <div className="flex items-center gap-2 mr-2">
+                    <Filter size={14} className="text-gray-400" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
+                  </div>
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Código (Ex: 426, 427)" 
+                    value={hook.filtroCodigo}
+                    onChange={(e) => hook.setFiltroCodigo(e.target.value)}
+                    className="w-40 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Filtrar por Responsável..." 
+                    value={hook.filtroFuncionario}
+                    onChange={(e) => hook.setFiltroFuncionario(e.target.value)}
+                    className="w-56 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+
+                  <div className="relative">
+                    <select 
+                      value={hook.filtroSituacao}
+                      onChange={(e) => hook.setFiltroSituacao(e.target.value)}
+                      className="w-36 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                    >
+                      <option value="Todas">Todas Situações</option>
+                      <option value="Vencida">Vencida</option>
+                      <option value="No Prazo">No Prazo</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── TABELA DE DADOS ─── */}
+                <div className="overflow-x-auto -mx-6 mb-[-24px] pb-6">
+                  <table className="w-full text-sm min-w-[950px] border-collapse">
+                    <thead className="bg-white border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Abertura</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Código</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Matrícula</th>
+                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Padronizada</th>
+                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Dias Corridos</th>
+                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atraso</th>
+                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Situação</th>
+                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Responsável</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {hook.resultadosFiltrados.map((row) => (
+                        <tr key={row.id} className="hover:bg-[#f8fafe] transition-colors group">
+                          
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{row.dataAbertura}</td>
+                          
+                          <td className="px-4 py-4">
+                            <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-mono font-medium border border-gray-200">
+                              {row.codigoServico}
+                            </span>
+                          </td>
+                          
+                          <td className="px-4 py-4 text-sm font-semibold text-[#0b1e35]">{row.matricula}</td>
+                          
+                          <td className="px-4 py-4 text-center">
+                            {row.padronizada === "Sim" ? (
+                              <span className="inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-600">
+                                <CheckCircle2 size={14} /> Sim
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-medium text-xs">—</span>
+                            )}
+                          </td>
+                          
+                          <td className="px-4 py-4 text-right text-xs font-medium text-gray-600">{row.diasTranscorridos} dias</td>
+                          
+                          <td className="px-4 py-4 text-right text-xs">
+                            {row.diasAtraso > 0 ? (
+                              <span className="font-bold text-red-500">{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
+                            ) : (
+                              <span className="text-gray-300 font-medium">—</span>
+                            )}
+                          </td>
+                          
+                          <td className="px-4 py-4 text-center">
+                            {row.situacao === "Vencida" ? (
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+                                VENCIDA
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                NO PRAZO
+                              </span>
+                            )}
+                          </td>
+                          
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[180px]">{row.funcionario}</td>
+                        </tr>
+                      ))}
+                      
+                      {hook.resultadosFiltrados.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
+                            <Search size={32} className="mx-auto text-gray-200 mb-3" />
+                            Nenhum resultado encontrado para os filtros aplicados.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionBlock>
+            </>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
