@@ -7,7 +7,8 @@ import {
   Scale, 
   ChevronRight, 
   ChevronLeft,
-  Building2 
+  Building2,
+  Clock // <-- Ícone novo importado para a nova tela
 } from "lucide-react";
 import { ElementType } from "react";
 
@@ -18,7 +19,7 @@ interface NavItemProps {
   title: string;
   subtitle: string;
   end?: boolean;
-  isCollapsed: boolean; // <-- Nova propriedade
+  isCollapsed: boolean;
 }
 
 function NavItem({ to, icon: Icon, title, subtitle, end = false, isCollapsed }: NavItemProps) {
@@ -139,6 +140,14 @@ export function Layout() {
             subtitle="Cálculo e Referência" 
             isCollapsed={isCollapsed}
           />
+
+          <NavItem 
+            to="/controle-analises" 
+            icon={Clock} 
+            title="Análises Vencidas" 
+            subtitle="Controle de Prazos" 
+            isCollapsed={isCollapsed}
+          />
           
           <NavItem 
             to="/ouvidoria" 
@@ -147,6 +156,7 @@ export function Layout() {
             subtitle="Análise de Processos" 
             isCollapsed={isCollapsed}
           />
+
         </nav>
 
         {/* Footer */}
