@@ -68,15 +68,13 @@ export function ControleAnalises() {
       )}
 
       {/* ─── CABEÇALHO FIXO ─── */}
-      <div className="bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between flex-shrink-0 z-10 relative shadow-sm">
+      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-[#eef6ff] rounded-lg">
-              <Clock size={18} className="text-[#1a5fa8]" />
-            </div>
-            <h1 className="text-[#0b1e35] font-bold text-lg tracking-tight">Controle de Análises Vencidas</h1>
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-[#1a5fa8]" />
+            <h1 className="text-[#0b1e35] font-semibold text-lg">Controle de Análises Vencidas</h1>
           </div>
-          <p className="text-gray-500 text-xs mt-1 font-medium ml-9">Gestão inteligente de prazos e priorização de serviços.</p>
+          <p className="text-gray-500 text-sm mt-0.5">Gestão inteligente de prazos e priorização de serviços.</p>
         </div>
       </div>
 
