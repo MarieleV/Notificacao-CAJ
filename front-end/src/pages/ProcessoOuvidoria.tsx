@@ -285,7 +285,10 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
 }
 
 function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
-  const { isRecurso, setIsRecurso, handleTipoCasoChange, tipoCaso, tipoServico, setTipoServico } = state;
+  const { 
+    isRecurso, setIsRecurso, handleTipoCasoChange, tipoCaso, 
+    tipoServico, setTipoServico, tipoCorte, setTipoCorte // Agora puxamos o tipoCorte do estado
+  } = state;
 
   return (
     <SectionBlock number={2} title="Tipo de Infração (Objeto)" description="Selecione o enquadramento do fato gerador do auto de infração">
@@ -308,7 +311,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviço</option>
-                <option value="corte_cavalete">Violação de corte de cavalete</option>
+                <option value="corte_cavalete">Violação de Corte</option> {/* Nome Alterado Aqui */}
                 <option value="hd">Hidrômetro danificado</option>
                 <option value="bypass">By-pass/Derivação Clandestina</option>
                 <option value="clandestina">Ligação Clandestina</option>
@@ -317,6 +320,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviços</option>
+                <option value="corte_cavalete">Violação de Corte</option> {/* Adicionado no Não Recurso também */}
                 <option value="la_padronizada">LA Padronizada</option>
                 <option value="la_cadastral">Atualização Cadastral</option>
                 <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
@@ -343,6 +347,20 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
           </div>
         </div>
       )}
+
+      {/* NOVO BLOCO: APARECE QUANDO É VIOLAÇÃO DE CORTE */}
+      {tipoCaso === "corte_cavalete" && (
+        <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
+          <div className="flex items-center gap-2 mb-2">
+            <Info size={14} className="text-[#1a5fa8]" />
+            <label className="text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">Qual o tipo de corte?</label>
+          </div>
+          <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-max">
+            <button type="button" onClick={() => setTipoCorte("cavalete")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "cavalete" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Cavalete</button>
+            <button type="button" onClick={() => setTipoCorte("ramal")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${tipoCorte === "ramal" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Ramal</button>
+          </div>
+        </div>
+      )}
     </SectionBlock>
   );
 }
@@ -351,7 +369,8 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
   const {
     showSessao3, numSessao3, hasDecisaoButtons, decisao, handleDecisaoChange, deferirMotivo,
     setDeferirMotivo, setFatoNovoStatus, fatoNovoStatus, faturaQuitada, setFaturaQuitada,
-    hasDefesaToggle, historicoDefesa, setHistoricoDefesa
+    hasDefesaToggle, historicoDefesa, setHistoricoDefesa,
+    tipoCaso, foiMultado, setFoiMultado // <-- NOVOS ESTADOS ADICIONADOS AQUI
   } = state;
 
   if (!showSessao3) return null;
@@ -392,7 +411,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {hasDecisaoButtons && decisao === "deferir" && (
+      {hasDecisaoButtons && decisao === "deferir" && tipoCaso !== "corte_cavalete" && (
         <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
           <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">Motivo do Deferimento</label>
           <div className="flex flex-wrap gap-2">
@@ -412,7 +431,39 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {hasDecisaoButtons && decisao === "parcial" && (
+      {hasDecisaoButtons && decisao === "deferir" && tipoCaso === "corte_cavalete" && (
+         <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50 rounded-xl animate-fadeIn">
+            <label className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 block">
+              Houve Solicitação para Padronização?
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                type="button" 
+                onClick={() => setDeferirMotivo("la_padronizada")} 
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${
+                  deferirMotivo === "la_padronizada" 
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" 
+                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                }`}
+              >
+                Com Padronização
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setDeferirMotivo("sem_padronizacao")} 
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border ${
+                  deferirMotivo === "sem_padronizacao" 
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" 
+                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                }`}
+              >
+                Não
+              </button>
+            </div>
+         </div>
+      )}
+
+      {hasDecisaoButtons && decisao === "parcial" && tipoCaso !== "corte_cavalete" && (
         <div className="mt-4 p-4 border border-amber-200 bg-amber-50 rounded-xl animate-fadeIn">
           <label className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 block">A fatura foi quitada?</label>
           <div className="flex flex-wrap gap-2">
@@ -423,7 +474,8 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
       )}
 
       {hasDefesaToggle && (
-        <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-6" : "space-y-6"}>
+        <div className={hasDecisaoButtons ? "mt-6 pt-6 border-t border-gray-100 animate-fadeIn space-y-4" : "space-y-4"}>
+          
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
             <div className="flex items-center gap-2">
               <Info size={14} className="text-gray-400" />
@@ -434,6 +486,21 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
               <button type="button" onClick={() => setHistoricoDefesa("sem_defesa")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${historicoDefesa === "sem_defesa" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Não</button>
             </div>
           </div>
+
+          {/* NOVO BLOCO: MULTA APLICADA */}
+          {tipoCaso === "corte_cavalete" && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <Info size={14} className="text-gray-400" />
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">A multa já foi aplicada?</label>
+              </div>
+              <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                <button type="button" onClick={() => setFoiMultado("sim")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "sim" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Sim</button>
+                <button type="button" onClick={() => setFoiMultado("nao")} className={`px-6 py-1.5 text-xs font-semibold rounded-md transition-all ${foiMultado === "nao" ? "bg-[#1a5fa8] text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"}`}>Apenas Notificado</button>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </SectionBlock>
