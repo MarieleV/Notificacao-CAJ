@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -48,9 +48,9 @@ export function ControleAnalises() {
   const qtdVencidas = vencidasArr.length;
   const noPrazo = total - qtdVencidas;
 
-  // NOVO CÁLCULO: Cruzamento 989 CAJ x Cliente
-  const concluidos = data.filter(r => r.statusCAJ.includes("Encerrado - Executado") && r.statusCliente === "—").length;
-  const pendentesCAJ = data.filter(r => r.statusCliente !== "—" && r.statusCAJ === "—").length;
+  // NOVO CÁLCULO: Padronizadas vs Restantes
+  const padronizadas = data.filter(r => r.isPadronizado).length;
+  const naoPadronizadas = total - padronizadas;
   
   // Criticidade de Atraso
   const diasAtrasoTotal = vencidasArr.reduce((acc, curr) => acc + curr.diasAtraso, 0);
@@ -226,23 +226,22 @@ export function ControleAnalises() {
                   </div>
                 </div>
 
-                {/* KPI 2: Status Operacional (CAJ x Cliente) */}
+                {/* KPI 2: Padronizadas vs Não Padronizadas */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pendente (CAJ)</p>
-                      <h3 className="text-3xl font-black text-indigo-600 mt-2">{pendentesCAJ}</h3>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Padronizadas</p>
+                      <h3 className="text-3xl font-black text-emerald-600 mt-2">{padronizadas}</h3>
                     </div>
-                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><RefreshCw size={20} /></div>
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><FileCheck size={20} /></div>
                   </div>
                   <div className="mt-5">
                     <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-1.5">
-                      <span className="text-indigo-600">Ação CAJ</span>
-                      <span className="text-emerald-500">{concluidos} Concluídos</span>
+                      <span className="text-emerald-600">{padronizadas} Padronizadas</span>
+                      <span className="text-gray-500">{naoPadronizadas} Restantes</span>
                     </div>
                     <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
-                      <div className="h-full bg-indigo-500 transition-all duration-500" title="Pendentes" style={{ width: `${total > 0 ? (pendentesCAJ/total)*100 : 0}%` }}></div>
-                      <div className="h-full bg-emerald-500 transition-all duration-500" title="Concluídos" style={{ width: `${total > 0 ? (concluidos/total)*100 : 0}%` }}></div>
+                      <div className="h-full bg-emerald-500 transition-all duration-500" title="Padronizadas" style={{ width: `${total > 0 ? (padronizadas/total)*100 : 0}%` }}></div>
                     </div>
                   </div>
                 </div>
@@ -427,7 +426,6 @@ export function ControleAnalises() {
                             )}
                           </td>
 
-                          {/* NOVA CÉLULA PADRONIZADO (Lógica verde) */}
                           <td className="px-2 py-3 text-center">
                             {row.isPadronizado ? (
                               <span className="inline-flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
@@ -464,7 +462,6 @@ export function ControleAnalises() {
                         </tr>
                       ))}
                       
-                      {/* O colSpan foi ajustado para 10 colunas */}
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
                           <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
