@@ -1,8 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
-  Search, RefreshCw, FileSpreadsheet, Clock, CheckCircle, Calculator,
-  PieChart, AlertTriangle, FileCheck, Filter,
-  ArrowUpDown, ArrowDown, ArrowUp
+  Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -12,15 +11,13 @@ function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
   const styles = {
     primary: "border-blue-100 text-blue-900",
     success: "border-emerald-100 text-emerald-900",
-    danger: "border-red-100 text-red-900",
-    neutral: "border-gray-200 text-gray-800"
+    danger: "border-red-100 text-red-900"
   };
   
   const iconStyles = {
     primary: "bg-blue-50 text-[#1a5fa8]",
     success: "bg-emerald-50 text-emerald-600",
-    danger: "bg-red-50 text-red-600",
-    neutral: "bg-gray-100 text-gray-600"
+    danger: "bg-red-50 text-red-600"
   };
 
   return (
@@ -46,7 +43,6 @@ export function ControleAnalises() {
   const total = hook.resultados.length;
   const vencidas = hook.resultados.filter(r => r.situacao === "Vencida").length;
   const noPrazo = total - vencidas;
-  const padronizadas = hook.resultados.filter(r => r.padronizada === "Sim").length;
 
   // Renderizador do Ícone de Ordenação (Setinhas)
   const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
@@ -195,14 +191,13 @@ export function ControleAnalises() {
           {hook.resultados.length > 0 && (
             <>
               {/* KPIS MODERNOS */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 animate-fadeIn">
                 <KpiCard title="Total Analisado" value={total} subtitle="registros válidos" type="primary" icon={PieChart} />
                 <KpiCard title="No Prazo" value={noPrazo} subtitle="dias úteis <= prazo" type="success" icon={CheckCircle2} />
                 <KpiCard title="Vencidas" value={vencidas} subtitle="prazos extrapolados" type="danger" icon={AlertTriangle} />
-                <KpiCard title="Padronizadas" value={padronizadas} subtitle="match via relatórios" type="neutral" icon={FileCheck} />
               </div>
 
-              {/* TABELA DE RESULTADOS (COMPACTA) */}
+              {/* TABELA DE RESULTADOS (COMPACTA E ORDENÁVEL) */}
               <SectionBlock 
                 icon={FileText} 
                 title="Monitoramento Detalhado" 
@@ -225,7 +220,7 @@ export function ControleAnalises() {
                 <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-gray-50/80 border border-gray-200 rounded-xl">
                   <div className="flex items-center gap-2 mr-2">
                     <Filter size={14} className="text-gray-400" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros Avançados</span>
                   </div>
                   
                   <input 
@@ -233,7 +228,23 @@ export function ControleAnalises() {
                     placeholder="Código (Ex: 426, 427)" 
                     value={hook.filtroCodigo}
                     onChange={(e) => hook.setFiltroCodigo(e.target.value)}
-                    className="w-40 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+
+                  <input 
+                    type="text" 
+                    placeholder="Status Cliente..." 
+                    value={hook.filtroStatusCliente}
+                    onChange={(e) => hook.setFiltroStatusCliente(e.target.value)}
+                    className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                  />
+
+                  <input 
+                    type="text" 
+                    placeholder="Status CAJ..." 
+                    value={hook.filtroStatusCAJ}
+                    onChange={(e) => hook.setFiltroStatusCAJ(e.target.value)}
+                    className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
                   
                   <input 
@@ -241,16 +252,16 @@ export function ControleAnalises() {
                     placeholder="Filtrar por Responsável..." 
                     value={hook.filtroFuncionario}
                     onChange={(e) => hook.setFiltroFuncionario(e.target.value)}
-                    className="w-56 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="flex-1 min-w-[150px] px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
                   <div className="relative">
                     <select 
                       value={hook.filtroSituacao}
                       onChange={(e) => hook.setFiltroSituacao(e.target.value)}
-                      className="w-36 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                      className="w-32 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
                     >
-                      <option value="Todas">Todas Situações</option>
+                      <option value="Todas">Situação (Todas)</option>
                       <option value="Vencida">Vencida</option>
                       <option value="No Prazo">No Prazo</option>
                     </select>
@@ -260,7 +271,7 @@ export function ControleAnalises() {
                   </div>
                 </div>
 
-                {/* ─── TABELA DE DADOS (ALTURA FIXA E ORDENÁVEL) ─── */}
+                {/* ─── TABELA DE DADOS (ALTURA FIXA COMPACTA E ORDENÁVEL) ─── */}
                 <div className="overflow-auto max-h-[450px] -mx-4 mb-[-24px] custom-scrollbar border-t border-gray-100">
                   <table className="w-full text-sm min-w-[900px] border-collapse relative">
                     <thead className="sticky top-0 z-20">
@@ -283,10 +294,6 @@ export function ControleAnalises() {
                         
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCAJ')}>
                           <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ <SortIcon columnKey="statusCAJ" /></div>
-                        </th>
-                        
-                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('padronizada')}>
-                          <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Padrão <SortIcon columnKey="padronizada" /></div>
                         </th>
                         
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-right group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('diasTranscorridos')}>
@@ -323,7 +330,7 @@ export function ControleAnalises() {
                           {/* STATUS CLIENTE */}
                           <td className="px-2 py-3">
                             {row.statusCliente !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCliente}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
                                 {row.statusCliente}
                               </span>
                             ) : (
@@ -334,18 +341,8 @@ export function ControleAnalises() {
                           {/* STATUS CAJ */}
                           <td className="px-2 py-3">
                             {row.statusCAJ !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCAJ}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
                                 {row.statusCAJ}
-                              </span>
-                            ) : (
-                              <span className="text-gray-300 font-medium text-[10px]">—</span>
-                            )}
-                          </td>
-                          
-                          <td className="px-2 py-3 text-center">
-                            {row.padronizada === "Sim" ? (
-                              <span className="inline-flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600">
-                                <CheckCircle2 size={12} strokeWidth={3} /> Sim
                               </span>
                             ) : (
                               <span className="text-gray-300 font-medium text-[10px]">—</span>
@@ -374,13 +371,13 @@ export function ControleAnalises() {
                             )}
                           </td>
                           
-                          <td className="px-4 py-3 text-[11px] font-medium text-gray-500 truncate max-w-[130px]">{row.funcionario}</td>
+                          <td className="px-4 py-3 text-[11px] font-medium text-gray-500 truncate max-w-[150px]">{row.funcionario}</td>
                         </tr>
                       ))}
                       
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
+                          <td colSpan={9} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
                             <Search size={28} className="mx-auto text-gray-200 mb-2" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
