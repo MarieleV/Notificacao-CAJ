@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp
+  PieChart, AlertTriangle, FileCheck, Filter, ArrowUpDown, ArrowDown, ArrowUp
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -330,7 +330,7 @@ export function ControleAnalises() {
                           {/* STATUS CLIENTE */}
                           <td className="px-2 py-3">
                             {row.statusCliente !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCliente}>
                                 {row.statusCliente}
                               </span>
                             ) : (
@@ -341,7 +341,7 @@ export function ControleAnalises() {
                           {/* STATUS CAJ */}
                           <td className="px-2 py-3">
                             {row.statusCAJ !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCAJ}>
                                 {row.statusCAJ}
                               </span>
                             ) : (
@@ -353,7 +353,7 @@ export function ControleAnalises() {
                           
                           <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
                             {row.diasAtraso > 0 ? (
-                              <span className="font-bold text-red-500">+{row.diasAtraso} d</span>
+                              <span className="font-bold text-red-500">+{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
                             ) : (
                               <span className="text-gray-300 font-medium">—</span>
                             )}
@@ -371,7 +371,7 @@ export function ControleAnalises() {
                             )}
                           </td>
                           
-                          <td className="px-4 py-3 text-[11px] font-medium text-gray-500 truncate max-w-[150px]">{row.funcionario}</td>
+                          <td className="px-4 py-3 text-[11px] font-medium text-gray-500 truncate max-w-[130px]">{row.funcionario}</td>
                         </tr>
                       ))}
                       
