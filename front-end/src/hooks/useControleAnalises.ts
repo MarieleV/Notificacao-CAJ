@@ -16,6 +16,7 @@ export interface AnaliseProcessada {
   situacao: "No Prazo" | "Vencida";
   statusCliente: string;
   statusCAJ: string;
+  isPadronizado: boolean; // <-- NOVA PROPRIEDADE
 }
 
 const PRAZOS_SERVICO: Record<string, number> = {
@@ -134,6 +135,12 @@ export function useControleAnalises() {
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
 
+        // --- NOVA LÓGICA DE PADRONIZADO ---
+        const statusClienteValidos = ["para reprogramar", "pendente", "programado", "postergada"];
+        const isPadronizado = 
+          statusClienteValidos.includes(statusCliente.toLowerCase()) && 
+          statusCAJ.toLowerCase().includes("encerrado - executado");
+
         processados.push({
           id: `${matricula}-${index}`,
           dataAbertura: dataAberturaLimpa,
@@ -144,7 +151,8 @@ export function useControleAnalises() {
           diasAtraso,
           situacao,
           statusCliente,
-          statusCAJ 
+          statusCAJ,
+          isPadronizado // <-- INJETADO AQUI
         });
       });
 
@@ -204,6 +212,10 @@ export function useControleAnalises() {
     } else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula" || sortConfig.key === "diasTranscorridos" || sortConfig.key === "diasAtraso") {
       aValue = Number(String(aValue).replace(/\D/g, ''));
       bValue = Number(String(bValue).replace(/\D/g, ''));
+    } else if (sortConfig.key === "isPadronizado") {
+      // Ordenação para booleanos
+      aValue = aValue ? 1 : 0;
+      bValue = bValue ? 1 : 0;
     }
 
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
