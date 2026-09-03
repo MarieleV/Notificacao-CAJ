@@ -80,14 +80,16 @@ export function ControleAnalises() {
 
       {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
       <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
+        {/* AQUI FOI CORRIGIDO PARA max-w-[1200px] (Devolvendo as margens laterais) */}
         <div className="p-8 max-w-[1200px] mx-auto space-y-8">
 
-          {/* SESSÃO 1: UPLOAD (Estilo Dropzone) */}
+          {/* SESSÃO 1: UPLOAD */}
           <SectionBlock number={1} title="Importação de Relatórios" description="Carregue as planilhas extraídas do Sansys para realizar o cruzamento de dados">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               
-              {/* Box Upload OP00002 */}
-              <label htmlFor="up-op" className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${hook.fileNameOP ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-blue-200 bg-[#f8fafe] hover:bg-blue-50/50 hover:border-[#1a5fa8]'}`}>
+              {/* COLUNA ESQUERDA: Box Upload OP00002 */}
+              <label htmlFor="up-op" className={`h-full relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileNameOP ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-blue-200 bg-[#f8fafe] hover:bg-blue-50/50 hover:border-[#1a5fa8]'}`}>
                 <input id="up-op" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "OP")} className="hidden" />
                 
                 {hook.fileNameOP ? (
@@ -95,49 +97,84 @@ export function ControleAnalises() {
                     <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
                       <CheckCircle2 size={24} className="text-emerald-600" />
                     </div>
-                    <span className="font-bold text-sm text-emerald-800">Relatório OP00002 Anexado</span>
-                    <span className="text-xs text-emerald-600/80 font-medium truncate max-w-[200px] mt-1">{hook.fileNameOP}</span>
+                    <span className="font-bold text-sm text-emerald-800 text-center">Relatório OP00002 Anexado</span>
+                    <span className="text-xs text-emerald-600/80 font-medium truncate max-w-[250px] mt-1">{hook.fileNameOP}</span>
                   </>
                 ) : (
                   <>
                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                       <UploadCloud size={24} className="text-[#1a5fa8]" />
                     </div>
-                    <span className="font-bold text-sm text-[#0b1e35]">Relatório OP00002</span>
-                    <span className="text-xs text-gray-400 font-medium mt-1">Clique para buscar o arquivo</span>
+                    <span className="font-bold text-sm text-[#0b1e35] text-center">Relatório OP00002</span>
+                    <span className="text-[11px] text-gray-400 font-medium mt-1">Base Obrigatória</span>
                   </>
                 )}
               </label>
 
-              {/* Box Upload 989 */}
-              <label htmlFor="up-989" className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${hook.fileName989 ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
-                <input id="up-989" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989")} className="hidden" />
+              {/* COLUNA DIREITA: Empilhamento Horizontal Compacto dos 989 */}
+              <div className="flex flex-col gap-4">
                 
-                {hook.fileName989 ? (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
-                      <CheckCircle2 size={24} className="text-emerald-600" />
-                    </div>
-                    <span className="font-bold text-sm text-emerald-800">Relatório 989 Anexado</span>
-                    <span className="text-xs text-emerald-600/80 font-medium truncate max-w-[200px] mt-1">{hook.fileName989}</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <FileSpreadsheet size={24} className="text-gray-500" />
-                    </div>
-                    <span className="font-bold text-sm text-[#0b1e35]">Relatório 989 (Opcional)</span>
-                    <span className="text-xs text-gray-400 font-medium mt-1">Base para match de padronização</span>
-                  </>
-                )}
-              </label>
+                {/* Box Upload 989 - STATUS CLIENTE */}
+                <label htmlFor="up-989-cliente" className={`flex-1 relative flex items-center p-4 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileName989Cliente ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
+                  <input id="up-989-cliente" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989_Cliente")} className="hidden" />
+                  
+                  {hook.fileName989Cliente ? (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-4">
+                        <CheckCircle2 size={20} className="text-emerald-600" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="font-bold text-xs text-emerald-800">989 Status Cliente Anexado</span>
+                        <span className="text-[10px] text-emerald-600/80 font-medium truncate mt-0.5">{hook.fileName989Cliente}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mr-4 group-hover:scale-110 transition-transform">
+                        <FileSpreadsheet size={20} className="text-gray-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status Cliente</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional (PROCV)</span>
+                      </div>
+                    </>
+                  )}
+                </label>
+
+                {/* Box Upload 989 - STATUS CAJ */}
+                <label htmlFor="up-989-caj" className={`flex-1 relative flex items-center p-4 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileName989CAJ ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
+                  <input id="up-989-caj" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989_CAJ")} className="hidden" />
+                  
+                  {hook.fileName989CAJ ? (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-4">
+                        <CheckCircle2 size={20} className="text-emerald-600" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="font-bold text-xs text-emerald-800">989 Status CAJ Anexado</span>
+                        <span className="text-[10px] text-emerald-600/80 font-medium truncate mt-0.5">{hook.fileName989CAJ}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mr-4 group-hover:scale-110 transition-transform">
+                        <FileSpreadsheet size={20} className="text-gray-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status CAJ</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional (PROCV)</span>
+                      </div>
+                    </>
+                  )}
+                </label>
+              </div>
 
             </div>
 
             <button
               onClick={hook.processarDados}
               disabled={hook.loading || hook.dadosOP.length === 0}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none"
             >
               {hook.loading ? <RefreshCw size={18} className="animate-spin" /> : <Calculator size={18} />}
               Processar e Analisar Prazos
@@ -152,7 +189,7 @@ export function ControleAnalises() {
                 <KpiCard title="Total Analisado" value={total} subtitle="registros válidos" type="primary" icon={PieChart} />
                 <KpiCard title="No Prazo" value={noPrazo} subtitle="dias úteis <= prazo" type="success" icon={CheckCircle2} />
                 <KpiCard title="Vencidas" value={vencidas} subtitle="prazos extrapolados" type="danger" icon={AlertTriangle} />
-                <KpiCard title="Padronizadas" value={padronizadas} subtitle="match via relatório 989" type="neutral" icon={FileCheck} />
+                <KpiCard title="Padronizadas" value={padronizadas} subtitle="match via relatórios" type="neutral" icon={FileCheck} />
               </div>
 
               {/* TABELA DE RESULTADOS PREMIUM */}
@@ -214,13 +251,15 @@ export function ControleAnalises() {
                 </div>
 
                 {/* ─── TABELA DE DADOS ─── */}
-                <div className="overflow-x-auto -mx-6 mb-[-24px] pb-6">
-                  <table className="w-full text-sm min-w-[950px] border-collapse">
+                <div className="overflow-x-auto -mx-6 mb-[-24px] pb-6 custom-scrollbar">
+                  <table className="w-full text-sm min-w-[1250px] border-collapse">
                     <thead className="bg-white border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Abertura</th>
                         <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Código</th>
-                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Matrícula</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">Matrícula</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status Cliente</th>
+                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ</th>
                         <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Padronizada</th>
                         <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Dias Corridos</th>
                         <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atraso</th>
@@ -241,6 +280,28 @@ export function ControleAnalises() {
                           </td>
                           
                           <td className="px-4 py-4 text-sm font-semibold text-[#0b1e35]">{row.matricula}</td>
+
+                          {/* STATUS CLIENTE */}
+                          <td className="px-4 py-4">
+                            {row.statusCliente !== "—" ? (
+                              <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
+                                {row.statusCliente}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-medium text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* STATUS CAJ */}
+                          <td className="px-4 py-4">
+                            {row.statusCAJ !== "—" ? (
+                              <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
+                                {row.statusCAJ}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-medium text-xs">—</span>
+                            )}
+                          </td>
                           
                           <td className="px-4 py-4 text-center">
                             {row.padronizada === "Sim" ? (
@@ -274,13 +335,13 @@ export function ControleAnalises() {
                             )}
                           </td>
                           
-                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[180px]">{row.funcionario}</td>
+                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[150px]">{row.funcionario}</td>
                         </tr>
                       ))}
                       
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
+                          <td colSpan={10} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
                             <Search size={32} className="mx-auto text-gray-200 mb-3" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
