@@ -6,6 +6,36 @@ import {
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
+// ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
+function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
+  const styles = {
+    primary: "border-blue-100 text-blue-900",
+    success: "border-emerald-100 text-emerald-900",
+    danger: "border-red-100 text-red-900"
+  };
+  
+  const iconStyles = {
+    primary: "bg-blue-50 text-[#1a5fa8]",
+    success: "bg-emerald-50 text-emerald-600",
+    danger: "bg-red-50 text-red-600"
+  };
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl bg-white border p-5 transition-all hover:shadow-md ${styles[type as keyof typeof styles]}`}>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</p>
+        <div className={`p-2 rounded-xl ${iconStyles[type as keyof typeof iconStyles]}`}>
+          <Icon size={16} strokeWidth={2.5} />
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <h3 className="text-3xl font-black tabular-nums tracking-tight">{value}</h3>
+      </div>
+      <p className="text-[11px] font-medium text-gray-400 mt-2">{subtitle}</p>
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 export function ControleAnalises() {
   const hook = useControleAnalises();
@@ -176,7 +206,7 @@ export function ControleAnalises() {
               {/* ─── DASHBOARD DE KPIs ─── */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-5 animate-fadeIn">
                 
-                {/* KPI 1: Volume Analisado (Gráfico de Barra Horizontal) */}
+                {/* KPI 1: Volume Analisado */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start">
                     <div>
@@ -210,7 +240,6 @@ export function ControleAnalises() {
                       <span className="text-indigo-600">Ação CAJ</span>
                       <span className="text-emerald-500">{concluidos} Concluídos</span>
                     </div>
-                    {/* Gráfico de proporção (Pendentes vs Concluídos em relação ao total) */}
                     <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
                       <div className="h-full bg-indigo-500 transition-all duration-500" title="Pendentes" style={{ width: `${total > 0 ? (pendentesCAJ/total)*100 : 0}%` }}></div>
                       <div className="h-full bg-emerald-500 transition-all duration-500" title="Concluídos" style={{ width: `${total > 0 ? (concluidos/total)*100 : 0}%` }}></div>
@@ -274,7 +303,7 @@ export function ControleAnalises() {
                 <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-gray-50/80 border border-gray-200 rounded-xl">
                   <div className="flex items-center gap-2 mr-2">
                     <Filter size={14} className="text-gray-400" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros Avançados</span>
                   </div>
                   
                   <input 
@@ -341,6 +370,11 @@ export function ControleAnalises() {
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCAJ')}>
                           <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ <SortIcon columnKey="statusCAJ" /></div>
                         </th>
+
+                        {/* NOVA COLUNA PADRONIZADO */}
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('isPadronizado')}>
+                          <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Padronizado <SortIcon columnKey="isPadronizado" /></div>
+                        </th>
                         
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-right group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('diasTranscorridos')}>
                           <div className="flex items-center justify-end text-[10px] font-bold text-gray-400 uppercase tracking-wider">Corridos <SortIcon columnKey="diasTranscorridos" /></div>
@@ -373,7 +407,6 @@ export function ControleAnalises() {
                           
                           <td className="px-2 py-3 text-[13px] font-semibold text-[#0b1e35]">{row.matricula}</td>
 
-                          {/* STATUS CLIENTE */}
                           <td className="px-2 py-3">
                             {row.statusCliente !== "—" ? (
                               <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
@@ -384,11 +417,21 @@ export function ControleAnalises() {
                             )}
                           </td>
 
-                          {/* STATUS CAJ */}
                           <td className="px-2 py-3">
                             {row.statusCAJ !== "—" ? (
                               <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
                                 {row.statusCAJ}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-medium text-[10px]">—</span>
+                            )}
+                          </td>
+
+                          {/* NOVA CÉLULA PADRONIZADO (Lógica verde) */}
+                          <td className="px-2 py-3 text-center">
+                            {row.isPadronizado ? (
+                              <span className="inline-flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+                                <CheckCircle2 size={12} strokeWidth={3} /> PADRONIZADO
                               </span>
                             ) : (
                               <span className="text-gray-300 font-medium text-[10px]">—</span>
@@ -421,9 +464,10 @@ export function ControleAnalises() {
                         </tr>
                       ))}
                       
+                      {/* O colSpan foi ajustado para 10 colunas */}
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={9} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
+                          <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
                             <Search size={28} className="mx-auto text-gray-200 mb-2" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
