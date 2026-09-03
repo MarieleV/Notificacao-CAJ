@@ -115,7 +115,7 @@ export function useControleAnalises() {
         const dataAberturaRaw = String(row["Data de Solicitação"] || row["Data de Abertura"] || row["Data"] || ""); 
         const servicoRaw = String(row["Serviço Solicitado"] || row["Código"] || row["Serviço"] || "").trim();
         const matricula = String(row["Matrícula"] || row["Matricula"] || "").trim();
-        const funcionarioRaw = String(row["Funcionário / Equipe"] || row["Usuário Solicitante"] || row["Nome do Proprietário"] || "").trim();
+        const funcionarioRaw = String(row["Funcionário / Equipe"] || "").trim();
 
         const dataAberturaLimpa = dataAberturaRaw.split(" ")[0];
         const codigoServico = servicoRaw.split("-")[0].trim().split(" ")[0];
