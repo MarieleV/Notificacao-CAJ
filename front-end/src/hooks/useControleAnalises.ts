@@ -44,8 +44,7 @@ export function useControleAnalises() {
   const [filtroCodigo, setFiltroCodigo] = useState("");
   const [filtroFuncionario, setFiltroFuncionario] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState("Todas");
-  const [filtroStatusCliente, setFiltroStatusCliente] = useState(""); // NOVO FILTRO
-  const [filtroStatusCAJ, setFiltroStatusCAJ] = useState("");         // NOVO FILTRO
+  const [filtroStatusCliente, setFiltroStatusCliente] = useState("");
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>({
     key: null,
@@ -186,11 +185,9 @@ export function useControleAnalises() {
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
 
-    // NOVOS FILTROS CRUZADOS AQUI
     const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
-    const matchStatusCAJ = filtroStatusCAJ === "" || r.statusCAJ.toLowerCase().includes(filtroStatusCAJ.toLowerCase());
 
-    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchStatusCAJ;
+    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente;
   });
 
   const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
@@ -223,8 +220,7 @@ export function useControleAnalises() {
     filtroCodigo, setFiltroCodigo, 
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
-    filtroStatusCliente, setFiltroStatusCliente, // <-- NOVO
-    filtroStatusCAJ, setFiltroStatusCAJ,         // <-- NOVO
+    filtroStatusCliente, setFiltroStatusCliente, 
     requestSort, sortConfig,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
     resultados
