@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, FileCheck, Filter, ArrowUpDown, ArrowDown, ArrowUp
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -238,14 +238,6 @@ export function ControleAnalises() {
                     onChange={(e) => hook.setFiltroStatusCliente(e.target.value)}
                     className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
-
-                  <input 
-                    type="text" 
-                    placeholder="Status CAJ..." 
-                    value={hook.filtroStatusCAJ}
-                    onChange={(e) => hook.setFiltroStatusCAJ(e.target.value)}
-                    className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
-                  />
                   
                   <input 
                     type="text" 
@@ -353,7 +345,7 @@ export function ControleAnalises() {
                           
                           <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
                             {row.diasAtraso > 0 ? (
-                              <span className="font-bold text-red-500">+{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
+                              <span className="font-bold text-red-500">+{row.diasAtraso} d</span>
                             ) : (
                               <span className="text-gray-300 font-medium">—</span>
                             )}
