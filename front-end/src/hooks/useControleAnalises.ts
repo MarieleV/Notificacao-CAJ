@@ -15,8 +15,8 @@ export interface AnaliseProcessada {
   diasAtraso: number;
   situacao: "No Prazo" | "Vencida";
   padronizada: "Sim" | "Não";
-  statusCliente: string; // <-- NOVA COLUNA
-  statusCAJ: string;     // <-- NOVA COLUNA
+  statusCliente: string;
+  statusCAJ: string;
 }
 
 const PRAZOS_SERVICO: Record<string, number> = {
@@ -38,24 +38,27 @@ export function useControleAnalises() {
   const [loading, setLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   
-  // Nomes dos arquivos carregados
   const [fileNameOP, setFileNameOP] = useState<string>("");
   const [fileName989Cliente, setFileName989Cliente] = useState<string>("");
   const [fileName989CAJ, setFileName989CAJ] = useState<string>("");
 
-  // Dados brutos
   const [dadosOP, setDadosOP] = useState<any[]>([]);
   const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
   const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
 
-  // Tabela final processada
   const [resultados, setResultados] = useState<AnaliseProcessada[]>([]);
   
-  // --- ESTADOS DE FILTRO ---
+  // --- ESTADOS DE FILTRO E ORDENAÇÃO ---
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCodigo, setFiltroCodigo] = useState("");
   const [filtroFuncionario, setFiltroFuncionario] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState("Todas");
+
+  // Configuração da Ordenação das Colunas (Sorting)
+  const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>({
+    key: null,
+    direction: 'asc'
+  });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
@@ -74,7 +77,6 @@ export function useControleAnalises() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
-        // range: 4 garante que todos os arquivos ignorem as 4 primeiras linhas
         const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false, range: 4 });
 
         if (tipo === "OP") setDadosOP(data);
@@ -101,24 +103,20 @@ export function useControleAnalises() {
     setLoading(true);
 
     try {
-      // PROCV MÁGICO: Criamos "Dicionários" para buscar a situação instantaneamente
       const mapStatusCliente = new Map<string, string>();
       const mapStatusCAJ = new Map<string, string>();
       const matriculasPadronizadas = new Set<string>();
 
-      // Função genérica para varrer os dois relatórios 989
       const registrar989 = (dados: any[], mapStatus: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const codigoRaw = String(row["CODIGO_SERVICO"] || row["Código"] || row["Codigo"] || row["Serviço Solicitado"] || "").trim();
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
           
-          // Armazena a Situação para a coluna nova (Se a matrícula ainda não foi registrada)
           if (mat && !mapStatus.has(mat)) {
             mapStatus.set(mat, situacao || "—");
           }
 
-          // Armazena na lista VIP de padronizadas (Lógica Antiga mantida)
           const codNumerico = codigoRaw.split("-")[0].trim().split(" ")[0]; 
           if (SITUACOES_VALIDAS_989.has(situacao) && CODIGOS_PADRONIZACAO.has(codNumerico)) {
             matriculasPadronizadas.add(mat);
@@ -126,7 +124,6 @@ export function useControleAnalises() {
         });
       };
 
-      // Processa as duas bases
       registrar989(dados989Cliente, mapStatusCliente);
       registrar989(dados989CAJ, mapStatusCAJ);
 
@@ -150,7 +147,6 @@ export function useControleAnalises() {
         const diasAtraso = diasTranscorridos > prazoEsperado ? diasTranscorridos - prazoEsperado : 0;
         const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
         
-        // Verifica na base de dados (PROCV)
         const padronizada = matriculasPadronizadas.has(matricula) ? "Sim" : "Não";
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
@@ -165,17 +161,20 @@ export function useControleAnalises() {
           diasAtraso,
           situacao,
           padronizada,
-          statusCliente, // <-- Adicionando à tabela
-          statusCAJ      // <-- Adicionando à tabela
+          statusCliente,
+          statusCAJ 
         });
       });
 
+      // Ordenação padrão (Vencidas no topo, ordenadas por dias de atraso)
       processados.sort((a, b) => {
         if (a.situacao === "Vencida" && b.situacao !== "Vencida") return -1;
         if (b.situacao === "Vencida" && a.situacao !== "Vencida") return 1;
         return b.diasAtraso - a.diasAtraso;
       });
 
+      // Reseta a ordenação manual quando um novo processamento acontece
+      setSortConfig({ key: null, direction: 'asc' });
       setResultados(processados);
       setFileModal({ type: "success", message: `Processamento concluído! ${processados.length} análises verificadas.` });
       
@@ -187,7 +186,17 @@ export function useControleAnalises() {
     }
   };
 
-  const resultadosFiltrados = resultados.filter(r => {
+  // Função disparada ao clicar no cabeçalho da tabela
+  const requestSort = (key: keyof AnaliseProcessada) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // 1. Aplica Filtros
+  const filtrados = resultados.filter(r => {
     const matchGlobal = r.matricula.includes(searchTerm) || 
                         r.codigoServico.includes(searchTerm) || 
                         r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
@@ -199,15 +208,42 @@ export function useControleAnalises() {
     return matchGlobal && matchCodigo && matchFuncionario && matchSituacao;
   });
 
+  // 2. Aplica Ordenação (Sort) sobre os filtrados
+  const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
+    if (!sortConfig.key) return 0; // Mantém a ordem original do processamento
+    
+    let aValue: any = a[sortConfig.key];
+    let bValue: any = b[sortConfig.key];
+
+    // Se for data, precisamos converter DD/MM/YYYY para um formato ordenável
+    if (sortConfig.key === "dataAbertura") {
+      const [dayA, monthA, yearA] = (aValue as string).split('/');
+      const [dayB, monthB, yearB] = (bValue as string).split('/');
+      aValue = new Date(`${yearA}-${monthA}-${dayA}`).getTime();
+      bValue = new Date(`${yearB}-${monthB}-${dayB}`).getTime();
+    } 
+    // Se for código numérico como texto, convertemos para número para não ordenar errado (ex: 1010 antes de 426)
+    else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula") {
+      aValue = Number(aValue.replace(/\D/g, ''));
+      bValue = Number(bValue.replace(/\D/g, ''));
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   return {
     loading, fileModal, setFileModal, 
-    fileNameOP, fileName989Cliente, fileName989CAJ, // Retornando as novas variáveis
+    fileNameOP, fileName989Cliente, fileName989CAJ, 
     dadosOP, dados989Cliente, dados989CAJ, 
     handleFileUpload, processarDados, 
     searchTerm, setSearchTerm, 
     filtroCodigo, setFiltroCodigo, 
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
-    resultadosFiltrados, resultados
+    requestSort, sortConfig, // <-- Exportando a lógica de sort
+    resultadosFiltrados: resultadosFiltradosEOrdenados, 
+    resultados
   };
 }

@@ -1,10 +1,11 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, CheckCircle, Calculator,
-  PieChart, AlertTriangle, FileCheck, Filter
+  PieChart, AlertTriangle, FileCheck, Filter,
+  ArrowUpDown, ArrowDown, ArrowUp
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
-import { useControleAnalises } from "./../hooks/useControleAnalises";
+import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
 // ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
 function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
@@ -47,6 +48,16 @@ export function ControleAnalises() {
   const noPrazo = total - vencidas;
   const padronizadas = hook.resultados.filter(r => r.padronizada === "Sim").length;
 
+  // Renderizador do Ícone de Ordenação (Setinhas)
+  const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
+    if (hook.sortConfig.key !== columnKey) {
+      return <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-40 transition-opacity ml-1" />;
+    }
+    return hook.sortConfig.direction === "asc" 
+      ? <ArrowUp size={12} className="text-[#1a5fa8] ml-1" /> 
+      : <ArrowDown size={12} className="text-[#1a5fa8] ml-1" />;
+  };
+
   return (
     <div className="h-full flex flex-col">
       
@@ -80,7 +91,6 @@ export function ControleAnalises() {
 
       {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
       <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
-        {/* AQUI FOI CORRIGIDO PARA max-w-[1200px] (Devolvendo as margens laterais) */}
         <div className="p-8 max-w-[1200px] mx-auto space-y-8">
 
           {/* SESSÃO 1: UPLOAD */}
@@ -181,7 +191,7 @@ export function ControleAnalises() {
             </button>
           </SectionBlock>
 
-          {/* SESSÃO 2 E 3: RESULTADOS (Só aparece após processar) */}
+          {/* SESSÃO 2 E 3: RESULTADOS */}
           {hook.resultados.length > 0 && (
             <>
               {/* KPIS MODERNOS */}
@@ -192,7 +202,7 @@ export function ControleAnalises() {
                 <KpiCard title="Padronizadas" value={padronizadas} subtitle="match via relatórios" type="neutral" icon={FileCheck} />
               </div>
 
-              {/* TABELA DE RESULTADOS PREMIUM */}
+              {/* TABELA DE RESULTADOS (COMPACTA) */}
               <SectionBlock 
                 icon={FileText} 
                 title="Monitoramento Detalhado" 
@@ -250,99 +260,128 @@ export function ControleAnalises() {
                   </div>
                 </div>
 
-                {/* ─── TABELA DE DADOS ─── */}
-                <div className="overflow-x-auto -mx-6 mb-[-24px] pb-6 custom-scrollbar">
-                  <table className="w-full text-sm min-w-[1250px] border-collapse">
-                    <thead className="bg-white border-b border-gray-200">
+                {/* ─── TABELA DE DADOS (ALTURA FIXA E ORDENÁVEL) ─── */}
+                <div className="overflow-auto max-h-[450px] -mx-4 mb-[-24px] custom-scrollbar border-t border-gray-100">
+                  <table className="w-full text-sm min-w-[900px] border-collapse relative">
+                    <thead className="sticky top-0 z-20">
                       <tr>
-                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Abertura</th>
-                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Código</th>
-                        <th className="px-4 py-4 text-left text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider">Matrícula</th>
-                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status Cliente</th>
-                        <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ</th>
-                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Padronizada</th>
-                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Dias Corridos</th>
-                        <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atraso</th>
-                        <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Situação</th>
-                        <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Responsável</th>
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-4 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('dataAbertura')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Abertura <SortIcon columnKey="dataAbertura" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('codigoServico')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Código <SortIcon columnKey="codigoServico" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('matricula')}>
+                          <div className="flex items-center text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider">Matrícula <SortIcon columnKey="matricula" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCliente')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Cliente <SortIcon columnKey="statusCliente" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCAJ')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ <SortIcon columnKey="statusCAJ" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('padronizada')}>
+                          <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Padrão <SortIcon columnKey="padronizada" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-right group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('diasTranscorridos')}>
+                          <div className="flex items-center justify-end text-[10px] font-bold text-gray-400 uppercase tracking-wider">Corridos <SortIcon columnKey="diasTranscorridos" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-right group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('diasAtraso')}>
+                          <div className="flex items-center justify-end text-[10px] font-bold text-gray-400 uppercase tracking-wider">Atraso <SortIcon columnKey="diasAtraso" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('situacao')}>
+                          <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Situação <SortIcon columnKey="situacao" /></div>
+                        </th>
+                        
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-4 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('funcionario')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Responsável <SortIcon columnKey="funcionario" /></div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {hook.resultadosFiltrados.map((row) => (
                         <tr key={row.id} className="hover:bg-[#f8fafe] transition-colors group">
                           
-                          <td className="px-6 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{row.dataAbertura}</td>
+                          <td className="px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">{row.dataAbertura}</td>
                           
-                          <td className="px-4 py-4">
-                            <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-mono font-medium border border-gray-200">
+                          <td className="px-2 py-3">
+                            <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[11px] font-mono font-medium border border-gray-200">
                               {row.codigoServico}
                             </span>
                           </td>
                           
-                          <td className="px-4 py-4 text-sm font-semibold text-[#0b1e35]">{row.matricula}</td>
+                          <td className="px-2 py-3 text-[13px] font-semibold text-[#0b1e35]">{row.matricula}</td>
 
                           {/* STATUS CLIENTE */}
-                          <td className="px-4 py-4">
+                          <td className="px-2 py-3">
                             {row.statusCliente !== "—" ? (
-                              <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCliente}>
                                 {row.statusCliente}
                               </span>
                             ) : (
-                              <span className="text-gray-300 font-medium text-xs">—</span>
+                              <span className="text-gray-300 font-medium text-[10px]">—</span>
                             )}
                           </td>
 
                           {/* STATUS CAJ */}
-                          <td className="px-4 py-4">
+                          <td className="px-2 py-3">
                             {row.statusCAJ !== "—" ? (
-                              <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCAJ}>
                                 {row.statusCAJ}
                               </span>
                             ) : (
-                              <span className="text-gray-300 font-medium text-xs">—</span>
+                              <span className="text-gray-300 font-medium text-[10px]">—</span>
                             )}
                           </td>
                           
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 py-3 text-center">
                             {row.padronizada === "Sim" ? (
-                              <span className="inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-600">
-                                <CheckCircle2 size={14} /> Sim
+                              <span className="inline-flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600">
+                                <CheckCircle2 size={12} strokeWidth={3} /> Sim
                               </span>
                             ) : (
-                              <span className="text-gray-300 font-medium text-xs">—</span>
+                              <span className="text-gray-300 font-medium text-[10px]">—</span>
                             )}
                           </td>
                           
-                          <td className="px-4 py-4 text-right text-xs font-medium text-gray-600">{row.diasTranscorridos} dias</td>
+                          <td className="px-2 py-3 text-right text-xs font-medium text-gray-600 whitespace-nowrap">{row.diasTranscorridos} dias</td>
                           
-                          <td className="px-4 py-4 text-right text-xs">
+                          <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
                             {row.diasAtraso > 0 ? (
-                              <span className="font-bold text-red-500">{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
+                              <span className="font-bold text-red-500">+{row.diasAtraso} d</span>
                             ) : (
                               <span className="text-gray-300 font-medium">—</span>
                             )}
                           </td>
                           
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-2 py-3 text-center">
                             {row.situacao === "Vencida" ? (
-                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
                                 VENCIDA
                               </span>
                             ) : (
-                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 whitespace-nowrap">
                                 NO PRAZO
                               </span>
                             )}
                           </td>
                           
-                          <td className="px-6 py-4 text-xs font-medium text-gray-500 truncate max-w-[150px]">{row.funcionario}</td>
+                          <td className="px-4 py-3 text-[11px] font-medium text-gray-500 truncate max-w-[130px]">{row.funcionario}</td>
                         </tr>
                       ))}
                       
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
-                            <Search size={32} className="mx-auto text-gray-200 mb-3" />
+                          <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
+                            <Search size={28} className="mx-auto text-gray-200 mb-2" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
                         </tr>
