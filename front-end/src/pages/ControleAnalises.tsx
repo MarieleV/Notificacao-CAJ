@@ -6,43 +6,26 @@ import {
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
-// ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
-function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
-  const styles = {
-    primary: "border-blue-100 text-blue-900",
-    success: "border-emerald-100 text-emerald-900",
-    danger: "border-red-100 text-red-900"
-  };
-  
-  const iconStyles = {
-    primary: "bg-blue-50 text-[#1a5fa8]",
-    success: "bg-emerald-50 text-emerald-600",
-    danger: "bg-red-50 text-red-600"
-  };
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-white border p-5 transition-all hover:shadow-md ${styles[type as keyof typeof styles]}`}>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</p>
-        <div className={`p-2 rounded-xl ${iconStyles[type as keyof typeof iconStyles]}`}>
-          <Icon size={16} strokeWidth={2.5} />
-        </div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <h3 className="text-3xl font-black tabular-nums tracking-tight">{value}</h3>
-      </div>
-      <p className="text-[11px] font-medium text-gray-400 mt-2">{subtitle}</p>
-    </div>
-  );
-}
-
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 export function ControleAnalises() {
   const hook = useControleAnalises();
 
-  const total = hook.resultados.length;
-  const vencidas = hook.resultados.filter(r => r.situacao === "Vencida").length;
-  const noPrazo = total - vencidas;
+  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS (Baseados nos Filtros Ativos) ───
+  const data = hook.resultadosFiltrados;
+  const total = data.length;
+  
+  const vencidasArr = data.filter(r => r.situacao === "Vencida");
+  const qtdVencidas = vencidasArr.length;
+  const noPrazo = total - qtdVencidas;
+
+  // NOVO CÁLCULO: Cruzamento 989 CAJ x Cliente
+  const concluidos = data.filter(r => r.statusCAJ.includes("Encerrado - Executado") && r.statusCliente === "—").length;
+  const pendentesCAJ = data.filter(r => r.statusCliente !== "—" && r.statusCAJ === "—").length;
+  
+  // Criticidade de Atraso
+  const diasAtrasoTotal = vencidasArr.reduce((acc, curr) => acc + curr.diasAtraso, 0);
+  const mediaAtraso = qtdVencidas > 0 ? Math.round(diasAtrasoTotal / qtdVencidas) : 0;
+  const maxAtraso = qtdVencidas > 0 ? Math.max(...vencidasArr.map(v => v.diasAtraso)) : 0;
 
   // Renderizador do Ícone de Ordenação (Setinhas)
   const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
@@ -190,14 +173,85 @@ export function ControleAnalises() {
           {/* SESSÃO 2 E 3: RESULTADOS */}
           {hook.resultados.length > 0 && (
             <>
-              {/* KPIS MODERNOS */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 animate-fadeIn">
-                <KpiCard title="Total Analisado" value={total} subtitle="registros válidos" type="primary" icon={PieChart} />
-                <KpiCard title="No Prazo" value={noPrazo} subtitle="dias úteis <= prazo" type="success" icon={CheckCircle2} />
-                <KpiCard title="Vencidas" value={vencidas} subtitle="prazos extrapolados" type="danger" icon={AlertTriangle} />
+              {/* ─── DASHBOARD DE KPIs ─── */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5 animate-fadeIn">
+                
+                {/* KPI 1: Volume Analisado (Gráfico de Barra Horizontal) */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Volume Listado</p>
+                      <h3 className="text-3xl font-black text-[#0b1e35] mt-2">{total}</h3>
+                    </div>
+                    <div className="p-2 bg-blue-50 text-[#1a5fa8] rounded-xl"><PieChart size={20} /></div>
+                  </div>
+                  <div className="mt-5">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-1.5">
+                      <span className="text-emerald-600">{noPrazo} No Prazo</span>
+                      <span className="text-red-500">{qtdVencidas} Vencidas</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-red-100 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${total > 0 ? (noPrazo/total)*100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI 2: Status Operacional (CAJ x Cliente) */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pendente (CAJ)</p>
+                      <h3 className="text-3xl font-black text-indigo-600 mt-2">{pendentesCAJ}</h3>
+                    </div>
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><RefreshCw size={20} /></div>
+                  </div>
+                  <div className="mt-5">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-1.5">
+                      <span className="text-indigo-600">Ação CAJ</span>
+                      <span className="text-emerald-500">{concluidos} Concluídos</span>
+                    </div>
+                    {/* Gráfico de proporção (Pendentes vs Concluídos em relação ao total) */}
+                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-indigo-500 transition-all duration-500" title="Pendentes" style={{ width: `${total > 0 ? (pendentesCAJ/total)*100 : 0}%` }}></div>
+                      <div className="h-full bg-emerald-500 transition-all duration-500" title="Concluídos" style={{ width: `${total > 0 ? (concluidos/total)*100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI 3: Volume de Vencidas */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Atrasos Ativos</p>
+                      <h3 className="text-3xl font-black text-red-600 mt-2">{qtdVencidas}</h3>
+                    </div>
+                    <div className="p-2 bg-red-50 text-red-600 rounded-xl"><AlertTriangle size={20} /></div>
+                  </div>
+                  <p className="text-[11px] font-medium text-gray-400 mt-5">
+                    Processos requerendo atenção imediata.
+                  </p>
+                </div>
+
+                {/* KPI 4: Criticidade (Atraso Médio e Máximo) */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Média de Atraso</p>
+                      <h3 className="text-3xl font-black text-amber-500 mt-2">
+                        {mediaAtraso} <span className="text-sm font-bold text-amber-500/60">dias</span>
+                      </h3>
+                    </div>
+                    <div className="p-2 bg-amber-50 text-amber-500 rounded-xl"><Clock size={20} /></div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                    <ArrowUp size={14} className="text-red-500" />
+                    Pico de atraso: <strong className="text-red-600 font-bold">{maxAtraso} dias</strong>
+                  </div>
+                </div>
+
               </div>
 
-              {/* TABELA DE RESULTADOS (COMPACTA E ORDENÁVEL) */}
+              {/* TABELA DE RESULTADOS */}
               <SectionBlock 
                 icon={FileText} 
                 title="Monitoramento Detalhado" 
@@ -322,7 +376,7 @@ export function ControleAnalises() {
                           {/* STATUS CLIENTE */}
                           <td className="px-2 py-3">
                             {row.statusCliente !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCliente}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCliente}>
                                 {row.statusCliente}
                               </span>
                             ) : (
@@ -333,7 +387,7 @@ export function ControleAnalises() {
                           {/* STATUS CAJ */}
                           <td className="px-2 py-3">
                             {row.statusCAJ !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[110px]" title={row.statusCAJ}>
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
                                 {row.statusCAJ}
                               </span>
                             ) : (
@@ -345,7 +399,7 @@ export function ControleAnalises() {
                           
                           <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
                             {row.diasAtraso > 0 ? (
-                              <span className="font-bold text-red-500">+{row.diasAtraso} d</span>
+                              <span className="font-bold text-red-500">+{row.diasAtraso} {row.diasAtraso === 1 ? 'dia' : 'dias'}</span>
                             ) : (
                               <span className="text-gray-300 font-medium">—</span>
                             )}
