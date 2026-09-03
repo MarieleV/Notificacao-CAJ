@@ -15,6 +15,8 @@ export interface AnaliseProcessada {
   diasAtraso: number;
   situacao: "No Prazo" | "Vencida";
   padronizada: "Sim" | "Não";
+  statusCliente: string; // <-- NOVA COLUNA
+  statusCAJ: string;     // <-- NOVA COLUNA
 }
 
 const PRAZOS_SERVICO: Record<string, number> = {
@@ -38,28 +40,31 @@ export function useControleAnalises() {
   
   // Nomes dos arquivos carregados
   const [fileNameOP, setFileNameOP] = useState<string>("");
-  const [fileName989, setFileName989] = useState<string>("");
+  const [fileName989Cliente, setFileName989Cliente] = useState<string>("");
+  const [fileName989CAJ, setFileName989CAJ] = useState<string>("");
 
   // Dados brutos
   const [dadosOP, setDadosOP] = useState<any[]>([]);
-  const [dados989, setDados989] = useState<any[]>([]);
+  const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
+  const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
 
   // Tabela final processada
   const [resultados, setResultados] = useState<AnaliseProcessada[]>([]);
   
   // --- ESTADOS DE FILTRO ---
-  const [searchTerm, setSearchTerm] = useState(""); // Busca Global
-  const [filtroCodigo, setFiltroCodigo] = useState(""); // Filtro Coluna Código
-  const [filtroFuncionario, setFiltroFuncionario] = useState(""); // Filtro Coluna Responsável
-  const [filtroSituacao, setFiltroSituacao] = useState("Todas"); // Filtro Coluna Situação
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filtroCodigo, setFiltroCodigo] = useState("");
+  const [filtroFuncionario, setFiltroFuncionario] = useState("");
+  const [filtroSituacao, setFiltroSituacao] = useState("Todas");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989") => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setLoading(true);
     if (tipo === "OP") setFileNameOP(file.name);
-    else setFileName989(file.name);
+    else if (tipo === "989_Cliente") setFileName989Cliente(file.name);
+    else setFileName989CAJ(file.name);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -69,10 +74,12 @@ export function useControleAnalises() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
+        // range: 4 garante que todos os arquivos ignorem as 4 primeiras linhas
         const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false, range: 4 });
 
         if (tipo === "OP") setDadosOP(data);
-        else setDados989(data);
+        else if (tipo === "989_Cliente") setDados989Cliente(data);
+        else setDados989CAJ(data);
 
       } catch (error) {
         console.error("Erro ao ler planilha:", error);
@@ -94,19 +101,34 @@ export function useControleAnalises() {
     setLoading(true);
 
     try {
+      // PROCV MÁGICO: Criamos "Dicionários" para buscar a situação instantaneamente
+      const mapStatusCliente = new Map<string, string>();
+      const mapStatusCAJ = new Map<string, string>();
       const matriculasPadronizadas = new Set<string>();
-      
-      dados989.forEach(row => {
-        const mat = String(row["Matrícula"] || row["Matricula"] || "").trim();
-        const codigoRaw = String(row["Código"] || row["Codigo"] || row["Serviço Solicitado"] || "").trim();
-        const situacao = String(row["Situação"] || row["Situacao"] || "").trim();
 
-        const codNumerico = codigoRaw.split("-")[0].trim().split(" ")[0]; 
+      // Função genérica para varrer os dois relatórios 989
+      const registrar989 = (dados: any[], mapStatus: Map<string, string>) => {
+        dados.forEach(row => {
+          const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
+          const codigoRaw = String(row["CODIGO_SERVICO"] || row["Código"] || row["Codigo"] || row["Serviço Solicitado"] || "").trim();
+          const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
+          
+          // Armazena a Situação para a coluna nova (Se a matrícula ainda não foi registrada)
+          if (mat && !mapStatus.has(mat)) {
+            mapStatus.set(mat, situacao || "—");
+          }
 
-        if (SITUACOES_VALIDAS_989.has(situacao) && CODIGOS_PADRONIZACAO.has(codNumerico)) {
-          matriculasPadronizadas.add(mat);
-        }
-      });
+          // Armazena na lista VIP de padronizadas (Lógica Antiga mantida)
+          const codNumerico = codigoRaw.split("-")[0].trim().split(" ")[0]; 
+          if (SITUACOES_VALIDAS_989.has(situacao) && CODIGOS_PADRONIZACAO.has(codNumerico)) {
+            matriculasPadronizadas.add(mat);
+          }
+        });
+      };
+
+      // Processa as duas bases
+      registrar989(dados989Cliente, mapStatusCliente);
+      registrar989(dados989CAJ, mapStatusCAJ);
 
       const hojeStr = new Date().toLocaleDateString("pt-BR");
       const processados: AnaliseProcessada[] = [];
@@ -127,7 +149,11 @@ export function useControleAnalises() {
         const diasTranscorridos = getBusinessDaysDifference(dataAberturaLimpa, hojeStr);
         const diasAtraso = diasTranscorridos > prazoEsperado ? diasTranscorridos - prazoEsperado : 0;
         const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
+        
+        // Verifica na base de dados (PROCV)
         const padronizada = matriculasPadronizadas.has(matricula) ? "Sim" : "Não";
+        const statusCliente = mapStatusCliente.get(matricula) || "—";
+        const statusCAJ = mapStatusCAJ.get(matricula) || "—";
 
         processados.push({
           id: `${matricula}-${index}`,
@@ -138,7 +164,9 @@ export function useControleAnalises() {
           diasTranscorridos,
           diasAtraso,
           situacao,
-          padronizada
+          padronizada,
+          statusCliente, // <-- Adicionando à tabela
+          statusCAJ      // <-- Adicionando à tabela
         });
       });
 
@@ -159,21 +187,13 @@ export function useControleAnalises() {
     }
   };
 
-  // --- LÓGICA DE CRUZAMENTO DE FILTROS ---
   const resultadosFiltrados = resultados.filter(r => {
-    // 1. Busca Global (Top Bar)
     const matchGlobal = r.matricula.includes(searchTerm) || 
                         r.codigoServico.includes(searchTerm) || 
                         r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // 2. Filtro de Código Multi-Select (Ex: Permite digitar "426, 427" ou "426,427")
     const codigosArray = filtroCodigo.split(",").map(c => c.trim()).filter(c => c !== "");
     const matchCodigo = codigosArray.length === 0 || codigosArray.includes(r.codigoServico);
-
-    // 3. Filtro de Responsável
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
-
-    // 4. Filtro de Situação
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
 
     return matchGlobal && matchCodigo && matchFuncionario && matchSituacao;
@@ -181,7 +201,8 @@ export function useControleAnalises() {
 
   return {
     loading, fileModal, setFileModal, 
-    fileNameOP, fileName989, dadosOP, dados989, 
+    fileNameOP, fileName989Cliente, fileName989CAJ, // Retornando as novas variáveis
+    dadosOP, dados989Cliente, dados989CAJ, 
     handleFileUpload, processarDados, 
     searchTerm, setSearchTerm, 
     filtroCodigo, setFiltroCodigo, 
