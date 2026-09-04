@@ -243,7 +243,7 @@ export function useControleAnalises() {
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
-    requestSort, sortConfig, limparTela, // <-- EXPORTANDO O LIMPAR TELA
+    requestSort, sortConfig, limparTela,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
     resultados
   };
