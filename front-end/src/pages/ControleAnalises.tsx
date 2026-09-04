@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -66,6 +66,18 @@ export function ControleAnalises() {
       ? <ArrowUp size={12} className="text-[#1a5fa8] ml-1" /> 
       : <ArrowDown size={12} className="text-[#1a5fa8] ml-1" />;
   };
+
+  // Função para Limpar Todos os Filtros
+  const limparFiltros = () => {
+    hook.setSearchTerm("");
+    hook.setFiltroCodigo("");
+    hook.setFiltroStatusCliente("");
+    hook.setFiltroFuncionario("");
+    hook.setFiltroSituacao("Todas");
+  };
+
+  // Verifica se há algum filtro ativo para mostrar o botão
+  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas";
 
   return (
     <div className="h-full flex flex-col">
@@ -323,10 +335,10 @@ export function ControleAnalises() {
                   
                   <input 
                     type="text" 
-                    placeholder="Filtrar por Responsável..." 
+                    placeholder="Filtrar Responsável..." 
                     value={hook.filtroFuncionario}
                     onChange={(e) => hook.setFiltroFuncionario(e.target.value)}
-                    className="flex-1 min-w-[150px] px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="w-40 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
                   <div className="relative">
@@ -343,6 +355,16 @@ export function ControleAnalises() {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
                   </div>
+
+                  {/* BOTÃO LIMPAR FILTROS - Aparece apenas se houver filtros ativos */}
+                  {isFiltroAtivo && (
+                    <button 
+                      onClick={limparFiltros}
+                      className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <X size={14} strokeWidth={2.5} /> Limpar Filtros
+                    </button>
+                  )}
                 </div>
 
                 {/* ─── TABELA DE DADOS (ALTURA FIXA COMPACTA E ORDENÁVEL) ─── */}
@@ -370,7 +392,6 @@ export function ControleAnalises() {
                           <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ <SortIcon columnKey="statusCAJ" /></div>
                         </th>
 
-                        {/* NOVA COLUNA PADRONIZADO */}
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('isPadronizado')}>
                           <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Padronizado <SortIcon columnKey="isPadronizado" /></div>
                         </th>
