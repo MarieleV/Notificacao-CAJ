@@ -191,7 +191,6 @@ export function useControleAnalises() {
     setFiltroStatusCliente("");
     setSortConfig({ key: null, direction: 'asc' });
     // Note que NÃO estamos apagando as variáveis dadosOP e dados989. 
-    // Assim as planilhas continuam na memória!
   };
 
   const filtrados = resultados.filter(r => {
