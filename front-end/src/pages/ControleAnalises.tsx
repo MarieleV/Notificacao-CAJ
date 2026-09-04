@@ -347,7 +347,7 @@ export function ControleAnalises() {
                       onChange={(e) => hook.setFiltroSituacao(e.target.value)}
                       className="w-32 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
                     >
-                      <option value="Todas">Situação (Todas)</option>
+                      <option value="Todas">Situação</option>
                       <option value="Vencida">Vencida</option>
                       <option value="No Prazo">No Prazo</option>
                     </select>
