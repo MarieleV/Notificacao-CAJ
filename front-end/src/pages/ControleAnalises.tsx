@@ -154,7 +154,7 @@ export function ControleAnalises() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status Cliente</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional (PROCV)</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
                       </div>
                     </>
                   )}
@@ -170,7 +170,7 @@ export function ControleAnalises() {
                         <CheckCircle2 size={20} className="text-emerald-600" />
                       </div>
                       <div className="flex flex-col overflow-hidden">
-                        <span className="font-bold text-xs text-emerald-800">989 Status CAJ Anexado</span>
+                        <span className="font-bold text-xs text-emerald-800">989 Encerrado/Executado Anexado</span>
                         <span className="text-[10px] text-emerald-600/80 font-medium truncate mt-0.5">{hook.fileName989CAJ}</span>
                       </div>
                     </>
@@ -180,8 +180,8 @@ export function ControleAnalises() {
                         <FileSpreadsheet size={20} className="text-gray-500" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status CAJ</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional (PROCV)</span>
+                        <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Encerrado/Executado</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
                       </div>
                     </>
                   )}
