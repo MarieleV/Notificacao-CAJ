@@ -175,7 +175,7 @@ export function ControleAnalises() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status Cliente</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Obrigatória</span>
                       </div>
                     </>
                   )}
@@ -202,7 +202,7 @@ export function ControleAnalises() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Encerrado/Executado</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Obrigatória</span>
                       </div>
                     </>
                   )}
