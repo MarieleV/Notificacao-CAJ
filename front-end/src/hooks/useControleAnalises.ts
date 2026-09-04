@@ -16,7 +16,7 @@ export interface AnaliseProcessada {
   situacao: "No Prazo" | "Vencida";
   statusCliente: string;
   statusCAJ: string;
-  isPadronizado: boolean; // <-- NOVA PROPRIEDADE
+  isPadronizado: boolean;
 }
 
 const PRAZOS_SERVICO: Record<string, number> = {
@@ -135,7 +135,6 @@ export function useControleAnalises() {
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
 
-        // --- NOVA LÓGICA DE PADRONIZADO ---
         const statusClienteValidos = ["para reprogramar", "pendente", "programado", "postergada"];
         const isPadronizado = 
           statusClienteValidos.includes(statusCliente.toLowerCase()) && 
@@ -152,7 +151,7 @@ export function useControleAnalises() {
           situacao,
           statusCliente,
           statusCAJ,
-          isPadronizado // <-- INJETADO AQUI
+          isPadronizado
         });
       });
 
@@ -180,6 +179,19 @@ export function useControleAnalises() {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
+  };
+
+  // --- FUNÇÃO PARA LIMPAR A TELA SEM PERDER OS ARQUIVOS ---
+  const limparTela = () => {
+    setResultados([]); // Zera a tabela e os gráficos
+    setSearchTerm("");
+    setFiltroCodigo("");
+    setFiltroFuncionario("");
+    setFiltroSituacao("Todas");
+    setFiltroStatusCliente("");
+    setSortConfig({ key: null, direction: 'asc' });
+    // Note que NÃO estamos apagando as variáveis dadosOP e dados989. 
+    // Assim as planilhas continuam na memória!
   };
 
   const filtrados = resultados.filter(r => {
@@ -213,7 +225,6 @@ export function useControleAnalises() {
       aValue = Number(String(aValue).replace(/\D/g, ''));
       bValue = Number(String(bValue).replace(/\D/g, ''));
     } else if (sortConfig.key === "isPadronizado") {
-      // Ordenação para booleanos
       aValue = aValue ? 1 : 0;
       bValue = bValue ? 1 : 0;
     }
@@ -233,7 +244,7 @@ export function useControleAnalises() {
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
-    requestSort, sortConfig,
+    requestSort, sortConfig, limparTela, // <-- EXPORTANDO O LIMPAR TELA
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
     resultados
   };
