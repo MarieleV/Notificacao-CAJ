@@ -314,7 +314,7 @@ export function ControleAnalises() {
                 <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-gray-50/80 border border-gray-200 rounded-xl">
                   <div className="flex items-center gap-2 mr-2">
                     <Filter size={14} className="text-gray-400" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros Avançados</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
                   </div>
                   
                   <input 
