@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X, Eraser
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -67,7 +67,7 @@ export function ControleAnalises() {
       : <ArrowDown size={12} className="text-[#1a5fa8] ml-1" />;
   };
 
-  // Função para Limpar Todos os Filtros
+  // Função para Limpar Apenas os Filtros
   const limparFiltros = () => {
     hook.setSearchTerm("");
     hook.setFiltroCodigo("");
@@ -76,7 +76,7 @@ export function ControleAnalises() {
     hook.setFiltroSituacao("Todas");
   };
 
-  // Verifica se há algum filtro ativo para mostrar o botão
+  // Verifica se há algum filtro ativo para mostrar o botão de limpar filtros
   const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas";
 
   return (
@@ -99,7 +99,7 @@ export function ControleAnalises() {
         </div>
       )}
 
-      {/* ─── CABEÇALHO FIXO ─── */}
+      {/* ─── CABEÇALHO FIXO COM BOTÃO LIMPAR TELA ─── */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
@@ -108,6 +108,15 @@ export function ControleAnalises() {
           </div>
           <p className="text-gray-500 text-sm mt-0.5">Gestão inteligente de prazos e priorização de serviços.</p>
         </div>
+        
+        {/* BOTÃO LIMPAR TELA */}
+        <button
+          onClick={hook.limparTela}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
+        >
+          <Eraser size={16} />
+          Limpar Tela
+        </button>
       </div>
 
       {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
