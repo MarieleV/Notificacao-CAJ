@@ -129,7 +129,10 @@ export function useControleAnalises() {
         if (!prazoEsperado) return; 
 
         const diasTranscorridos = getBusinessDaysDifference(dataAberturaLimpa, hojeStr);
-        const diasAtraso = diasTranscorridos > prazoEsperado ? diasTranscorridos - prazoEsperado : 0;
+        
+        // --- ADICIONADO +1 NA REGRA DE ATRASO AQUI ---
+        // Se os dias transcorridos ultrapassarem o prazo esperado, calculamos a diferença e somamos 1.
+        const diasAtraso = diasTranscorridos > prazoEsperado ? (diasTranscorridos - prazoEsperado) + 1 : 0;
         const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
