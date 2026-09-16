@@ -17,6 +17,7 @@ export interface AnaliseProcessada {
   statusCliente: string;
   statusCAJ: string;
   isPadronizado: boolean;
+  situacaoOS: string;
 }
 
 const PRAZOS_SERVICO: Record<string, number> = {
@@ -44,8 +45,12 @@ export function useControleAnalises() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCodigo, setFiltroCodigo] = useState("");
   const [filtroFuncionario, setFiltroFuncionario] = useState("");
-  const [filtroSituacao, setFiltroSituacao] = useState("Todas");
+  const [filtroSituacao, setFiltroSituacao] = useState("Todas"); 
   const [filtroStatusCliente, setFiltroStatusCliente] = useState("");
+  
+  // NOVO: Situação OS agora é um Array (Múltipla Seleção)
+  const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>([]); 
+  const [dropdownOSOpen, setDropdownOSOpen] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>({
     key: null,
@@ -69,7 +74,7 @@ export function useControleAnalises() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
-        const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false, range: 4 });
+        const data = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
 
         if (tipo === "OP") setDadosOP(data);
         else if (tipo === "989_Cliente") setDados989Cliente(data);
@@ -120,6 +125,8 @@ export function useControleAnalises() {
         const servicoRaw = String(row["Serviço Solicitado"] || row["Código"] || row["Serviço"] || "").trim();
         const matricula = String(row["Matrícula"] || row["Matricula"] || "").trim();
         const funcionarioRaw = String(row["Funcionário / Equipe"] || "").trim();
+        
+        const situacaoOS = String(row["Situação"] || row["Situacao"] || "—").trim();
 
         const dataAberturaLimpa = dataAberturaRaw.split(" ")[0];
         const codigoServico = servicoRaw.split("-")[0].trim().split(" ")[0];
@@ -129,10 +136,8 @@ export function useControleAnalises() {
         if (!prazoEsperado) return; 
 
         const diasTranscorridos = getBusinessDaysDifference(dataAberturaLimpa, hojeStr);
-        
-        // --- ADICIONADO +1 NA REGRA DE ATRASO AQUI ---
-        // Se os dias transcorridos ultrapassarem o prazo esperado, calculamos a diferença e somamos 1.
         const diasAtraso = diasTranscorridos > prazoEsperado ? (diasTranscorridos - prazoEsperado) + 1 : 0;
+        
         const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
@@ -154,7 +159,8 @@ export function useControleAnalises() {
           situacao,
           statusCliente,
           statusCAJ,
-          isPadronizado
+          isPadronizado,
+          situacaoOS 
         });
       });
 
@@ -184,16 +190,23 @@ export function useControleAnalises() {
     setSortConfig({ key, direction });
   };
 
-  // --- FUNÇÃO PARA LIMPAR A TELA SEM PERDER OS ARQUIVOS ---
+  // Alterna a seleção de opções na nova caixinha de Situação OS
+  const toggleFiltroSituacaoOS = (opcao: string) => {
+    setFiltroSituacaoOS(prev => 
+      prev.includes(opcao) ? prev.filter(o => o !== opcao) : [...prev, opcao]
+    );
+  };
+
   const limparTela = () => {
-    setResultados([]); // Zera a tabela e os gráficos
+    setResultados([]); 
     setSearchTerm("");
     setFiltroCodigo("");
     setFiltroFuncionario("");
     setFiltroSituacao("Todas");
     setFiltroStatusCliente("");
+    setFiltroSituacaoOS([]); // Zera array
+    setDropdownOSOpen(false);
     setSortConfig({ key: null, direction: 'asc' });
-    // Note que NÃO estamos apagando as variáveis dadosOP e dados989. 
   };
 
   const filtrados = resultados.filter(r => {
@@ -206,10 +219,12 @@ export function useControleAnalises() {
     
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
-
     const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
+    
+    // Lógica para Multi-Seleção (Se a lista estiver vazia, aceita todos. Senão, vê se bate com algum dos marcados)
+    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some(opt => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
 
-    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente;
+    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchSituacaoOS;
   });
 
   const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
@@ -246,6 +261,7 @@ export function useControleAnalises() {
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
+    filtroSituacaoOS, setFiltroSituacaoOS, toggleFiltroSituacaoOS, dropdownOSOpen, setDropdownOSOpen, // EXPORTADOS
     requestSort, sortConfig, limparTela,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
     resultados
