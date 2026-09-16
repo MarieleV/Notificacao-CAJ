@@ -1,7 +1,7 @@
 import { 
   FileText, UploadCloud, CheckCircle2, AlertCircle, 
   Search, RefreshCw, FileSpreadsheet, Clock, Calculator,
-  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X, Eraser
+  PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X, Eraser, ChevronDown
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
@@ -74,10 +74,11 @@ export function ControleAnalises() {
     hook.setFiltroStatusCliente("");
     hook.setFiltroFuncionario("");
     hook.setFiltroSituacao("Todas");
+    hook.setFiltroSituacaoOS([]); // Limpa o Array do menu múltiplo
   };
 
   // Verifica se há algum filtro ativo para mostrar o botão de limpar filtros
-  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas";
+  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas" || hook.filtroSituacaoOS.length > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -175,7 +176,7 @@ export function ControleAnalises() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Status Cliente</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Obrigatória</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
                       </div>
                     </>
                   )}
@@ -202,7 +203,7 @@ export function ControleAnalises() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-[#0b1e35]">Relatório 989 - Encerrado/Executado</span>
-                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Obrigatória</span>
+                        <span className="text-[10px] text-gray-400 font-medium mt-0.5">Base Opcional</span>
                       </div>
                     </>
                   )}
@@ -331,7 +332,7 @@ export function ControleAnalises() {
                     placeholder="Código (Ex: 426, 427)" 
                     value={hook.filtroCodigo}
                     onChange={(e) => hook.setFiltroCodigo(e.target.value)}
-                    className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
                   <input 
@@ -339,15 +340,51 @@ export function ControleAnalises() {
                     placeholder="Status Cliente..." 
                     value={hook.filtroStatusCliente}
                     onChange={(e) => hook.setFiltroStatusCliente(e.target.value)}
-                    className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
+
+                  {/* NOVO FILTRO: DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
+                  <div className="relative">
+                    <button
+                      onClick={() => hook.setDropdownOSOpen(!hook.dropdownOSOpen)}
+                      className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 flex justify-between items-center hover:bg-gray-50 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all shadow-sm"
+                    >
+                      <span className="truncate">
+                        {hook.filtroSituacaoOS.length === 0 
+                          ? "Situação OS" 
+                          : `${hook.filtroSituacaoOS.length} Selecionada(s)`}
+                      </span>
+                      <ChevronDown size={14} className={`text-gray-400 transition-transform ${hook.dropdownOSOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {hook.dropdownOSOpen && (
+                      <>
+                        {/* Overlay invisível para fechar o menu ao clicar fora */}
+                        <div className="fixed inset-0 z-40" onClick={() => hook.setDropdownOSOpen(false)} />
+                        
+                        <div className="absolute z-50 mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 top-full left-0 flex flex-col gap-0.5">
+                          {["Programado", "Pendente", "Postergada"].map(opt => (
+                            <label key={opt} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-gray-700 font-medium transition-colors">
+                              <input 
+                                type="checkbox" 
+                                checked={hook.filtroSituacaoOS.includes(opt)}
+                                onChange={() => hook.toggleFiltroSituacaoOS(opt)}
+                                className="rounded border-gray-300 text-[#1a5fa8] focus:ring-[#1a5fa8] w-3.5 h-3.5"
+                              />
+                              {opt}
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   
                   <input 
                     type="text" 
                     placeholder="Filtrar Responsável..." 
                     value={hook.filtroFuncionario}
                     onChange={(e) => hook.setFiltroFuncionario(e.target.value)}
-                    className="w-40 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
+                    className="flex-1 min-w-[120px] px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
                   <div className="relative">
@@ -356,7 +393,7 @@ export function ControleAnalises() {
                       onChange={(e) => hook.setFiltroSituacao(e.target.value)}
                       className="w-32 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer"
                     >
-                      <option value="Todas">Situação</option>
+                      <option value="Todas">Situação (Todas)</option>
                       <option value="Vencida">Vencida</option>
                       <option value="No Prazo">No Prazo</option>
                     </select>
@@ -365,7 +402,7 @@ export function ControleAnalises() {
                     </div>
                   </div>
 
-                  {/* BOTÃO LIMPAR FILTROS - Aparece apenas se houver filtros ativos */}
+                  {/* BOTÃO LIMPAR FILTROS */}
                   {isFiltroAtivo && (
                     <button 
                       onClick={limparFiltros}
@@ -399,6 +436,11 @@ export function ControleAnalises() {
                         
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCAJ')}>
                           <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status CAJ <SortIcon columnKey="statusCAJ" /></div>
+                        </th>
+
+                        {/* COLUNA SITUAÇÃO OS */}
+                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('situacaoOS')}>
+                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Situação OS <SortIcon columnKey="situacaoOS" /></div>
                         </th>
 
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-center group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('isPadronizado')}>
@@ -456,6 +498,16 @@ export function ControleAnalises() {
                             )}
                           </td>
 
+                          <td className="px-2 py-3">
+                            {row.situacaoOS !== "—" ? (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-[#1a5fa8] border border-blue-100 truncate max-w-[100px]" title={row.situacaoOS}>
+                                {row.situacaoOS}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-medium text-[10px]">—</span>
+                            )}
+                          </td>
+
                           <td className="px-2 py-3 text-center">
                             {row.isPadronizado ? (
                               <span className="inline-flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
@@ -494,7 +546,7 @@ export function ControleAnalises() {
                       
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
+                          <td colSpan={11} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
                             <Search size={28} className="mx-auto text-gray-200 mb-2" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
