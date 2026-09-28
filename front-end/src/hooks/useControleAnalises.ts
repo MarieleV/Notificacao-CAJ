@@ -24,7 +24,11 @@ const PRAZOS_SERVICO: Record<string, number> = {
   "426": 90,
   "427": 15,
   "1010": 1,
-  "3769": 1,
+  "20000": 1,
+  "20001": 1,
+  "20002": 1,
+  "20003": 1,
+  "3769": 1
 };
 
 export function useControleAnalises() {
