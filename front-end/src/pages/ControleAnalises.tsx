@@ -329,7 +329,7 @@ export function ControleAnalises() {
                   
                   <input 
                     type="text" 
-                    placeholder="Código (Ex: 426, 427)" 
+                    placeholder="Código..." 
                     value={hook.filtroCodigo}
                     onChange={(e) => hook.setFiltroCodigo(e.target.value)}
                     className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
