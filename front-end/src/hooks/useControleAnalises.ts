@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { getBusinessDaysDifference } from "../utils/dates";
 
@@ -31,35 +31,66 @@ const PRAZOS_SERVICO: Record<string, number> = {
   "3769": 1
 };
 
+// Chave onde os dados ficarão salvos no navegador
+const STORAGE_KEY = "@ControleAnalises:state";
+
+// Função para buscar a "memória" salva no navegador
+function loadSavedState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (error) {
+    console.error("Erro ao carregar dados salvos:", error);
+  }
+  return {};
+}
+
 export function useControleAnalises() {
+  const savedState = loadSavedState();
+
   const [loading, setLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   
-  const [fileNameOP, setFileNameOP] = useState<string>("");
-  const [fileName989Cliente, setFileName989Cliente] = useState<string>("");
-  const [fileName989CAJ, setFileName989CAJ] = useState<string>("");
+  // --- ESTADOS DE ARQUIVOS (Carregados da memória) ---
+  const [fileNameOP, setFileNameOP] = useState<string>(savedState.fileNameOP || "");
+  const [fileName989Cliente, setFileName989Cliente] = useState<string>(savedState.fileName989Cliente || "");
+  const [fileName989CAJ, setFileName989CAJ] = useState<string>(savedState.fileName989CAJ || "");
 
-  const [dadosOP, setDadosOP] = useState<any[]>([]);
-  const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
-  const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
+  const [dadosOP, setDadosOP] = useState<any[]>(savedState.dadosOP || []);
+  const [dados989Cliente, setDados989Cliente] = useState<any[]>(savedState.dados989Cliente || []);
+  const [dados989CAJ, setDados989CAJ] = useState<any[]>(savedState.dados989CAJ || []);
 
-  const [resultados, setResultados] = useState<AnaliseProcessada[]>([]);
+  const [resultados, setResultados] = useState<AnaliseProcessada[]>(savedState.resultados || []);
   
-  // --- ESTADOS DE FILTRO E ORDENAÇÃO ---
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filtroCodigo, setFiltroCodigo] = useState("");
-  const [filtroFuncionario, setFiltroFuncionario] = useState("");
-  const [filtroSituacao, setFiltroSituacao] = useState("Todas"); 
-  const [filtroStatusCliente, setFiltroStatusCliente] = useState("");
+  // --- ESTADOS DE FILTRO E ORDENAÇÃO (Carregados da memória) ---
+  const [searchTerm, setSearchTerm] = useState(savedState.searchTerm || "");
+  const [filtroCodigo, setFiltroCodigo] = useState(savedState.filtroCodigo || "");
+  const [filtroFuncionario, setFiltroFuncionario] = useState(savedState.filtroFuncionario || "");
+  const [filtroSituacao, setFiltroSituacao] = useState(savedState.filtroSituacao || "Todas"); 
+  const [filtroStatusCliente, setFiltroStatusCliente] = useState(savedState.filtroStatusCliente || "");
   
-  // NOVO: Situação OS agora é um Array (Múltipla Seleção)
-  const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>([]); 
+  const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>(savedState.filtroSituacaoOS || []); 
   const [dropdownOSOpen, setDropdownOSOpen] = useState(false);
 
-  const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>({
-    key: null,
-    direction: 'asc'
-  });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>(
+    savedState.sortConfig || { key: null, direction: 'asc' }
+  );
+
+  // --- EFEITO MÁGICO: Salva tudo no navegador sempre que algo mudar ---
+  useEffect(() => {
+    const stateToSave = {
+      fileNameOP, fileName989Cliente, fileName989CAJ,
+      dadosOP, dados989Cliente, dados989CAJ,
+      resultados,
+      searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS,
+      sortConfig
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (error) {
+      console.warn("Aviso: Limite de armazenamento local atingido (planilhas muito grandes). A persistência pode falhar.", error);
+    }
+  }, [fileNameOP, fileName989Cliente, fileName989CAJ, dadosOP, dados989Cliente, dados989CAJ, resultados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
@@ -194,23 +225,38 @@ export function useControleAnalises() {
     setSortConfig({ key, direction });
   };
 
-  // Alterna a seleção de opções na nova caixinha de Situação OS
   const toggleFiltroSituacaoOS = (opcao: string) => {
     setFiltroSituacaoOS(prev => 
       prev.includes(opcao) ? prev.filter(o => o !== opcao) : [...prev, opcao]
     );
   };
 
+  // --- NOVA FUNÇÃO LIMPAR TELA ---
+  // Agora ela apaga ABSOLUTAMENTE TUDO (arquivos, resultados, memória e filtros)
   const limparTela = () => {
+    // 1. Zera os arquivos anexados
+    setFileNameOP("");
+    setFileName989Cliente("");
+    setFileName989CAJ("");
+    setDadosOP([]);
+    setDados989Cliente([]);
+    setDados989CAJ([]);
+    
+    // 2. Zera os resultados da tabela
     setResultados([]); 
+    
+    // 3. Zera os Filtros
     setSearchTerm("");
     setFiltroCodigo("");
     setFiltroFuncionario("");
     setFiltroSituacao("Todas");
     setFiltroStatusCliente("");
-    setFiltroSituacaoOS([]); // Zera array
+    setFiltroSituacaoOS([]); 
     setDropdownOSOpen(false);
     setSortConfig({ key: null, direction: 'asc' });
+
+    // 4. Apaga a memória salva no navegador
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const filtrados = resultados.filter(r => {
@@ -218,15 +264,14 @@ export function useControleAnalises() {
                         r.codigoServico.includes(searchTerm) || 
                         r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const codigosArray = filtroCodigo.split(",").map(c => c.trim()).filter(c => c !== "");
+    const codigosArray = filtroCodigo.split(",").map((c: string) => c.trim()).filter((c: string) => c !== "");
     const matchCodigo = codigosArray.length === 0 || codigosArray.includes(r.codigoServico);
     
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
     const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
     
-    // Lógica para Multi-Seleção (Se a lista estiver vazia, aceita todos. Senão, vê se bate com algum dos marcados)
-    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some(opt => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
+    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
 
     return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchSituacaoOS;
   });
@@ -265,7 +310,7 @@ export function useControleAnalises() {
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
-    filtroSituacaoOS, setFiltroSituacaoOS, toggleFiltroSituacaoOS, dropdownOSOpen, setDropdownOSOpen, // EXPORTADOS
+    filtroSituacaoOS, setFiltroSituacaoOS, toggleFiltroSituacaoOS, dropdownOSOpen, setDropdownOSOpen,
     requestSort, sortConfig, limparTela,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
     resultados
