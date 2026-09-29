@@ -208,7 +208,7 @@ export function useRedatorNotificacao() {
     const matTrimmed = String(mat).trim();
     setMatriculaBuscada(matTrimmed);
 
-    // 1. Verifica se a Planilha 1 (Base de Dados do Cliente) foi carregada
+    // Se a planilha 1 não foi carregada, avisa com o modal de aviso
     if (excelData.length === 0) {
       setFileModal({ 
         type: "warning", 
@@ -217,7 +217,7 @@ export function useRedatorNotificacao() {
       return;
     }
 
-    // 2. Procura o registro na planilha aceitando variações nos nomes das colunas e espaços
+    // Procura o registro na planilha
     const encontrado = excelData.find((row) => {
       const matriculaKey = Object.keys(row).find(k => /matr[ií]cula|matricula|mat/i.test(k));
       if (!matriculaKey) return false;
@@ -226,7 +226,6 @@ export function useRedatorNotificacao() {
     });
 
     if (encontrado) {
-      // Função auxiliar para buscar colunas com nomes flexíveis na planilha 1
       const getVal = (patterns: RegExp[]) => {
         for (const pattern of patterns) {
           const key = Object.keys(encontrado).find(k => pattern.test(k));
@@ -247,8 +246,9 @@ export function useRedatorNotificacao() {
         numeroHidrometro: getVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
       });
 
-      // Feedback visual de sucesso ao localizar
-      setFileModal({ type: "success", message: `Cliente da matrícula ${matTrimmed} localizado e confirmado com sucesso!` });
+      // ❌ REMOVIDO O POPUP DE SUCESSO AQUI
+      // O card verde (CardClienteLocalizado) já vai aparecer automaticamente abaixo!
+
     } else {
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
       setFileModal({ 
