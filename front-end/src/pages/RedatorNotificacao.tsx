@@ -85,11 +85,14 @@ export function RedatorNotificacao() {
                       <select
                         value={hook.filtroResponsavel}
                         onChange={(e) => hook.handleSelectResponsavel(e.target.value)}
-                        className="w-full pl-3 pr-8 py-2 border border-[#c3ddf8] bg-white rounded-lg text-sm font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/20 transition-all shadow-sm appearance-none cursor-pointer"
+                        // AQUI ESTÁ A MÁGICA: Se não tem filtro selecionado, fica cinza (text-gray-500), senão, escuro (text-[#0b1e35])
+                        className={`w-full pl-3 pr-8 py-2 border border-[#c3ddf8] bg-white rounded-lg text-sm font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/20 transition-all shadow-sm appearance-none cursor-pointer ${
+                          !hook.filtroResponsavel ? "text-gray-500" : "text-[#0b1e35]"
+                        }`}
                       >
-                        <option value="">Selecione um Responsável...</option>
+                        <option value="" className="text-gray-500">Selecione um Responsável...</option>
                         {hook.responsaveisList.map(resp => (
-                          <option key={resp} value={resp}>{resp}</option>
+                          <option key={resp} value={resp} className="text-gray-800">{resp}</option>
                         ))}
                       </select>
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#1a5fa8]">
