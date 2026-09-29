@@ -2,7 +2,7 @@ import { useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck, Eraser,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, RefreshCw // <-- RefreshCw importado para o botão
 } from "lucide-react";
 
 import { DatePicker } from "../components/shared/DatePicker";
@@ -63,20 +63,21 @@ export function RedatorNotificacao() {
               inputId="upload-base-cliente"
             />
 
-            {/* PAINEL 2: Planilha de Lote / Responsáveis (Opcional e Compacta) */}
+            {/* PAINEL 2: Planilha Opcional com Botão de Importação Inteligente */}
             <PainelUploadPlanilha 
               fileLoading={hook.fileLoading} 
               fileName={hook.fileNameResp} 
               onUpload={hook.handleFileUploadResp}
-              title="2. Planilha de Lotes e Responsáveis (Opcional)"
-              subtitle="Planilha com códigos e responsáveis para navegação rápida por setinhas."
+              onImport={hook.importarDoControleAnalises} // <-- Passando a função mágica!
+              title="2. Importação de Lotes (Opcional)"
+              subtitle="Puxe os dados filtrados da tela Controle de Análises ou faça upload de um CSV."
               inputId="upload-base-resp"
-              compact={true} // <-- Deixa o painel menor e mais discreto
+              compact={true}
             />
 
             <div className="mb-6">
               
-              {/* SELECT DE FILTRO DE RESPONSÁVEL (Aparece apenas se a planilha 2 estiver carregada) */}
+              {/* SELECT DE FILTRO DE RESPONSÁVEL */}
               {hook.excelDataResp.length > 0 && hook.responsaveisList.length > 0 && (
                 <div className="mb-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-center gap-4">
                   <div className="flex-1 w-full">
@@ -317,7 +318,8 @@ const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
   </div>
 );
 
-const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, title, subtitle, inputId, compact }: any) => (
+// O PAINEL DE UPLOAD AGORA ACEITA O BOTÃO DE IMPORTAÇÃO
+const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact }: any) => (
   <div className={`mb-4 bg-[#f8fafe] border border-[#dce9f7] rounded-xl ${compact ? 'p-3' : 'p-4'} flex flex-col sm:flex-row items-center justify-between gap-3`}>
     <div>
       <h3 className={`font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-0.5 ${compact ? 'text-[11px]' : 'text-xs'}`}>
@@ -325,16 +327,35 @@ const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, title, subtitle
       </h3>
       <p className="text-[10px] text-gray-500">{subtitle}</p>
     </div>
-    <div className="w-full sm:w-auto flex items-center gap-3">
-      <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
-      <label htmlFor={inputId} className={`rounded-md font-semibold text-white transition-colors flex-shrink-0 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "bg-[#1a5fa8]/50 cursor-not-allowed" : "bg-[#1a5fa8] hover:bg-[#154d8a] cursor-pointer"}`}>
-        Escolher arquivo
-      </label>
-      <div className="min-w-[120px] max-w-[260px]">
+    <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+      
+      <div className="flex items-center gap-2">
+        {/* BOTÃO NATIVO DE UPLOAD */}
+        <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
+        <label htmlFor={inputId} className={`rounded-md font-semibold text-[#1a5fa8] bg-white border border-[#1a5fa8] transition-colors flex-shrink-0 text-center ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#f0f7ff] cursor-pointer"}`}>
+          Escolher arquivo
+        </label>
+
+        {/* NOVO: BOTÃO DE IMPORTAÇÃO MÁGICA DA OUTRA TELA */}
+        {onImport && (
+          <button 
+            onClick={onImport}
+            disabled={fileLoading}
+            className={`rounded-md font-semibold text-white bg-[#1a5fa8] transition-colors flex flex-shrink-0 items-center justify-center gap-1.5 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#154d8a]"}`}
+          >
+            <RefreshCw size={compact ? 11 : 13} />
+            Puxar Filtrados
+          </button>
+        )}
+      </div>
+
+      <div className="min-w-[120px] max-w-[260px] text-center sm:text-left mt-2 sm:mt-0">
         {fileName ? (
-          <p className="text-[11px] text-[#1a5fa8] flex items-center gap-1.5 font-medium truncate"><FileText size={11} className="flex-shrink-0" /><span className="truncate">{fileName}</span></p>
+          <p className="text-[11px] text-[#1a5fa8] flex items-center justify-center sm:justify-start gap-1.5 font-medium truncate" title={fileName}>
+            <CheckCircle2 size={11} className="flex-shrink-0" /><span className="truncate">{fileName}</span>
+          </p>
         ) : (
-          <p className="text-[11px] text-gray-400 italic truncate">Nenhum arquivo...</p>
+          <p className="text-[11px] text-gray-400 italic truncate">Nenhum dado...</p>
         )}
       </div>
     </div>
