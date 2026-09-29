@@ -2,7 +2,7 @@ import { useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
   ChevronDown, X, FileText, Loader2, Info, Key, Search, UserCheck, Eraser,
-  ChevronLeft, ChevronRight, RefreshCw // <-- RefreshCw importado para o botão
+  ChevronLeft, ChevronRight, RefreshCw
 } from "lucide-react";
 
 import { DatePicker } from "../components/shared/DatePicker";
@@ -72,7 +72,7 @@ export function RedatorNotificacao() {
               subtitle="Puxe os dados filtrados da tela Controle de Análises."
               inputId="upload-base-resp"
               compact={true}
-              onlyImport={true} // <-- NOVA PROP
+              onlyImport={true} // <-- Garante que o "Escolher Arquivo" não apareça
             />
 
             <div className="mb-6">
