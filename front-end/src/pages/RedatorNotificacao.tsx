@@ -68,7 +68,7 @@ export function RedatorNotificacao() {
               fileLoading={hook.fileLoading} 
               fileName={hook.fileNameResp} 
               onImport={hook.importarDoControleAnalises}
-              title="2. Importação de Lotes (Opcional)"
+              title="2. Análises Vencidas"
               subtitle="Puxe os dados filtrados da tela Controle de Análises."
               inputId="upload-base-resp"
               compact={true}
