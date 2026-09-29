@@ -205,21 +205,56 @@ export function useRedatorNotificacao() {
 
   const buscarMatricula = (mat: string) => {
     if (!mat) return;
-    setMatriculaBuscada(mat);
-    const encontrado = excelData.find((row) => String(row["Matrícula"]) === mat);
+    const matTrimmed = String(mat).trim();
+    setMatriculaBuscada(matTrimmed);
+
+    // 1. Verifica se a Planilha 1 (Base de Dados do Cliente) foi carregada
+    if (excelData.length === 0) {
+      setFileModal({ 
+        type: "warning", 
+        message: "A 'Base de Dados do Cliente' (Planilha 1) não foi carregada. Faça o upload dela para que a busca automática por matrícula funcione." 
+      });
+      return;
+    }
+
+    // 2. Procura o registro na planilha aceitando variações nos nomes das colunas e espaços
+    const encontrado = excelData.find((row) => {
+      const matriculaKey = Object.keys(row).find(k => /matr[ií]cula|matricula|mat/i.test(k));
+      if (!matriculaKey) return false;
+      const rowMat = String(row[matriculaKey] || "").trim();
+      return rowMat === matTrimmed;
+    });
 
     if (encontrado) {
+      // Função auxiliar para buscar colunas com nomes flexíveis na planilha 1
+      const getVal = (patterns: RegExp[]) => {
+        for (const pattern of patterns) {
+          const key = Object.keys(encontrado).find(k => pattern.test(k));
+          if (key && encontrado[key] !== undefined && encontrado[key] !== null) {
+            return String(encontrado[key]).trim();
+          }
+        }
+        return "";
+      };
+
       setClienteData({
-        nomeCliente: encontrado["Morador"] || "",
-        logradouro: encontrado["Endereço"] || "",
-        bairro: encontrado["Bairro"] || "",
-        cep: encontrado["CEP"] || "",
-        localizacao: encontrado["Localização"] || "",
-        categoriaTarifa: encontrado["Ativ. Econômica"] || "",
-        numeroHidrometro: encontrado["Numero Hidrometro"] || ""
+        nomeCliente: getVal([/morador|cliente|nome|proprietario/i]),
+        logradouro: getVal([/endere[çc]o|logradouro|rua|avenida/i]),
+        bairro: getVal([/bairro/i]),
+        cep: getVal([/cep/i]),
+        localizacao: getVal([/localiza[çc][ãa]o/i]),
+        categoriaTarifa: getVal([/ativ.*econ[ôo]mica|categoria|tarifa/i]),
+        numeroHidrometro: getVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
       });
+
+      // Feedback visual de sucesso ao localizar
+      setFileModal({ type: "success", message: `Cliente da matrícula ${matTrimmed} localizado e confirmado com sucesso!` });
     } else {
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+      setFileModal({ 
+        type: "warning", 
+        message: `A matrícula "${matTrimmed}" não foi encontrada na "Base de Dados do Cliente" (Planilha 1). Verifique se o arquivo correto foi carregado.` 
+      });
     }
   };
 
