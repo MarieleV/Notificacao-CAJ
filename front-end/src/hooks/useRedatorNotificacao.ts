@@ -168,26 +168,27 @@ export function useRedatorNotificacao() {
       
       const savedState = JSON.parse(savedStr);
       
-      // 2. Tenta pegar os dados originais processados, caso os filtrados estejam vazios
-      let casosParaImportar = savedState.resultadosFiltrados || [];
+      // 2. Tenta pegar os dados. Vamos ser mais flexíveis procurando a chave correta.
+      let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
       
-      // Se por algum motivo o array de filtrados estiver vazio, mas houver resultados totais, avisa o usuário.
-      if (casosParaImportar.length === 0 && savedState.resultados && savedState.resultados.length > 0) {
-          setFileModal({ type: "warning", message: "Parece que você filtrou tudo na tela de Controle e não sobrou nada. Remova os filtros lá antes de importar." });
-          return;
-      }
-      
+      // Se não achar os filtrados, tenta pegar os originais como fallback.
       if (casosParaImportar.length === 0) {
-        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia. Não há nada para importar." });
+          casosParaImportar = savedState.resultados || savedState.dadosOriginais || [];
+      }
+
+      // Se ainda assim estiver vazio...
+      if (casosParaImportar.length === 0) {
+        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
         return;
       }
 
       // 3. Converte os dados filtrados para o formato que nosso Lote espera
       const dataMapped = casosParaImportar.map((item: any) => ({
-        "Matrícula": item.matricula,
-        "Responsável": item.funcionario,
-        "Código": item.codigoServico,
-        "Status": item.situacao
+        // Aceitamos variações comuns do nome da chave para sermos mais tolerantes
+        "Matrícula": item.matricula || item.Matrícula || item.Matricula || "",
+        "Responsável": item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || "",
+        "Código": item.codigoServico || item.codigo || item.Codigo || "",
+        "Status": item.situacao || item.status || item.Situacao || ""
       }));
 
       // 4. Salva no estado da Planilha 2 (Lotes)
@@ -351,7 +352,7 @@ export function useRedatorNotificacao() {
     selectedCodes, penaltyVariant, setPenaltyVariant,
     excelData, fileLoading, fileModal, setFileModal, fileName,
     
-    excelDataResp, fileNameResp, handleFileUploadResp, importarDoControleAnalises, // <- Adicionado na exportação
+    excelDataResp, fileNameResp, handleFileUploadResp, importarDoControleAnalises,
     
     matricula, setMatricula, dataConstatacao, setDataConstatacao,
     protocolo, setProtocolo, autoInfracao, setAutoInfracao, equipe, setEquipe,
