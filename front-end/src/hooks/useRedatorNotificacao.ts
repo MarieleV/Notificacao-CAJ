@@ -14,9 +14,6 @@ export interface FileModalState {
 }
 
 export function useRedatorNotificacao() {
-  // =========================================================================
-  // UI States (Efêmeros)
-  // =========================================================================
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
@@ -26,9 +23,6 @@ export function useRedatorNotificacao() {
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  // =========================================================================
-  // Business States (Persistidos no Session Storage)
-  // =========================================================================
   const [apiKey, setApiKey] = useSessionStorage("redator_apiKey", "");
   const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
   const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
@@ -36,15 +30,14 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente (Antiga)
+  // Planilha 1: Base de Dados do Cliente
   const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
-  // Planilha 2: Lote / Responsável (Nova e Opcional)
+  // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
   const [excelDataResp, setExcelDataResp] = useSessionStorage<any[]>("redator_excelDataResp", []);
   const [fileNameResp, setFileNameResp] = useSessionStorage<string>("redator_fileNameResp", "");
 
-  // Formulário
   const [matricula, setMatricula] = useSessionStorage("redator_matricula", "");
   const [matriculaBuscada, setMatriculaBuscada] = useSessionStorage("redator_matriculaBuscada", "");
   const [dataConstatacao, setDataConstatacao] = useSessionStorage("redator_dataConstatacao", "");
@@ -59,14 +52,10 @@ export function useRedatorNotificacao() {
     nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: ""
   });
 
-  // Estados de Lote e Processados
   const [filtroResponsavel, setFiltroResponsavel] = useSessionStorage("redator_filtroResponsavel", "");
   const [processedMatriculas, setProcessedMatriculas] = useSessionStorage<string[]>("redator_processedMatriculas", []);
 
-  // =========================================================================
-  // DADOS DERIVADOS (Computed State)
-  // =========================================================================
-
+  // COMPUTED STATES
   const selectedItems = INFRACTION_CODES.filter((c) => selectedCodes.includes(c.code));
 
   const filteredCodes = INFRACTION_CODES.filter((item) => {
@@ -84,7 +73,6 @@ export function useRedatorNotificacao() {
     return f.nome.toLowerCase().includes(term) || String(f.matricula).includes(term);
   });
 
-  // Lógica da Planilha 2 (Responsáveis e Lotes)
   const firstRowResp = excelDataResp[0] || {};
   const possibleKeysResp = Object.keys(firstRowResp);
   const keyResp = possibleKeysResp.find(k => /func|resp|equipe|agente|usuario|atendente/i.test(k)) || possibleKeysResp[0];
@@ -102,32 +90,20 @@ export function useRedatorNotificacao() {
 
   const totalCasos = casosResponsavel.length;
   const currentCasoIndex = casosResponsavel.findIndex(row => String(row[keyMatriculaResp] || row["Matrícula"] || "") === matricula);
-  
   const isCurrentProcessed = processedMatriculas.includes(matricula);
 
   const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
+  const camposObrigatoriosVazios = !matricula.trim() || !dataConstatacao.trim() || !protocolo.trim() || !funcionario.trim() || !equipe.trim();
 
-  const camposObrigatoriosVazios =
-    !matricula.trim() ||
-    !dataConstatacao.trim() ||
-    !protocolo.trim() ||
-    !funcionario.trim() ||
-    !equipe.trim();
-
-  // =========================================================================
-  // AÇÕES E FUNÇÕES (Handlers)
-  // =========================================================================
-
+  // ACTIONS
   const toggleCode = (code: string) => {
     setSelectedCodes((prev) => prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]);
   };
 
-  // Upload da Planilha 1 (Clientes)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileLoading(true);
     setFileName(file.name);
 
@@ -152,11 +128,9 @@ export function useRedatorNotificacao() {
     e.target.value = "";
   };
 
-  // Upload da Planilha 2 (Responsáveis / Lote)
   const handleFileUploadResp = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileLoading(true);
     setFileNameResp(file.name);
     setFiltroResponsavel("");
@@ -171,7 +145,7 @@ export function useRedatorNotificacao() {
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
         setExcelDataResp(data);
-        setFileModal({ type: "success", message: `${data.length} registros de responsáveis carregados para lote!` });
+        setFileModal({ type: "success", message: `${data.length} registros carregados para lote!` });
       } catch (error) {
         setFileModal({ type: "error", message: "Erro ao ler a planilha de responsáveis." });
       } finally {
@@ -182,10 +156,45 @@ export function useRedatorNotificacao() {
     e.target.value = "";
   };
 
+  // NOVO: IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES
+  const importarDoControleAnalises = () => {
+    try {
+      const savedStr = localStorage.getItem("@ControleAnalises:state");
+      if (!savedStr) {
+        setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
+        return;
+      }
+      
+      const savedState = JSON.parse(savedStr);
+      const filtrados = savedState.resultadosFiltrados || [];
+      
+      if (filtrados.length === 0) {
+        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
+        return;
+      }
+
+      // Converte os dados filtrados para o formato que nosso Lote espera
+      const dataMapped = filtrados.map((item: any) => ({
+        "Matrícula": item.matricula,
+        "Responsável": item.funcionario,
+        "Código": item.codigoServico,
+        "Status": item.situacao
+      }));
+
+      setExcelDataResp(dataMapped);
+      setFileNameResp(`Integrado: ${filtrados.length} casos filtrados`);
+      setFiltroResponsavel("");
+      setFileModal({ type: "success", message: `${filtrados.length} casos puxados da tela de Controle de Análises com sucesso!` });
+      
+    } catch (error) {
+      console.error(error);
+      setFileModal({ type: "error", message: "Erro ao tentar ler os dados do Controle de Análises." });
+    }
+  };
+
   const buscarMatricula = (mat: string) => {
     if (!mat) return;
     setMatriculaBuscada(mat);
-
     const encontrado = excelData.find((row) => String(row["Matrícula"]) === mat);
 
     if (encontrado) {
@@ -331,7 +340,9 @@ export function useRedatorNotificacao() {
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,
     excelData, fileLoading, fileModal, setFileModal, fileName,
-    excelDataResp, fileNameResp, handleFileUploadResp,
+    
+    excelDataResp, fileNameResp, handleFileUploadResp, importarDoControleAnalises, // <- Adicionado na exportação
+    
     matricula, setMatricula, dataConstatacao, setDataConstatacao,
     protocolo, setProtocolo, autoInfracao, setAutoInfracao, equipe, setEquipe,
     funcionario, setFuncionario, funcionarioBusca, setFuncionarioBusca,
