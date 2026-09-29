@@ -156,9 +156,10 @@ export function useRedatorNotificacao() {
     e.target.value = "";
   };
 
-  // NOVO: IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES
+  // NOVO: IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES (CORRIGIDO)
   const importarDoControleAnalises = () => {
     try {
+      // 1. Tenta pegar os dados salvos da tela Controle de Análises
       const savedStr = localStorage.getItem("@ControleAnalises:state");
       if (!savedStr) {
         setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
@@ -166,29 +167,38 @@ export function useRedatorNotificacao() {
       }
       
       const savedState = JSON.parse(savedStr);
-      const filtrados = savedState.resultadosFiltrados || [];
       
-      if (filtrados.length === 0) {
-        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
+      // 2. Tenta pegar os dados originais processados, caso os filtrados estejam vazios
+      let casosParaImportar = savedState.resultadosFiltrados || [];
+      
+      // Se por algum motivo o array de filtrados estiver vazio, mas houver resultados totais, avisa o usuário.
+      if (casosParaImportar.length === 0 && savedState.resultados && savedState.resultados.length > 0) {
+          setFileModal({ type: "warning", message: "Parece que você filtrou tudo na tela de Controle e não sobrou nada. Remova os filtros lá antes de importar." });
+          return;
+      }
+      
+      if (casosParaImportar.length === 0) {
+        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia. Não há nada para importar." });
         return;
       }
 
-      // Converte os dados filtrados para o formato que nosso Lote espera
-      const dataMapped = filtrados.map((item: any) => ({
+      // 3. Converte os dados filtrados para o formato que nosso Lote espera
+      const dataMapped = casosParaImportar.map((item: any) => ({
         "Matrícula": item.matricula,
         "Responsável": item.funcionario,
         "Código": item.codigoServico,
         "Status": item.situacao
       }));
 
+      // 4. Salva no estado da Planilha 2 (Lotes)
       setExcelDataResp(dataMapped);
-      setFileNameResp(`Integrado: ${filtrados.length} casos filtrados`);
+      setFileNameResp(`Importado: ${casosParaImportar.length} casos analisados`);
       setFiltroResponsavel("");
-      setFileModal({ type: "success", message: `${filtrados.length} casos puxados da tela de Controle de Análises com sucesso!` });
+      setFileModal({ type: "success", message: `${casosParaImportar.length} casos puxados da tela de Controle de Análises com sucesso!` });
       
     } catch (error) {
-      console.error(error);
-      setFileModal({ type: "error", message: "Erro ao tentar ler os dados do Controle de Análises." });
+      console.error("Erro ao importar do Controle:", error);
+      setFileModal({ type: "error", message: "Erro ao tentar ler os dados. Tente processar novamente na tela de Controle de Análises." });
     }
   };
 
