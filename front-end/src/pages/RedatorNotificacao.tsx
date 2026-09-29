@@ -63,16 +63,16 @@ export function RedatorNotificacao() {
               inputId="upload-base-cliente"
             />
 
-            {/* PAINEL 2: Planilha Opcional com Botão de Importação Inteligente */}
+            {/* PAINEL 2: Apenas Importação Direta (Sem botão de Escolher Arquivo) */}
             <PainelUploadPlanilha 
               fileLoading={hook.fileLoading} 
               fileName={hook.fileNameResp} 
-              onUpload={hook.handleFileUploadResp}
-              onImport={hook.importarDoControleAnalises} // <-- Passando a função mágica!
+              onImport={hook.importarDoControleAnalises}
               title="2. Importação de Lotes (Opcional)"
-              subtitle="Puxe os dados filtrados da tela Controle de Análises ou faça upload de um CSV."
+              subtitle="Puxe os dados filtrados da tela Controle de Análises."
               inputId="upload-base-resp"
               compact={true}
+              onlyImport={true} // <-- NOVA PROP
             />
 
             <div className="mb-6">
@@ -318,8 +318,8 @@ const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
   </div>
 );
 
-// O PAINEL DE UPLOAD AGORA ACEITA O BOTÃO DE IMPORTAÇÃO
-const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact }: any) => (
+// O PAINEL DE UPLOAD AGORA ACEITA A PROP 'onlyImport' PARA ESCONDER O UPLOAD MANUAL
+const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact, onlyImport }: any) => (
   <div className={`mb-4 bg-[#f8fafe] border border-[#dce9f7] rounded-xl ${compact ? 'p-3' : 'p-4'} flex flex-col sm:flex-row items-center justify-between gap-3`}>
     <div>
       <h3 className={`font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-0.5 ${compact ? 'text-[11px]' : 'text-xs'}`}>
@@ -330,13 +330,17 @@ const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title
     <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
       
       <div className="flex items-center gap-2">
-        {/* BOTÃO NATIVO DE UPLOAD */}
-        <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
-        <label htmlFor={inputId} className={`rounded-md font-semibold text-[#1a5fa8] bg-white border border-[#1a5fa8] transition-colors flex-shrink-0 text-center ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#f0f7ff] cursor-pointer"}`}>
-          Escolher arquivo
-        </label>
+        {/* BOTÃO NATIVO DE UPLOAD (Só aparece se NÃO for onlyImport) */}
+        {!onlyImport && (
+          <>
+            <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
+            <label htmlFor={inputId} className={`rounded-md font-semibold text-[#1a5fa8] bg-white border border-[#1a5fa8] transition-colors flex-shrink-0 text-center ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#f0f7ff] cursor-pointer"}`}>
+              Escolher arquivo
+            </label>
+          </>
+        )}
 
-        {/* NOVO: BOTÃO DE IMPORTAÇÃO MÁGICA DA OUTRA TELA */}
+        {/* BOTÃO DE IMPORTAÇÃO MÁGICA DA OUTRA TELA */}
         {onImport && (
           <button 
             onClick={onImport}
