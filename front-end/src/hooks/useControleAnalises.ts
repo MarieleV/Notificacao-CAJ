@@ -51,18 +51,20 @@ export function useControleAnalises() {
   const [loading, setLoading] = useState(false);
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   
-  // --- ESTADOS DE ARQUIVOS (Carregados da memória) ---
+  // --- ESTADOS DE ARQUIVOS ---
   const [fileNameOP, setFileNameOP] = useState<string>(savedState.fileNameOP || "");
   const [fileName989Cliente, setFileName989Cliente] = useState<string>(savedState.fileName989Cliente || "");
   const [fileName989CAJ, setFileName989CAJ] = useState<string>(savedState.fileName989CAJ || "");
 
-  const [dadosOP, setDadosOP] = useState<any[]>(savedState.dadosOP || []);
-  const [dados989Cliente, setDados989Cliente] = useState<any[]>(savedState.dados989Cliente || []);
-  const [dados989CAJ, setDados989CAJ] = useState<any[]>(savedState.dados989CAJ || []);
+  // IMPORTANTE: NÃO carregamos os dados brutos salvos do LocalStorage para evitar o estouro do limite de 5MB.
+  // Eles ficam apenas na memória volátil (RAM) enquanto a aba está aberta.
+  const [dadosOP, setDadosOP] = useState<any[]>([]);
+  const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
+  const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
 
   const [resultados, setResultados] = useState<AnaliseProcessada[]>(savedState.resultados || []);
   
-  // --- ESTADOS DE FILTRO E ORDENAÇÃO (Carregados da memória) ---
+  // --- ESTADOS DE FILTRO E ORDENAÇÃO ---
   const [searchTerm, setSearchTerm] = useState(savedState.searchTerm || "");
   const [filtroCodigo, setFiltroCodigo] = useState(savedState.filtroCodigo || "");
   const [filtroFuncionario, setFiltroFuncionario] = useState(savedState.filtroFuncionario || "");
@@ -76,22 +78,72 @@ export function useControleAnalises() {
     savedState.sortConfig || { key: null, direction: 'asc' }
   );
 
-  // --- EFEITO MÁGICO: Salva tudo no navegador sempre que algo mudar ---
+  // =======================================================================================
+  // 1. CÁLCULO DOS FILTRADOS (Agora fica ANTES do useEffect para podermos salvar isso)
+  // =======================================================================================
+  const filtrados = resultados.filter(r => {
+    const matchGlobal = r.matricula.includes(searchTerm) || 
+                        r.codigoServico.includes(searchTerm) || 
+                        r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const codigosArray = filtroCodigo.split(",").map((c: string) => c.trim()).filter((c: string) => c !== "");
+    const matchCodigo = codigosArray.length === 0 || codigosArray.includes(r.codigoServico);
+    
+    const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
+    const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
+    const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
+    
+    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
+
+    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchSituacaoOS;
+  });
+
+  const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    let aValue: any = a[sortConfig.key];
+    let bValue: any = b[sortConfig.key];
+
+    if (sortConfig.key === "dataAbertura") {
+      const [dayA, monthA, yearA] = (aValue as string).split('/');
+      const [dayB, monthB, yearB] = (bValue as string).split('/');
+      aValue = new Date(`${yearA}-${monthA}-${dayA}`).getTime();
+      bValue = new Date(`${yearB}-${monthB}-${dayB}`).getTime();
+    } else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula" || sortConfig.key === "diasTranscorridos" || sortConfig.key === "diasAtraso") {
+      aValue = Number(String(aValue).replace(/\D/g, ''));
+      bValue = Number(String(bValue).replace(/\D/g, ''));
+    } else if (sortConfig.key === "isPadronizado") {
+      aValue = aValue ? 1 : 0;
+      bValue = bValue ? 1 : 0;
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // =======================================================================================
+  // 2. SALVAMENTO NO LOCALSTORAGE (Agora salva os filtrados e protege contra quebra de limite)
+  // =======================================================================================
   useEffect(() => {
     const stateToSave = {
       fileNameOP, fileName989Cliente, fileName989CAJ,
-      dadosOP, dados989Cliente, dados989CAJ,
       resultados,
+      resultadosFiltrados: resultadosFiltradosEOrdenados, // <-- AGORA OS FILTRADOS VÃO JUNTO!
       searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS,
       sortConfig
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
-      console.warn("Aviso: Limite de armazenamento local atingido (planilhas muito grandes). A persistência pode falhar.", error);
+      console.warn("Aviso: Limite de armazenamento local atingido.", error);
     }
-  }, [fileNameOP, fileName989Cliente, fileName989CAJ, dadosOP, dados989Cliente, dados989CAJ, resultados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
+  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
 
+
+  // =======================================================================================
+  // FUNÇÕES DE AÇÃO
+  // =======================================================================================
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -231,21 +283,14 @@ export function useControleAnalises() {
     );
   };
 
-  // --- NOVA FUNÇÃO LIMPAR TELA ---
-  // Agora ela apaga ABSOLUTAMENTE TUDO (arquivos, resultados, memória e filtros)
   const limparTela = () => {
-    // 1. Zera os arquivos anexados
     setFileNameOP("");
     setFileName989Cliente("");
     setFileName989CAJ("");
     setDadosOP([]);
     setDados989Cliente([]);
     setDados989CAJ([]);
-    
-    // 2. Zera os resultados da tabela
     setResultados([]); 
-    
-    // 3. Zera os Filtros
     setSearchTerm("");
     setFiltroCodigo("");
     setFiltroFuncionario("");
@@ -254,51 +299,8 @@ export function useControleAnalises() {
     setFiltroSituacaoOS([]); 
     setDropdownOSOpen(false);
     setSortConfig({ key: null, direction: 'asc' });
-
-    // 4. Apaga a memória salva no navegador
     localStorage.removeItem(STORAGE_KEY);
   };
-
-  const filtrados = resultados.filter(r => {
-    const matchGlobal = r.matricula.includes(searchTerm) || 
-                        r.codigoServico.includes(searchTerm) || 
-                        r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const codigosArray = filtroCodigo.split(",").map((c: string) => c.trim()).filter((c: string) => c !== "");
-    const matchCodigo = codigosArray.length === 0 || codigosArray.includes(r.codigoServico);
-    
-    const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
-    const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
-    const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
-    
-    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
-
-    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchSituacaoOS;
-  });
-
-  const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    
-    let aValue: any = a[sortConfig.key];
-    let bValue: any = b[sortConfig.key];
-
-    if (sortConfig.key === "dataAbertura") {
-      const [dayA, monthA, yearA] = (aValue as string).split('/');
-      const [dayB, monthB, yearB] = (bValue as string).split('/');
-      aValue = new Date(`${yearA}-${monthA}-${dayA}`).getTime();
-      bValue = new Date(`${yearB}-${monthB}-${dayB}`).getTime();
-    } else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula" || sortConfig.key === "diasTranscorridos" || sortConfig.key === "diasAtraso") {
-      aValue = Number(String(aValue).replace(/\D/g, ''));
-      bValue = Number(String(bValue).replace(/\D/g, ''));
-    } else if (sortConfig.key === "isPadronizado") {
-      aValue = aValue ? 1 : 0;
-      bValue = bValue ? 1 : 0;
-    }
-
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
 
   return {
     loading, fileModal, setFileModal, 

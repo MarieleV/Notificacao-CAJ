@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { useSessionStorage } from "./useSessionStorage"; // <-- Hook importado
+import { useSessionStorage } from "./useSessionStorage"; 
 import { FUNCIONARIOS } from "../utils/funcionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
@@ -14,9 +14,6 @@ export interface FileModalState {
 }
 
 export function useRedatorNotificacao() {
-  // =========================================================================
-  // UI States (Efêmeros - não precisam de persistência)
-  // =========================================================================
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
@@ -26,24 +23,21 @@ export function useRedatorNotificacao() {
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  // =========================================================================
-  // Business States (Persistidos no Session Storage)
-  // =========================================================================
-  
-  // Configurações e Passo
   const [apiKey, setApiKey] = useSessionStorage("redator_apiKey", "");
   const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
   const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
   
-  // Seleção de Códigos
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha e Arquivos (Mantém a planilha carregada ao navegar entre telas)
+  // Planilha 1: Base de Dados do Cliente
   const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
-  // Formulário
+  // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
+  const [excelDataResp, setExcelDataResp] = useSessionStorage<any[]>("redator_excelDataResp", []);
+  const [fileNameResp, setFileNameResp] = useSessionStorage<string>("redator_fileNameResp", "");
+
   const [matricula, setMatricula] = useSessionStorage("redator_matricula", "");
   const [matriculaBuscada, setMatriculaBuscada] = useSessionStorage("redator_matriculaBuscada", "");
   const [dataConstatacao, setDataConstatacao] = useSessionStorage("redator_dataConstatacao", "");
@@ -51,25 +45,17 @@ export function useRedatorNotificacao() {
   const [autoInfracao, setAutoInfracao] = useSessionStorage("redator_autoInfracao", "");
   const [equipe, setEquipe] = useSessionStorage("redator_equipe", "");
   
-  // Funcionário (Agora salva o texto livre ou o nome completo formatado)
   const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
   const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("redator_funcionarioBusca", "");
 
-  // Dados do Cliente
   const [clienteData, setClienteData] = useSessionStorage("redator_clienteData", {
-    nomeCliente: "",
-    logradouro: "",
-    bairro: "",
-    cep: "",
-    localizacao: "",
-    categoriaTarifa: "",
-    numeroHidrometro: ""
+    nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: ""
   });
 
-  // =========================================================================
-  // DADOS DERIVADOS (Computed State)
-  // =========================================================================
+  const [filtroResponsavel, setFiltroResponsavel] = useSessionStorage("redator_filtroResponsavel", "");
+  const [processedMatriculas, setProcessedMatriculas] = useSessionStorage<string[]>("redator_processedMatriculas", []);
 
+  // COMPUTED STATES
   const selectedItems = INFRACTION_CODES.filter((c) => selectedCodes.includes(c.code));
 
   const filteredCodes = INFRACTION_CODES.filter((item) => {
@@ -87,39 +73,41 @@ export function useRedatorNotificacao() {
     return f.nome.toLowerCase().includes(term) || String(f.matricula).includes(term);
   });
 
-  // Ajustado: Como o campo agora aceita texto livre, evitamos tentar extrair a matrícula
-  // a todo momento. O componente visual de listagem vai tratar o clique e preencher
-  // o estado do funcionário com a string completa desejada.
+  const firstRowResp = excelDataResp[0] || {};
+  const possibleKeysResp = Object.keys(firstRowResp);
+  const keyResp = possibleKeysResp.find(k => /func|resp|equipe|agente|usuario|atendente/i.test(k)) || possibleKeysResp[0];
+  const keyMatriculaResp = possibleKeysResp.find(k => /matr[ií]cula|matricula|mat/i.test(k)) || possibleKeysResp[1] || possibleKeysResp[0];
+
+  const responsaveisList = Array.from(new Set(
+    excelDataResp
+      .map(row => String(row[keyResp] || "").trim())
+      .filter(Boolean)
+  )).sort();
+
+  const casosResponsavel = filtroResponsavel && keyResp
+    ? excelDataResp.filter(row => String(row[keyResp] || "").trim() === filtroResponsavel)
+    : [];
+
+  const totalCasos = casosResponsavel.length;
+  const currentCasoIndex = casosResponsavel.findIndex(row => String(row[keyMatriculaResp] || row["Matrícula"] || "") === matricula);
+  const isCurrentProcessed = processedMatriculas.includes(matricula);
+
   const funcionarioSelecionado = null; 
-
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
+  const camposObrigatoriosVazios = !matricula.trim() || !dataConstatacao.trim() || !protocolo.trim() || !funcionario.trim() || !equipe.trim();
 
-  const camposObrigatoriosVazios =
-    !matricula.trim() ||
-    !dataConstatacao.trim() ||
-    !protocolo.trim() ||
-    !funcionario.trim() ||
-    !equipe.trim();
-
-  // =========================================================================
-  // AÇÕES E FUNÇÕES (Handlers)
-  // =========================================================================
-
+  // ACTIONS
   const toggleCode = (code: string) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
+    setSelectedCodes((prev) => prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileLoading(true);
     setFileName(file.name);
 
     const reader = new FileReader();
-
     reader.onload = (event) => {
       try {
         const arrayBuffer = event.target?.result;
@@ -129,37 +117,96 @@ export function useRedatorNotificacao() {
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
         setExcelData(data);
-
-        if (data.length === 0) {
-          setFileModal({ type: "warning", message: "Aviso: A planilha parece estar vazia ou os dados não estão na primeira aba." });
-        } else {
-          setFileModal({ type: "success", message: `${data.length} registros carregados com sucesso! Agora é só buscar a matrícula.` });
-        }
+        setFileModal({ type: "success", message: `${data.length} registros de clientes carregados com sucesso!` });
       } catch (error) {
-        console.error("Erro ao ler a planilha:", error);
-        setFileModal({
-          type: "error",
-          message: "Erro ao ler o arquivo. Se for um CSV com formatação estranha, abra no Excel, clique em 'Salvar Como -> Pasta de Trabalho do Excel (.xlsx)' e tente novamente.",
-        });
+        setFileModal({ type: "error", message: "Erro ao ler a planilha de clientes." });
       } finally {
         setFileLoading(false);
       }
     };
-
-    reader.onerror = () => {
-      setFileLoading(false);
-      setFileModal({ type: "error", message: "Não foi possível ler o arquivo selecionado. Tente novamente." });
-    };
-
     reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
 
-  const handleSearchMatricula = () => {
-    if (!matricula) return;
-    setMatriculaBuscada(matricula);
+  const handleFileUploadResp = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileLoading(true);
+    setFileNameResp(file.name);
+    setFiltroResponsavel("");
 
-    const encontrado = excelData.find((row) => String(row["Matrícula"]) === matricula);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const arrayBuffer = event.target?.result;
+        const wb = XLSX.read(arrayBuffer, { type: "array" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        setExcelDataResp(data);
+        setFileModal({ type: "success", message: `${data.length} registros carregados para lote!` });
+      } catch (error) {
+        setFileModal({ type: "error", message: "Erro ao ler a planilha de responsáveis." });
+      } finally {
+        setFileLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  // NOVO: IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES (CORRIGIDO)
+  const importarDoControleAnalises = () => {
+    try {
+      // 1. Tenta pegar os dados salvos da tela Controle de Análises
+      const savedStr = localStorage.getItem("@ControleAnalises:state");
+      if (!savedStr) {
+        setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
+        return;
+      }
+      
+      const savedState = JSON.parse(savedStr);
+      
+      // 2. Tenta pegar os dados. Vamos ser mais flexíveis procurando a chave correta.
+      let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
+      
+      // Se não achar os filtrados, tenta pegar os originais como fallback.
+      if (casosParaImportar.length === 0) {
+          casosParaImportar = savedState.resultados || savedState.dadosOriginais || [];
+      }
+
+      // Se ainda assim estiver vazio...
+      if (casosParaImportar.length === 0) {
+        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
+        return;
+      }
+
+      // 3. Converte os dados filtrados para o formato que nosso Lote espera
+      const dataMapped = casosParaImportar.map((item: any) => ({
+        // Aceitamos variações comuns do nome da chave para sermos mais tolerantes
+        "Matrícula": item.matricula || item.Matrícula || item.Matricula || "",
+        "Responsável": item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || "",
+        "Código": item.codigoServico || item.codigo || item.Codigo || "",
+        "Status": item.situacao || item.status || item.Situacao || ""
+      }));
+
+      // 4. Salva no estado da Planilha 2 (Lotes)
+      setExcelDataResp(dataMapped);
+      setFileNameResp(`Importado: ${casosParaImportar.length} casos analisados`);
+      setFiltroResponsavel("");
+      setFileModal({ type: "success", message: `${casosParaImportar.length} casos puxados da tela de Controle de Análises com sucesso!` });
+      
+    } catch (error) {
+      console.error("Erro ao importar do Controle:", error);
+      setFileModal({ type: "error", message: "Erro ao tentar ler os dados. Tente processar novamente na tela de Controle de Análises." });
+    }
+  };
+
+  const buscarMatricula = (mat: string) => {
+    if (!mat) return;
+    setMatriculaBuscada(mat);
+    const encontrado = excelData.find((row) => String(row["Matrícula"]) === mat);
 
     if (encontrado) {
       setClienteData({
@@ -172,47 +219,66 @@ export function useRedatorNotificacao() {
         numeroHidrometro: encontrado["Numero Hidrometro"] || ""
       });
     } else {
-      alert("Matrícula não encontrada na planilha.");
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+    }
+  };
+
+  const handleSearchMatricula = () => buscarMatricula(matricula);
+
+  const handleSelectResponsavel = (resp: string) => {
+    setFiltroResponsavel(resp);
+    if (resp) {
+      const casos = excelDataResp.filter(row => String(row[keyResp] || "").trim() === resp);
+      if (casos.length > 0) {
+        const primeiraMat = String(casos[0][keyMatriculaResp] || casos[0]["Matrícula"] || "");
+        setMatricula(primeiraMat);
+        buscarMatricula(primeiraMat);
+      }
+    }
+  };
+
+  const navegarCaso = (direction: 'next' | 'prev') => {
+    if (totalCasos === 0) return;
+    let newIndex = currentCasoIndex;
+    
+    if (direction === 'next') {
+      newIndex = (currentCasoIndex >= 0 && currentCasoIndex < totalCasos - 1) ? currentCasoIndex + 1 : 0;
+    } else {
+      newIndex = (currentCasoIndex > 0) ? currentCasoIndex - 1 : totalCasos - 1;
+    }
+    
+    const rowData = casosResponsavel[newIndex];
+    const novaMatricula = String(rowData[keyMatriculaResp] || rowData["Matrícula"] || "");
+    setMatricula(novaMatricula);
+    buscarMatricula(novaMatricula);
+    setStep("idle");
+  };
+
+  const marcarComoProcessada = () => {
+    if (matricula && !processedMatriculas.includes(matricula)) {
+      setProcessedMatriculas(prev => [...prev, matricula]);
     }
   };
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
-    if (!apiKey) {
-      alert("Por favor, insira sua Chave de API do Gemini no topo da tela.");
-      return;
-    }
-    if (camposObrigatoriosVazios) {
-      alert("Por favor, preencha todos os Dados da Notificação (Matrícula, Data, Protocolo, Funcionário e Equipe).");
-      return;
-    }
-    if (esqueceuDeBuscar) {
-      alert("Você digitou/alterou a matrícula, mas esqueceu de clicar em 'Buscar'. Por favor, busque os dados antes de gerar o documento.");
-      return;
-    }
+    if (!apiKey) return alert("Insira sua Chave de API do Gemini.");
+    if (camposObrigatoriosVazios) return alert("Preencha todos os Dados da Notificação.");
+    if (esqueceuDeBuscar && excelData.length > 0) return alert("Você alterou a matrícula, clique em 'Buscar' antes de gerar.");
 
     setLoading(true);
     setStep("idle");
 
-    const textosBase = selectedItems.map(item =>
-      penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta
-    );
+    const textosBase = selectedItems.map(item => penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta);
 
     try {
       const data = await gerarNotificacaoApi({
-        api_key: apiKey,
-        textos_base: textosBase,
-        dataConstatacao,
-        protocolo,
-        funcionario,
-        equipe
+        api_key: apiKey, textos_base: textosBase,
+        dataConstatacao, protocolo, funcionario, equipe
       });
-      
       setGeneratedText(data.texto_gerado);
       setStep("generated");
     } catch (error: any) {
-      console.error("Erro detalhado da API:", error);
       alert(`Falha ao gerar o documento. Erro: ${error.message}`);
     } finally {
       setLoading(false);
@@ -237,50 +303,33 @@ export function useRedatorNotificacao() {
   };
 
   const handleDownload = async () => {
-    if (!autoInfracao.trim()) {
-      alert("Por favor, informe o Nº do Auto de Infração antes de baixar o documento.");
-      return;
-    }
+    if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarWordApi({
-        texto_final: generatedText,
-        protocolo,
-        autoInfracao,
-        matricula,
-        ...clienteData
+        texto_final: generatedText, protocolo, autoInfracao, matricula, ...clienteData
       });
-      
-      baixarArquivoBrowser(blob, `Notificacao_Extrajudicial_${new Date().toISOString().split("T")[0]}.docx`);
+      baixarArquivoBrowser(blob, `Notificacao_${matricula}.docx`);
+      marcarComoProcessada();
     } catch (error) {
-      console.error(error);
-      alert("Erro ao baixar o arquivo Word pelo servidor.");
+      alert("Erro ao baixar o arquivo Word.");
     }
   };
 
   const handleDownloadPDF = async () => {
-    if (!autoInfracao.trim()) {
-      alert("Por favor, informe o Nº do Auto de Infração antes de baixar o documento.");
-      return;
-    }
+    if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarPdfApi({
-        texto_final: generatedText,
-        protocolo,
-        autoInfracao,
-        matricula,
-        ...clienteData
+        texto_final: generatedText, protocolo, autoInfracao, matricula, ...clienteData
       });
-      
-      baixarArquivoBrowser(blob, `Notificacao_Extrajudicial_${new Date().toISOString().split("T")[0]}.pdf`);
+      baixarArquivoBrowser(blob, `Notificacao_${matricula}.pdf`);
+      marcarComoProcessada();
     } catch (error) {
-      console.error(error);
-      alert("Erro ao baixar o arquivo PDF. Verifique se a rota no back-end já foi criada.");
+      alert("Erro ao baixar o arquivo PDF.");
     }
   };
 
   function limparTela() {
-    if (!window.confirm("Tem certeza que deseja limpar o formulário? Sua planilha continuará carregada.")) return;
-    
+    if (!window.confirm("Deseja limpar o formulário? As planilhas continuarão carregadas.")) return;
     setStep("idle");
     setGeneratedText("");
     setSelectedCodes([]);
@@ -293,28 +342,29 @@ export function useRedatorNotificacao() {
     setEquipe("");
     setFuncionario("");
     setFuncionarioBusca("");
-    setClienteData({
-      nomeCliente: "", logradouro: "", bairro: "", cep: "",
-      localizacao: "", categoriaTarifa: "", numeroHidrometro: ""
-    });
+    setFiltroResponsavel("");
+    setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
   }
 
   return {
-    // States
     apiKey, setApiKey, dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,
     excelData, fileLoading, fileModal, setFileModal, fileName,
+    
+    excelDataResp, fileNameResp, handleFileUploadResp, importarDoControleAnalises,
+    
     matricula, setMatricula, dataConstatacao, setDataConstatacao,
     protocolo, setProtocolo, autoInfracao, setAutoInfracao, equipe, setEquipe,
     funcionario, setFuncionario, funcionarioBusca, setFuncionarioBusca,
     funcSearchOpen, setFuncSearchOpen, clienteData, generatedText, setGeneratedText,
     
-    // Computed States
+    filtroResponsavel, responsaveisList, handleSelectResponsavel, 
+    casosResponsavel, currentCasoIndex, totalCasos, navegarCaso, isCurrentProcessed,
+    
     selectedItems, filteredCodes, filteredFuncionarios,
     funcionarioSelecionado, esqueceuDeBuscar, camposObrigatoriosVazios,
     
-    // Handlers
     toggleCode, handleFileUpload, handleSearchMatricula,
     handleGenerate, handleCopy, handleDownload, handleDownloadPDF, limparTela
   };
