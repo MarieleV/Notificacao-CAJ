@@ -63,7 +63,7 @@ export function RedatorNotificacao() {
               inputId="upload-base-cliente"
             />
 
-            {/* PAINEL 2: Apenas Importação Direta (Sem botão de Escolher Arquivo) */}
+            {/* PAINEL 2: Importação com Expansão de Lote Automática */}
             <PainelUploadPlanilha 
               fileLoading={hook.fileLoading} 
               fileName={hook.fileNameResp} 
@@ -72,38 +72,43 @@ export function RedatorNotificacao() {
               subtitle="Puxe os dados filtrados da tela Controle de Análises."
               inputId="upload-base-resp"
               compact={true}
-              onlyImport={true} // <-- Garante que o "Escolher Arquivo" não apareça
-            />
-
-            <div className="mb-6">
-              
-              {/* SELECT DE FILTRO DE RESPONSÁVEL */}
+              onlyImport={true}
+            >
+              {/* === ESTE CONTEÚDO SÓ APARECE E EXPANDE SE HOUVER DADOS === */}
               {hook.excelDataResp.length > 0 && hook.responsaveisList.length > 0 && (
-                <div className="mb-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="flex-1 w-full">
-                    <label className="block text-[10px] font-semibold text-[#1a5fa8] uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-bold text-[#1a5fa8] uppercase tracking-wider mb-2">
                       Trabalhar em Lote por Responsável
                     </label>
-                    <select
-                      value={hook.filtroResponsavel}
-                      onChange={(e) => hook.handleSelectResponsavel(e.target.value)}
-                      className="w-full px-3 py-2 border border-[#c3ddf8] bg-white rounded-lg text-sm font-medium focus:outline-none focus:border-[#1a5fa8] transition-all"
-                    >
-                      <option value="">Selecione um Responsável...</option>
-                      {hook.responsaveisList.map(resp => (
-                        <option key={resp} value={resp}>{resp}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={hook.filtroResponsavel}
+                        onChange={(e) => hook.handleSelectResponsavel(e.target.value)}
+                        className="w-full pl-3 pr-8 py-2 border border-[#c3ddf8] bg-white rounded-lg text-sm font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/20 transition-all shadow-sm appearance-none cursor-pointer"
+                      >
+                        <option value="">Selecione um Responsável...</option>
+                        {hook.responsaveisList.map(resp => (
+                          <option key={resp} value={resp}>{resp}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#1a5fa8]">
+                        <ChevronDown size={16} />
+                      </div>
+                    </div>
                   </div>
                   {hook.filtroResponsavel && (
-                    <div className="text-right">
-                      <span className="text-2xl font-black text-[#0b1e35]">{hook.totalCasos}</span>
-                      <p className="text-[10px] uppercase font-bold text-gray-400">Casos Vinculados</p>
+                    <div className="text-right sm:border-l sm:border-[#dce9f7] sm:pl-5 sm:ml-2 flex flex-col justify-center h-full">
+                      <span className="text-2xl font-black text-[#1a5fa8] leading-none">{hook.totalCasos}</span>
+                      <p className="text-[10px] uppercase font-bold text-gray-500 mt-1">Casos Vinculados</p>
                     </div>
                   )}
                 </div>
               )}
+            </PainelUploadPlanilha>
 
+            <div className="mb-6">
+              
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
                 <div className="sm:col-span-2">
                   <label className="flex justify-between items-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -111,7 +116,7 @@ export function RedatorNotificacao() {
                     
                     {/* CONTADOR DE CASOS (Ex: Caso 1 de 5) */}
                     {hook.filtroResponsavel && hook.totalCasos > 0 && (
-                      <span className="text-[#1a5fa8] font-bold">
+                      <span className="text-[#1a5fa8] font-bold bg-[#eef6ff] px-2 py-0.5 rounded-full border border-[#dce9f7]">
                         Caso {hook.currentCasoIndex >= 0 ? hook.currentCasoIndex + 1 : "?"} de {hook.totalCasos}
                       </span>
                     )}
@@ -120,7 +125,7 @@ export function RedatorNotificacao() {
                   <div className="flex gap-2">
                     {/* BOTÃO VOLTAR CASO */}
                     {hook.filtroResponsavel && hook.totalCasos > 1 && (
-                      <button onClick={() => hook.navegarCaso('prev')} title="Caso Anterior" className="px-3 py-2 bg-[#f8fafe] border border-gray-200 text-[#1a5fa8] rounded-lg hover:bg-[#eef6ff]">
+                      <button onClick={() => hook.navegarCaso('prev')} title="Caso Anterior" className="px-3 py-2 bg-[#f8fafe] border border-gray-200 text-[#1a5fa8] rounded-lg hover:bg-[#eef6ff] transition-colors">
                         <ChevronLeft size={16} />
                       </button>
                     )}
@@ -129,12 +134,12 @@ export function RedatorNotificacao() {
                       value={hook.matricula}
                       onChange={(e) => hook.setMatricula(e.target.value)}
                       placeholder="Ex: 1298382-9"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all"
                     />
 
                     {/* BOTÃO AVANÇAR CASO */}
                     {hook.filtroResponsavel && hook.totalCasos > 1 && (
-                      <button onClick={() => hook.navegarCaso('next')} title="Próximo Caso" className="px-3 py-2 bg-[#f8fafe] border border-gray-200 text-[#1a5fa8] rounded-lg hover:bg-[#eef6ff]">
+                      <button onClick={() => hook.navegarCaso('next')} title="Próximo Caso" className="px-3 py-2 bg-[#f8fafe] border border-gray-200 text-[#1a5fa8] rounded-lg hover:bg-[#eef6ff] transition-colors">
                         <ChevronRight size={16} />
                       </button>
                     )}
@@ -142,15 +147,13 @@ export function RedatorNotificacao() {
                     <button
                       onClick={hook.handleSearchMatricula}
                       disabled={hook.excelData.length === 0}
-                      className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] disabled:opacity-50"
+                      className="px-4 py-2 bg-[#eef6ff] text-[#1a5fa8] border border-[#c3ddf8] rounded-lg text-xs font-semibold hover:bg-[#dce9f7] disabled:opacity-50 transition-colors shadow-sm"
                     >
                       Buscar
                     </button>
                   </div>
                 </div>
               </div>
-
-              <CardClienteLocalizado cliente={hook.clienteData} isProcessed={hook.isCurrentProcessed} />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
@@ -318,51 +321,57 @@ const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
   </div>
 );
 
-// O PAINEL DE UPLOAD AGORA ACEITA A PROP 'onlyImport' PARA ESCONDER O UPLOAD MANUAL
-const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact, onlyImport }: any) => (
-  <div className={`mb-4 bg-[#f8fafe] border border-[#dce9f7] rounded-xl ${compact ? 'p-3' : 'p-4'} flex flex-col sm:flex-row items-center justify-between gap-3`}>
-    <div>
-      <h3 className={`font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-0.5 ${compact ? 'text-[11px]' : 'text-xs'}`}>
-        <FileText size={compact ? 12 : 14}/> {title}
-      </h3>
-      <p className="text-[10px] text-gray-500">{subtitle}</p>
-    </div>
-    <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-      
-      <div className="flex items-center gap-2">
-        {/* BOTÃO NATIVO DE UPLOAD (Só aparece se NÃO for onlyImport) */}
-        {!onlyImport && (
-          <>
-            <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
-            <label htmlFor={inputId} className={`rounded-md font-semibold text-[#1a5fa8] bg-white border border-[#1a5fa8] transition-colors flex-shrink-0 text-center ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#f0f7ff] cursor-pointer"}`}>
-              Escolher arquivo
-            </label>
-          </>
-        )}
-
-        {/* BOTÃO DE IMPORTAÇÃO MÁGICA DA OUTRA TELA */}
-        {onImport && (
-          <button 
-            onClick={onImport}
-            disabled={fileLoading}
-            className={`rounded-md font-semibold text-white bg-[#1a5fa8] transition-colors flex flex-shrink-0 items-center justify-center gap-1.5 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#154d8a]"}`}
-          >
-            <RefreshCw size={compact ? 11 : 13} />
-            Puxar Filtrados
-          </button>
-        )}
+// O PAINEL DE UPLOAD AGORA ACEITA A PROP 'children' PARA EXPANDIR CONTEÚDO
+const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact, onlyImport, children }: any) => (
+  <div className={`mb-4 bg-[#f8fafe] border border-[#dce9f7] rounded-xl flex flex-col transition-all duration-300 overflow-hidden shadow-sm`}>
+    
+    {/* Cabeçalho do Painel */}
+    <div className={`${compact ? 'p-3' : 'p-4'} flex flex-col sm:flex-row items-center justify-between gap-3`}>
+      <div>
+        <h3 className={`font-bold text-[#1a5fa8] flex items-center gap-1.5 mb-0.5 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+          <FileText size={compact ? 12 : 14}/> {title}
+        </h3>
+        <p className="text-[10px] text-gray-500">{subtitle}</p>
       </div>
-
-      <div className="min-w-[120px] max-w-[260px] text-center sm:text-left mt-2 sm:mt-0">
-        {fileName ? (
-          <p className="text-[11px] text-[#1a5fa8] flex items-center justify-center sm:justify-start gap-1.5 font-medium truncate" title={fileName}>
-            <CheckCircle2 size={11} className="flex-shrink-0" /><span className="truncate">{fileName}</span>
-          </p>
-        ) : (
-          <p className="text-[11px] text-gray-400 italic truncate">Nenhum dado...</p>
-        )}
+      <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
+          {!onlyImport && (
+            <>
+              <input id={inputId} type="file" accept=".csv, .xlsx, .xls" onChange={onUpload} disabled={fileLoading} className="hidden" />
+              <label htmlFor={inputId} className={`rounded-md font-semibold text-[#1a5fa8] bg-white border border-[#1a5fa8] transition-colors flex-shrink-0 text-center ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#f0f7ff] cursor-pointer"}`}>
+                Escolher arquivo
+              </label>
+            </>
+          )}
+          {onImport && (
+            <button 
+              onClick={onImport}
+              disabled={fileLoading}
+              className={`rounded-md font-semibold text-white bg-[#1a5fa8] transition-colors flex flex-shrink-0 items-center justify-center gap-1.5 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'} ${fileLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#154d8a] hover:shadow-md"}`}
+            >
+              <RefreshCw size={compact ? 11 : 13} />
+              Puxar Filtrados
+            </button>
+          )}
+        </div>
+        <div className="min-w-[120px] max-w-[260px] text-center sm:text-left mt-2 sm:mt-0">
+          {fileName ? (
+            <p className="text-[11px] text-[#1a5fa8] flex items-center justify-center sm:justify-start gap-1.5 font-medium truncate" title={fileName}>
+              <CheckCircle2 size={11} className="flex-shrink-0" /><span className="truncate">{fileName}</span>
+            </p>
+          ) : (
+            <p className="text-[11px] text-gray-400 italic truncate">Nenhum dado...</p>
+          )}
+        </div>
       </div>
     </div>
+
+    {/* Área Expansível Mágica (Onde o Lote vai entrar) */}
+    {children && (
+      <div className="bg-white/60 border-t border-[#dce9f7] p-4 animate-fadeIn">
+        {children}
+      </div>
+    )}
   </div>
 );
 
