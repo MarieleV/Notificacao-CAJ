@@ -348,7 +348,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {/* NOVO BLOCO: APARECE QUANDO É VIOLAÇÃO DE CORTE */}
+      {/*APARECE QUANDO É VIOLAÇÃO DE CORTE */}
       {tipoCaso === "corte_cavalete" && (
         <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
           <div className="flex items-center gap-2 mb-2">
@@ -487,7 +487,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
             </div>
           </div>
 
-          {/* NOVO BLOCO: MULTA APLICADA */}
+          {/*MULTA APLICADA */}
           {tipoCaso === "corte_cavalete" && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 animate-fadeIn">
               <div className="flex items-center gap-2">
