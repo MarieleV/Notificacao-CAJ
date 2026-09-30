@@ -311,7 +311,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviço</option>
-                <option value="corte_cavalete">Violação de Corte</option> {/* Nome Alterado Aqui */}
+                <option value="corte_cavalete">Violação de Corte</option>
                 <option value="hd">Hidrômetro danificado</option>
                 <option value="bypass">By-pass/Derivação Clandestina</option>
                 <option value="clandestina">Ligação Clandestina</option>
@@ -320,7 +320,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviços</option>
-                <option value="corte_cavalete">Violação de Corte</option> {/* Adicionado no Não Recurso também */}
+                <option value="corte_cavalete">Violação de Corte</option>
                 <option value="la_padronizada">LA Padronizada</option>
                 <option value="la_cadastral">Atualização Cadastral</option>
                 <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
