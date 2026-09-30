@@ -30,8 +30,8 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente (Alterado para useState para evitar estouro de limite de 5MB do navegador)
-  const [excelData, setExcelData] = useState<any[]>([]);
+  // Planilha 1: Base de Dados do Cliente (Otimizado e persistido com segurança)
+  const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
   // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
@@ -116,8 +116,31 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        setExcelData(data);
-        setFileModal({ type: "success", message: `${data.length} registros de clientes carregados com sucesso!` });
+        // Mapeia e compacta apenas os campos essenciais para caber perfeitamente no armazenamento local
+        const dataMapped = data.map((row: any) => {
+          const getRowVal = (patterns: RegExp[]) => {
+            for (const pattern of patterns) {
+              const key = Object.keys(row).find(k => pattern.test(k));
+              if (key && row[key] !== undefined && row[key] !== null) {
+                return String(row[key]).trim();
+              }
+            }
+            return "";
+          };
+          return {
+            matricula: getRowVal([/matr[ií]cula|matricula|mat/i]),
+            morador: getRowVal([/morador|cliente|nome|proprietario/i]),
+            endereco: getRowVal([/endere[çc]o|logradouro|rua|avenida/i]),
+            bairro: getRowVal([/bairro/i]),
+            cep: getRowVal([/cep/i]),
+            localizacao: getRowVal([/localiza[çc][ãa]o/i]),
+            ativEconomica: getRowVal([/ativ.*econ[ôo]mica|categoria|tarifa/i]),
+            numeroHidrometro: getRowVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
+          };
+        }).filter(item => item.matricula !== ""); // Remove linhas vazias
+
+        setExcelData(dataMapped);
+        setFileModal({ type: "success", message: `${dataMapped.length} registros de clientes carregados com sucesso!` });
       } catch (error) {
         setFileModal({ type: "error", message: "Erro ao ler a planilha de clientes." });
       } finally {
@@ -246,7 +269,6 @@ export function useRedatorNotificacao() {
         numeroHidrometro: getVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
       });
 
-      // ❌ REMOVIDO O POPUP DE SUCESSO AQUI
       // O card verde (CardClienteLocalizado) já vai aparecer automaticamente abaixo!
 
     } else {
