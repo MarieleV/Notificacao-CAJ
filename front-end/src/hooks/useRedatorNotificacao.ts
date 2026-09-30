@@ -30,8 +30,8 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente (Otimizado e persistido com segurança)
-  const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
+  // Planilha 1: Base de Dados do Cliente (Alterado para useState para suportar planilhas gigantes sem limite)
+  const [excelData, setExcelData] = useState<any[]>([]);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
   // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
