@@ -48,7 +48,7 @@ function Header({ state }: { state: ProcessoState }) {
   const {
     calculatorRef, showCalculator, setShowCalculator, calcDataInicial, setCalcDataInicial,
     calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataFinal,
-    limparTela // <-- 1. Extraímos a função do hook
+    limparTela
   } = state;
 
   // Estado para controlar o feedback visual da cópia
@@ -368,7 +368,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
     showSessao3, numSessao3, hasDecisaoButtons, decisao, handleDecisaoChange, deferirMotivo,
     setDeferirMotivo, setFatoNovoStatus, fatoNovoStatus, faturaQuitada, setFaturaQuitada,
     hasDefesaToggle, historicoDefesa, setHistoricoDefesa,
-    tipoCaso, foiMultado, setFoiMultado // <-- NOVOS ESTADOS ADICIONADOS AQUI
+    tipoCaso, foiMultado, setFoiMultado
   } = state;
 
   if (!showSessao3) return null;
