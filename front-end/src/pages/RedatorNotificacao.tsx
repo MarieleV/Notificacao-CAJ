@@ -158,6 +158,8 @@ export function RedatorNotificacao() {
                 </div>
               </div>
 
+              <CardClienteLocalizado cliente={hook.clienteData} isProcessed={hook.isCurrentProcessed} />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
@@ -448,19 +450,34 @@ const PreviaClausulas = ({ itens, variante }: any) => (
 );
 
 const CardClienteLocalizado = ({ cliente, isProcessed }: { cliente: any, isProcessed: boolean }) => {
+  // Se não encontrou o nome do cliente, o card não aparece
   if (!cliente.nomeCliente) return null;
+  
   return (
-    <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-emerald-600"><UserCheck size={16} /></div>
-        <div>
-          <p className="text-xs font-bold text-emerald-800">Cliente localizado e dados importados com sucesso!</p>
-          <p className="text-[11px] text-emerald-700 mt-0.5"><strong>Nome:</strong> {cliente.nomeCliente} | <strong>Endereço:</strong> {cliente.logradouro}</p>
-        </div>
+    <div className="col-span-full mb-6 bg-[#ebfbf3] border border-[#9ae3b7] rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fadeIn">
+      <div className="mt-0.5 text-[#108c4e]">
+        <UserCheck size={20} strokeWidth={2.5} />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-bold text-[#0c6b3b]">Cliente localizado e dados importados com sucesso!</p>
+        <p className="text-xs text-[#108c4e] mt-1">
+          <span className="font-bold">Nome:</span> {cliente.nomeCliente} 
+          <span className="text-[#9ae3b7] mx-1.5">|</span> 
+          <span className="font-bold">Endereço:</span> {cliente.logradouro}
+          
+          {/* Só mostra o Hidrômetro se ele existir na planilha */}
+          {cliente.numeroHidrometro && (
+            <>
+              <span className="text-[#9ae3b7] mx-1.5">|</span> 
+              <span className="font-bold">Hidrômetro:</span> {cliente.numeroHidrometro}
+            </>
+          )}
+        </p>
       </div>
       
+      {/* Botão de Já Baixado (se existir) */}
       {isProcessed && (
-        <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex-shrink-0 animate-fadeIn shadow-sm">
+        <div className="flex items-center gap-1.5 bg-[#108c4e] text-white px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex-shrink-0 shadow-sm">
           <CheckCircle2 size={12} /> Já Baixado
         </div>
       )}

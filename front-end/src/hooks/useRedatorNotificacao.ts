@@ -30,8 +30,8 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente
-  const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
+  // Planilha 1: Base de Dados do Cliente (Alterado para useState para suportar planilhas gigantes sem limite)
+  const [excelData, setExcelData] = useState<any[]>([]);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
   // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
@@ -116,8 +116,31 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        setExcelData(data);
-        setFileModal({ type: "success", message: `${data.length} registros de clientes carregados com sucesso!` });
+        // Mapeia e compacta apenas os campos essenciais para caber perfeitamente no armazenamento local
+        const dataMapped = data.map((row: any) => {
+          const getRowVal = (patterns: RegExp[]) => {
+            for (const pattern of patterns) {
+              const key = Object.keys(row).find(k => pattern.test(k));
+              if (key && row[key] !== undefined && row[key] !== null) {
+                return String(row[key]).trim();
+              }
+            }
+            return "";
+          };
+          return {
+            matricula: getRowVal([/matr[ií]cula|matricula|mat/i]),
+            morador: getRowVal([/morador|cliente|nome|proprietario/i]),
+            endereco: getRowVal([/endere[çc]o|logradouro|rua|avenida/i]),
+            bairro: getRowVal([/bairro/i]),
+            cep: getRowVal([/cep/i]),
+            localizacao: getRowVal([/localiza[çc][ãa]o/i]),
+            ativEconomica: getRowVal([/ativ.*econ[ôo]mica|categoria|tarifa/i]),
+            numeroHidrometro: getRowVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
+          };
+        }).filter(item => item.matricula !== ""); // Remove linhas vazias
+
+        setExcelData(dataMapped);
+        setFileModal({ type: "success", message: `${dataMapped.length} registros de clientes carregados com sucesso!` });
       } catch (error) {
         setFileModal({ type: "error", message: "Erro ao ler a planilha de clientes." });
       } finally {
@@ -205,21 +228,37 @@ export function useRedatorNotificacao() {
 
   const buscarMatricula = (mat: string) => {
     if (!mat) return;
-    setMatriculaBuscada(mat);
-    const encontrado = excelData.find((row) => String(row["Matrícula"]) === mat);
+    const matTrimmed = String(mat).trim();
+    setMatriculaBuscada(matTrimmed);
+
+    if (excelData.length === 0) {
+      setFileModal({ 
+        type: "warning", 
+        message: "A 'Base de Dados do Cliente' (Planilha 1) não foi carregada. Faça o upload dela para que a busca automática por matrícula funcione." 
+      });
+      return;
+    }
+
+    // Procura o registro na base otimizada
+    const encontrado = excelData.find((row) => row.matricula === matTrimmed);
 
     if (encontrado) {
       setClienteData({
-        nomeCliente: encontrado["Morador"] || "",
-        logradouro: encontrado["Endereço"] || "",
-        bairro: encontrado["Bairro"] || "",
-        cep: encontrado["CEP"] || "",
-        localizacao: encontrado["Localização"] || "",
-        categoriaTarifa: encontrado["Ativ. Econômica"] || "",
-        numeroHidrometro: encontrado["Numero Hidrometro"] || ""
+        nomeCliente: encontrado.morador,
+        logradouro: encontrado.endereco,
+        bairro: encontrado.bairro,
+        cep: encontrado.cep,
+        localizacao: encontrado.localizacao,
+        categoriaTarifa: encontrado.ativEconomica,
+        numeroHidrometro: encontrado.numeroHidrometro
       });
+      // O card verde aparecerá automaticamente com base no estado atualizado!
     } else {
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+      setFileModal({ 
+        type: "warning", 
+        message: `A matrícula "${matTrimmed}" não foi encontrada na "Base de Dados do Cliente" (Planilha 1). Verifique se o arquivo correto foi carregado.` 
+      });
     }
   };
 
