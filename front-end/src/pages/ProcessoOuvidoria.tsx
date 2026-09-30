@@ -17,9 +17,7 @@ import { EditableCopyBlock } from "../components/ouvidoria/EditableCopyBlock";
 
 import { useProcessoOuvidoria } from "../hooks/useProcessoOuvidoria";
 
-// ─── TIPAGEM MÁGICA ──────────────────────────────────────────────────────────
-// Isso extrai automaticamente todas as tipagens do seu hook, sem precisarmos
-// digitar variável por variável.
+
 type ProcessoState = ReturnType<typeof useProcessoOuvidoria>;
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
