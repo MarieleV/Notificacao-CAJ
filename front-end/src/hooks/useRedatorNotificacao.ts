@@ -231,7 +231,6 @@ export function useRedatorNotificacao() {
     const matTrimmed = String(mat).trim();
     setMatriculaBuscada(matTrimmed);
 
-    // Se a planilha 1 não foi carregada, avisa com o modal de aviso
     if (excelData.length === 0) {
       setFileModal({ 
         type: "warning", 
@@ -240,37 +239,20 @@ export function useRedatorNotificacao() {
       return;
     }
 
-    // Procura o registro na planilha
-    const encontrado = excelData.find((row) => {
-      const matriculaKey = Object.keys(row).find(k => /matr[ií]cula|matricula|mat/i.test(k));
-      if (!matriculaKey) return false;
-      const rowMat = String(row[matriculaKey] || "").trim();
-      return rowMat === matTrimmed;
-    });
+    // Procura o registro na base otimizada
+    const encontrado = excelData.find((row) => row.matricula === matTrimmed);
 
     if (encontrado) {
-      const getVal = (patterns: RegExp[]) => {
-        for (const pattern of patterns) {
-          const key = Object.keys(encontrado).find(k => pattern.test(k));
-          if (key && encontrado[key] !== undefined && encontrado[key] !== null) {
-            return String(encontrado[key]).trim();
-          }
-        }
-        return "";
-      };
-
       setClienteData({
-        nomeCliente: getVal([/morador|cliente|nome|proprietario/i]),
-        logradouro: getVal([/endere[çc]o|logradouro|rua|avenida/i]),
-        bairro: getVal([/bairro/i]),
-        cep: getVal([/cep/i]),
-        localizacao: getVal([/localiza[çc][ãa]o/i]),
-        categoriaTarifa: getVal([/ativ.*econ[ôo]mica|categoria|tarifa/i]),
-        numeroHidrometro: getVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
+        nomeCliente: encontrado.morador,
+        logradouro: encontrado.endereco,
+        bairro: encontrado.bairro,
+        cep: encontrado.cep,
+        localizacao: encontrado.localizacao,
+        categoriaTarifa: encontrado.ativEconomica,
+        numeroHidrometro: encontrado.numeroHidrometro
       });
-
-      // O card verde (CardClienteLocalizado) já vai aparecer automaticamente abaixo!
-
+      // O card verde aparecerá automaticamente com base no estado atualizado!
     } else {
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
       setFileModal({ 
