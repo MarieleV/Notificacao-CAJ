@@ -155,6 +155,8 @@ export function RedatorNotificacao() {
                 </div>
               </div>
 
+              <CardClienteLocalizado cliente={hook.clienteData} isProcessed={hook.isCurrentProcessed} />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data Constatação</label>
