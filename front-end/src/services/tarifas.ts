@@ -1,4 +1,6 @@
 // NÃO ESTÁ EM USO, MAS MANTIDO PARA REFERÊNCIA FUTURA
+
+
 // ─── Listas de Vigência ───────────────────────────────────────────────────────
 
 export const VIGENCIAS_AGUA = [

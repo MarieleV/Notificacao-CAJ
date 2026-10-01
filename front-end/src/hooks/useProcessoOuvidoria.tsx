@@ -116,7 +116,7 @@ export function useProcessoOuvidoria() {
 
   const isSimples = isPadronizada || isCadastral || isProrrogacao;
   
-  const isRecursoLSTC = isRecurso && (isLeitura || isServico || isCorte); // Corte adicionado ao grupo principal
+  const isRecursoLSTC = isRecurso && (isLeitura || isServico || isCorte);
   const isFatoNovo = isRecursoLSTC && decisao === "deferir" && deferirMotivo === "fato_novo";
   const isLAPadronizadaRecurso = isRecursoLSTC && decisao === "deferir" && deferirMotivo === "la_padronizada";
   const isParcial = isRecursoLSTC && decisao === "parcial";
@@ -248,9 +248,7 @@ export function useProcessoOuvidoria() {
 
     let tpl = "";
 
-    // =======================================================
     // TEXTOS: É RECURSO? -> SIM
-    // =======================================================
     if (isRecurso) {
       if (tipoCaso === "leitura" || tipoCaso === "servico" || tipoCaso === "corte_cavalete") {
         
@@ -354,6 +352,7 @@ export function useProcessoOuvidoria() {
             }
           }
         }
+
         // ── FLUXO: INDEFERIMENTO ──
         else {
           if (tipoCaso === "corte_cavalete") {
@@ -408,9 +407,8 @@ export function useProcessoOuvidoria() {
         tpl = `À Ouvidoria,\nObjeto: Multa por Ligação clandestina de água e Revisão do faturamento de água.\n**Morador: ${tplMorador}**\n**Matrícula:** ${tplMatricula}\n\nO que ensejou a manifestação do cliente foi a aplicação de multas referente à Ligação clandestina de água, conforme Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso VII da Resolução 019/2019 - ARIS. Data da constatação: ${tplConstatacao}. Protocolo: ${tplProtServico}. Constatado pela Fiscalização. Penalidade prevista: Multa por ligação clandestina de água.\nCaso após a retirada da irregularidade, a matrícula tenha variação positiva de consumo, poderá haver a Revisão do faturamento de água e esgoto: ARIS - Resolução 19/2019.\nO Auto de Infração foi entregue, no endereço do imóvel, pelos Correios/por fiscal da Companhia e recebido por ${tplRecebedor} em ${tplRecebimentoAR}.\n${textDefesa}\npois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\n\n**VII -** Ligação clandestina de água e esgoto.\nVEREDICTO (ANALISAR CFE MANIFESTAÇÃO) A partir da manifestação do cliente, analisada a matrícula, constatamos que [ANALISE OS FATOS E COMPLETE]\n\nDECIDIMOS:\nRATIFICAR, a decisão proferida em [DATA ANTERIOR], MANTENDO as penalidades. A fatura com a multa não será alterada. Eventual solicitação de parcelamento do débito poderá ser realizada por meio do endereço eletrônico: **atendimento@aguasdejoinville.com.br**`;
       }
     } 
-    // =======================================================
+
     // TEXTOS: É RECURSO? -> NÃO
-    // =======================================================
     else {
       if (tipoCaso === "corte_cavalete") {
         tpl = `**[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]**`;

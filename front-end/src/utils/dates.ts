@@ -1,11 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────
-// lib/dates.ts
-// Fonte única de verdade para: parsing/format de datas, feriados e dias úteis.
-// Antes esta lógica estava duplicada (quase 100% idêntica) em:
-//   FineCalculator.tsx, OuvidoriaManager.tsx, RespostaDefesaManager.tsx,
-//   NotificationDrafter.tsx
-// ─────────────────────────────────────────────────────────────────────────
-
 export const MONTHS_SHORT = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
   "Jul", "Ago", "Set", "Out", "Nov", "Dez",

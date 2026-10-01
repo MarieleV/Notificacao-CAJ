@@ -142,7 +142,7 @@ export const DEFESAS_TEMPLATES: DefesaTemplate[] = [
   }
 ];
 
-// --- NOVA PARTE: COMUNICAÇÃO COM A API ---
+// --- COMUNICAÇÃO COM A API ---
 
 export interface ExportPayload {
   texto_final: string;

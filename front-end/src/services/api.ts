@@ -2,7 +2,7 @@ const BASE_URL = "https://notificacao-caj.vercel.app/api";
 
 { /* ----------------- Tela de Geração de Notificação --------------------- */ }
 
-// Definindo os tipos de dados que vamos enviar 
+// tipos de dados que vamos enviar 
 export interface GerarNotificacaoPayload {
   api_key: string;
   textos_base: string[];
