@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 
 export function useSessionStorage<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-  // Inicializa buscando do storage ou usando o valor inicial (se estiver vazio)
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.sessionStorage.getItem(key);
@@ -13,7 +12,6 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, React.Di
     }
   });
 
-  // Toda vez que o valor mudar no React, salva automaticamente no storage
   useEffect(() => {
     try {
       window.sessionStorage.setItem(key, JSON.stringify(storedValue));
