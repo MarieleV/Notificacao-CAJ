@@ -339,7 +339,7 @@ export function CalculadoraMulta() {
           </p>
         </div>
         
-        {/* BOTÃO LIMPAR TELA AQUI NO CABEÇALHO */}
+        {/* BOTÃO LIMPAR TELA */}
         <button
           onClick={limparTela}
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
