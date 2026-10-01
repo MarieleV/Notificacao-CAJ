@@ -40,7 +40,7 @@ function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
 export function ControleAnalises() {
   const hook = useControleAnalises();
 
-  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS (Baseados nos Filtros Ativos) ───
+  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS - Baseados nos Filtros Ativos
   const data = hook.resultadosFiltrados;
   const total = data.length;
   
@@ -48,7 +48,7 @@ export function ControleAnalises() {
   const qtdVencidas = vencidasArr.length;
   const noPrazo = total - qtdVencidas;
 
-  // NOVO CÁLCULO: Padronizadas vs Restantes
+  // Padronizadas vs Restantes
   const padronizadas = data.filter(r => r.isPadronizado).length;
   const naoPadronizadas = total - padronizadas;
   
@@ -57,7 +57,7 @@ export function ControleAnalises() {
   const mediaAtraso = qtdVencidas > 0 ? Math.round(diasAtrasoTotal / qtdVencidas) : 0;
   const maxAtraso = qtdVencidas > 0 ? Math.max(...vencidasArr.map(v => v.diasAtraso)) : 0;
 
-  // Renderizador do Ícone de Ordenação (Setinhas)
+  // Renderizador do Ícone de Ordenação - Setas
   const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
     if (hook.sortConfig.key !== columnKey) {
       return <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-40 transition-opacity ml-1" />;
