@@ -343,7 +343,7 @@ export function ControleAnalises() {
                     className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
-                  {/* NOVO FILTRO: DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
+                  {/* DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
                   <div className="relative">
                     <button
                       onClick={() => hook.setDropdownOSOpen(!hook.dropdownOSOpen)}
