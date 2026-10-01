@@ -74,7 +74,7 @@ export function RedatorNotificacao() {
               compact={true}
               onlyImport={true}
             >
-              {/* === ESTE CONTEÚDO SÓ APARECE E EXPANDE SE HOUVER DADOS === */}
+              {/* === SÓ APARECE E EXPANDE SE HOUVER DADOS === */}
               {hook.excelDataResp.length > 0 && hook.responsaveisList.length > 0 && (
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="flex-1 w-full">
@@ -85,7 +85,7 @@ export function RedatorNotificacao() {
                       <select
                         value={hook.filtroResponsavel}
                         onChange={(e) => hook.handleSelectResponsavel(e.target.value)}
-                        // AQUI ESTÁ A MÁGICA: Se não tem filtro selecionado, fica cinza (text-gray-500), senão, escuro (text-[#0b1e35])
+                        // Se não tem filtro selecionado, fica cinza (text-gray-500), senão, escuro (text-[#0b1e35])
                         className={`w-full pl-3 pr-8 py-2 border border-[#c3ddf8] bg-white rounded-lg text-sm font-medium focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/20 transition-all shadow-sm appearance-none cursor-pointer ${
                           !hook.filtroResponsavel ? "text-gray-500" : "text-[#0b1e35]"
                         }`}
@@ -371,7 +371,7 @@ const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title
       </div>
     </div>
 
-    {/* Área Expansível Mágica (Onde o Lote vai entrar) */}
+    {/* Onde o Lote vai entrar */}
     {children && (
       <div className="bg-white/60 border-t border-[#dce9f7] p-4 animate-fadeIn">
         {children}

@@ -6,7 +6,7 @@ import {
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
-// ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
+// ─── KPI CARD Padrão SaaS Moderno ──────────────────────────────────
 function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
   const styles = {
     primary: "border-blue-100 text-blue-900",
@@ -40,7 +40,7 @@ function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
 export function ControleAnalises() {
   const hook = useControleAnalises();
 
-  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS (Baseados nos Filtros Ativos) ───
+  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS - Baseados nos Filtros Ativos
   const data = hook.resultadosFiltrados;
   const total = data.length;
   
@@ -48,7 +48,7 @@ export function ControleAnalises() {
   const qtdVencidas = vencidasArr.length;
   const noPrazo = total - qtdVencidas;
 
-  // NOVO CÁLCULO: Padronizadas vs Restantes
+  // Padronizadas vs Restantes
   const padronizadas = data.filter(r => r.isPadronizado).length;
   const naoPadronizadas = total - padronizadas;
   
@@ -57,7 +57,7 @@ export function ControleAnalises() {
   const mediaAtraso = qtdVencidas > 0 ? Math.round(diasAtrasoTotal / qtdVencidas) : 0;
   const maxAtraso = qtdVencidas > 0 ? Math.max(...vencidasArr.map(v => v.diasAtraso)) : 0;
 
-  // Renderizador do Ícone de Ordenação (Setinhas)
+  // Renderizador do Ícone de Ordenação - Setas
   const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
     if (hook.sortConfig.key !== columnKey) {
       return <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-40 transition-opacity ml-1" />;
@@ -120,7 +120,7 @@ export function ControleAnalises() {
         </button>
       </div>
 
-      {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
+      {/*  ÁREA ROLÁVEL - CONTEÚDO */}
       <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
         <div className="p-8 max-w-[1200px] mx-auto space-y-8">
 
@@ -343,7 +343,7 @@ export function ControleAnalises() {
                     className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm"
                   />
 
-                  {/* NOVO FILTRO: DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
+                  {/* DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
                   <div className="relative">
                     <button
                       onClick={() => hook.setDropdownOSOpen(!hook.dropdownOSOpen)}
