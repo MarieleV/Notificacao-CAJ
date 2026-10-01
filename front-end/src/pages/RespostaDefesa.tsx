@@ -9,7 +9,7 @@ import { DatePicker } from "../components/shared/DatePicker";
 import { SectionBlock } from "../components/shared/SectionBlock";
 import { CATEGORY_COLORS } from "../services/defesas";
 
-// 1. Importando o Cérebro (Hook)
+// 1. Importando o Hook
 import { useRespostaDefesa } from "../hooks/useRespostaDefesa";
 
 export function RespostaDefesa() {
