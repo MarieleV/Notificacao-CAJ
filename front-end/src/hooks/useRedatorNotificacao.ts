@@ -156,7 +156,7 @@ export function useRedatorNotificacao() {
     e.target.value = "";
   };
 
-  // NOVO: IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES (CORRIGIDO)
+  // IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES 
   const importarDoControleAnalises = () => {
     try {
       // 1. Tenta pegar os dados salvos da tela Controle de Análises
@@ -168,7 +168,7 @@ export function useRedatorNotificacao() {
       
       const savedState = JSON.parse(savedStr);
       
-      // 2. Tenta pegar os dados. Vamos ser mais flexíveis procurando a chave correta.
+      // 2. Tenta pegar os dados.
       let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
       
       // Se não achar os filtrados, tenta pegar os originais como fallback.
@@ -184,7 +184,7 @@ export function useRedatorNotificacao() {
 
       // 3. Converte os dados filtrados para o formato que nosso Lote espera
       const dataMapped = casosParaImportar.map((item: any) => ({
-        // Aceitamos variações comuns do nome da chave para sermos mais tolerantes
+        // Aceita variações comuns do nome da chave
         "Matrícula": item.matricula || item.Matrícula || item.Matricula || "",
         "Responsável": item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || "",
         "Código": item.codigoServico || item.codigo || item.Codigo || "",
