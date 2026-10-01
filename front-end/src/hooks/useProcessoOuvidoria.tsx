@@ -368,7 +368,6 @@ export function useProcessoOuvidoria() {
         }
 
         // ── FLUXO: INDEFERIMENTO ──
-        // ── FLUXO: INDEFERIMENTO ──
         else {
           if (tipoCaso === "corte_cavalete") {
             const isRamal = tipoCorte === "ramal";
