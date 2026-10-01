@@ -248,9 +248,7 @@ export function useProcessoOuvidoria() {
 
     let tpl = "";
 
-    // =======================================================
     // TEXTOS: É RECURSO? -> SIM
-    // =======================================================
     if (isRecurso) {
       if (tipoCaso === "leitura" || tipoCaso === "servico" || tipoCaso === "corte_cavalete") {
         
