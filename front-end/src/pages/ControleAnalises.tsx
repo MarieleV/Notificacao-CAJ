@@ -120,7 +120,7 @@ export function ControleAnalises() {
         </button>
       </div>
 
-      {/* ─── ÁREA ROLÁVEL (CONTEÚDO) ─── */}
+      {/*  ÁREA ROLÁVEL - CONTEÚDO */}
       <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
         <div className="p-8 max-w-[1200px] mx-auto space-y-8">
 
