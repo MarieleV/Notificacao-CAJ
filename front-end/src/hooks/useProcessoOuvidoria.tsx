@@ -116,7 +116,7 @@ export function useProcessoOuvidoria() {
 
   const isSimples = isPadronizada || isCadastral || isProrrogacao;
   
-  const isRecursoLSTC = isRecurso && (isLeitura || isServico || isCorte); // Corte adicionado ao grupo principal
+  const isRecursoLSTC = isRecurso && (isLeitura || isServico || isCorte);
   const isFatoNovo = isRecursoLSTC && decisao === "deferir" && deferirMotivo === "fato_novo";
   const isLAPadronizadaRecurso = isRecursoLSTC && decisao === "deferir" && deferirMotivo === "la_padronizada";
   const isParcial = isRecursoLSTC && decisao === "parcial";
