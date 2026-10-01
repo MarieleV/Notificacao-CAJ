@@ -6,7 +6,7 @@ import {
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
-// ─── NOVO KPI CARD (Padrão SaaS Moderno) ─────────────────────────────────────
+// ─── KPI CARD Padrão SaaS Moderno ──────────────────────────────────
 function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
   const styles = {
     primary: "border-blue-100 text-blue-900",
