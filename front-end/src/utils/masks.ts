@@ -1,13 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────
-// lib/masks.ts
-// Máscaras de input e formatadores usados nos formulários.
-//
-// NOTA: a antiga `maskDate()` (máscara manual de DD/MM/AAAA por digitação)
-// foi removida por ser código morto — estava definida em FineCalculator.tsx
-// e NotificationDrafter.tsx mas nunca era chamada em nenhum dos dois (ambos
-// usam o componente <DatePicker /> visual em vez de input mascarado).
-// ─────────────────────────────────────────────────────────────────────────
-
 /** Aplica máscara MM/AAAA a partir de dígitos digitados livremente. */
 export function maskMonthYear(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 6);
