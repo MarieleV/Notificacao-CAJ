@@ -141,9 +141,7 @@ export function useControleAnalises() {
   }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
 
 
-  // =======================================================================================
   // FUNÇÕES DE AÇÃO
-  // =======================================================================================
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
     if (!file) return;
