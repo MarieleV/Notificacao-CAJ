@@ -369,7 +369,7 @@ const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title
       </div>
     </div>
 
-    {/* Área Expansível Mágica (Onde o Lote vai entrar) */}
+    {/* Onde o Lote vai entrar */}
     {children && (
       <div className="bg-white/60 border-t border-[#dce9f7] p-4 animate-fadeIn">
         {children}
