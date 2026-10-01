@@ -17,9 +17,7 @@ import { EditableCopyBlock } from "../components/ouvidoria/EditableCopyBlock";
 
 import { useProcessoOuvidoria } from "../hooks/useProcessoOuvidoria";
 
-// ─── TIPAGEM MÁGICA ──────────────────────────────────────────────────────────
-// Isso extrai automaticamente todas as tipagens do seu hook, sem precisarmos
-// digitar variável por variável.
+
 type ProcessoState = ReturnType<typeof useProcessoOuvidoria>;
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
@@ -50,7 +48,7 @@ function Header({ state }: { state: ProcessoState }) {
   const {
     calculatorRef, showCalculator, setShowCalculator, calcDataInicial, setCalcDataInicial,
     calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataFinal,
-    limparTela // <-- 1. Extraímos a função do hook
+    limparTela
   } = state;
 
   // Estado para controlar o feedback visual da cópia
@@ -311,7 +309,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviço</option>
-                <option value="corte_cavalete">Violação de Corte</option> {/* Nome Alterado Aqui */}
+                <option value="corte_cavalete">Violação de Corte</option>
                 <option value="hd">Hidrômetro danificado</option>
                 <option value="bypass">By-pass/Derivação Clandestina</option>
                 <option value="clandestina">Ligação Clandestina</option>
@@ -320,7 +318,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviços</option>
-                <option value="corte_cavalete">Violação de Corte</option> {/* Adicionado no Não Recurso também */}
+                <option value="corte_cavalete">Violação de Corte</option>
                 <option value="la_padronizada">LA Padronizada</option>
                 <option value="la_cadastral">Atualização Cadastral</option>
                 <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>
@@ -348,7 +346,7 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
         </div>
       )}
 
-      {/* NOVO BLOCO: APARECE QUANDO É VIOLAÇÃO DE CORTE */}
+      {/*APARECE QUANDO É VIOLAÇÃO DE CORTE */}
       {tipoCaso === "corte_cavalete" && (
         <div className="mt-4 p-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-xl animate-fadeIn">
           <div className="flex items-center gap-2 mb-2">
@@ -370,7 +368,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
     showSessao3, numSessao3, hasDecisaoButtons, decisao, handleDecisaoChange, deferirMotivo,
     setDeferirMotivo, setFatoNovoStatus, fatoNovoStatus, faturaQuitada, setFaturaQuitada,
     hasDefesaToggle, historicoDefesa, setHistoricoDefesa,
-    tipoCaso, foiMultado, setFoiMultado // <-- NOVOS ESTADOS ADICIONADOS AQUI
+    tipoCaso, foiMultado, setFoiMultado
   } = state;
 
   if (!showSessao3) return null;
@@ -487,7 +485,7 @@ function Sessao3Veredicto({ state }: { state: ProcessoState }) {
             </div>
           </div>
 
-          {/* NOVO BLOCO: MULTA APLICADA */}
+          {/*MULTA APLICADA */}
           {tipoCaso === "corte_cavalete" && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-3 animate-fadeIn">
               <div className="flex items-center gap-2">

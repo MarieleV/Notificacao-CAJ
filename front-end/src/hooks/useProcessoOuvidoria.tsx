@@ -256,35 +256,21 @@ export function useProcessoOuvidoria() {
         if (decisao === "deferir") {
           
           if (tipoCaso === "corte_cavalete") {
-            const isRamal = tipoCorte === "ramal";
-            const inciso = isRamal ? "XXII" : "X";
-            const incisoText = isRamal
-              ? "XXII - Restabelecimento irregular do abastecimento de água em ligações cortadas no ramal;"
-              : "X - Restabelecimento irregular do abastecimento de água em ligações cortadas no cavalete;";
+            const isMultado = foiMultado === "sim";
+            const isComPadronizacao = deferirMotivo === "la_padronizada";
             
-            const hasDefesa = historicoDefesa === "com_defesa";
-            const hasPadronizacao = deferirMotivo === "la_padronizada";
+            // Define singular ou plural das penalidades
+            const termoPenalidades = isComPadronizacao ? "as penalidades" : "a penalidade";
+            const termoPenalidadesUpper = isComPadronizacao ? "AS PENALIDADES" : "A PENALIDADE";
+            const dataDecisao = dataDecisaoAnterior || dataAplicacaoSancao || "[00/00/2000]";
 
-            let p1_defesa = "";
-            if (hasDefesa) {
-                p1_defesa = `Foi apresentado defesa em ${tplDataDefesa} (Prot. ${tplProtDefesa}) e foi indeferida em ${tplDataIndeferimento} (Prot. ${tplProtIndeferimento}), com sanções aplicadas em ${tplAplicacao}, pois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\n${incisoText}`;
+            if (!isMultado) {
+              // PARECER 1 (Com Padronização) e PARECER 3 (Sem Padronização) - APENAS NOTIFICADO
+              tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** AUTO DE INFRAÇÃO Nº ${tplAI}\n\nConsiderando a manifestação apresentada, visto que **[EDITAR JUSTIFICATIVA]**\n\n**DECIDIMOS:**\n03. DEFERIR a manifestação apresentada, tendo sido retirado ${termoPenalidades} e anulado o respectivo Auto de Infração.`;
             } else {
-                p1_defesa = `Como não houve apresentação de defesa nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.`;
+              // PARECER 2 (Com Padronização) e PARECER 4 (Sem Padronização) - MULTA APLICADA
+              tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** AUTO DE INFRAÇÃO Nº ${tplAI}\n\nConsiderando a manifestação apresentada, visto que **[EDITAR JUSTIFICATIVA]**\n\n**DECIDIMOS:**\n03. RETIFICAR a decisão proferida em ${dataDecisao}, RETIRANDO ${termoPenalidadesUpper}.\nA fatura ref. ${tplFatura} foi corrigida e está anexa.`;
             }
-
-            const imagemText = isRamal
-              ? "**Imagem1:** Execução do corte de ramal. Leitura de corte: [0000]\n**Imagem2:** Violação constatada pela reativação da ligação de água sem consentimento da CAJ e aumento do volume de água registrado. Leitura constatada: [0000]"
-              : "**Imagem1:** Execução do corte de cavalete com instalação de lacres e tubete de corte na cor vermelha. Leitura de corte: [0000]\n**Imagem2:** Violação constatada pela ausência dos lacres, do tubete de corte e aumento do volume de água registrado. Leitura constatada: [0000]";
-
-            const textoFaturaDecisao = hasPadronizacao 
-              ? `A FAT ${tplFatura} foi corrigida e está anexa, com a exclusão da multa por não execução da padronização obrigatória da ligação de água.`
-              : `A FAT ${tplFatura} foi corrigida e está anexa.`;
-
-            const decisaoTexto = hasPadronizacao
-              ? `A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão da multa aplicada por não padronização obrigatória da ligação de água, em estrita observância à Instrução Normativa nº 83/2025. **Quanto à multa por violação do corte, não é possível, pois foi constatado a violação.**`
-              : `A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável. **Quanto à multa por violação do corte, não é possível, pois foi constatado a violação.**`;
-
-            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. Objeto:** Multa por Violação do corte ${tipoCorte}${hasPadronizacao ? ' e Não padronização obrigatória da ligação de água' : ''}.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso ${inciso} da Resolução 019/2019 - ARIS.\nFato gerador: Violação do corte de ${tipoCorte}.\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, por ${tipoRecebimentoAI}, no endereço do imóvel, e recebido por ${tplRecebedor} em ${tplRecebimentoAR || "[DATA]"}.\n\n${p1_defesa}\n\nAnalisando os fatos, há registro de que foi confirmado a violação do corte conforme imagens abaixo.\n\nImagem 1                                                           Imagem 2\n\n${imagemText}\n\n**02. DECISÃO: Deferido Parcialmente**\n${decisaoTexto}\n${textoFaturaDecisao}\n\n**03. PRORROGAÇÃO:** Fica o prazo de padronização prorrogado por 60 (sessenta) dias úteis a contar da data desta decisão. **Novo prazo para padronizar a ligação de água vence em ${tplPrazo}.**\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação de padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente. A não padronização dentro do novo prazo, poderá implicar aplicação de multa independentemente de nova notificação.\n\nPara padronizar, cliente deve solicitar à Companhia Águas de Joinville, o deslocamento de cavalete/ramal. Adquirir a Caixa Padrão CAJ, em empresas de materiais de construção, e instalar a Caixa Padrão. Após instalação, solicitar a Vistoria junto à CAJ, fornecendo o protocolo da solicitação de serviço. A caixa padrão CAJ deve estar aprovada dentro do novo prazo concedido. O serviço de deslocamento do cavalete deverá ser executado pelo Prestador de Serviços (CAJ)`;
           } 
           else if (deferirMotivo === "la_padronizada") {
             tpl = `**Recurso prot. ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** AUTO DE INFRAÇÃO Nº ${tplAI}\n\nCliente padronizou a ligação de água e solicita cancelamento das multas.${txtDefesaItem01}\n\n**02. DECISÃO:**\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.`;
