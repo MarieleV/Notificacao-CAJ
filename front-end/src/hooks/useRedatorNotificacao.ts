@@ -34,7 +34,7 @@ export function useRedatorNotificacao() {
   const [excelData, setExcelData] = useSessionStorage<any[]>("redator_excelData", []);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
-  // Planilha 2: Lote / Responsável (Pode ser upload manual ou integração)
+  // Planilha 2: Lote / Responsável (upload manual ou integração)
   const [excelDataResp, setExcelDataResp] = useSessionStorage<any[]>("redator_excelDataResp", []);
   const [fileNameResp, setFileNameResp] = useSessionStorage<string>("redator_fileNameResp", "");
 
