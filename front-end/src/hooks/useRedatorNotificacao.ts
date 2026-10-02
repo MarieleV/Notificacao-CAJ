@@ -74,7 +74,6 @@ export function useRedatorNotificacao() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Planilha 2: Lote / Responsável (upload manual ou integração)
