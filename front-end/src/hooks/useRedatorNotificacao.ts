@@ -64,7 +64,6 @@ export function useRedatorNotificacao() {
           baseClienteCache = saved;
           setExcelDataState(saved);
         } else {
-          // Nome de arquivo sem dados por trás: remove o ✔ falso da tela
           setFileName("");
         }
       })
