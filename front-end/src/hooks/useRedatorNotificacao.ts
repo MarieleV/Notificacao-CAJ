@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { useSessionStorage } from "./useSessionStorage"; 
 import { FUNCIONARIOS } from "../utils/funcionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
+import { kvGet, kvSet } from "../utils/kvStorage";
+
+const BASE_CLIENTE_KEY = "baseCliente";
+// Cache em módulo: sobrevive a remontagens do componente dentro da mesma sessão do app
+let baseClienteCache: any[] = [];
 
 export type PenaltyVariant = "multa" | "multaCP";
 export type FileModalType = "success" | "warning" | "error";
@@ -30,9 +35,48 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente (Alterado para useState para suportar planilhas gigantes sem limite)
-  const [excelData, setExcelData] = useState<any[]>([]);
+  // Planilha 1: Base de Dados do Cliente
+  // Os dados ficam em estado React (RAM) + cache de módulo + IndexedDB (persistência sem limite de 5MB).
+  // O nome do arquivo continua no sessionStorage, mas é sincronizado com a existência real dos dados.
+  const [excelData, setExcelDataState] = useState<any[]>(baseClienteCache);
+  const [baseHydrated, setBaseHydrated] = useState<boolean>(baseClienteCache.length > 0);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
+
+  const setExcelData = (data: any[]) => {
+    baseClienteCache = data;
+    setExcelDataState(data);
+    kvSet(BASE_CLIENTE_KEY, data).catch((e) =>
+      console.warn("Não foi possível persistir a base de clientes:", e)
+    );
+  };
+
+  // Reidrata a base ao montar (aba recarregada/descartada pelo Chrome, troca de tela, deploy novo...)
+  useEffect(() => {
+    if (baseClienteCache.length > 0) {
+      setBaseHydrated(true);
+      return;
+    }
+    let cancelled = false;
+    kvGet<any[]>(BASE_CLIENTE_KEY)
+      .then((saved) => {
+        if (cancelled) return;
+        if (saved && saved.length > 0) {
+          baseClienteCache = saved;
+          setExcelDataState(saved);
+        } else {
+          // Nome de arquivo sem dados por trás: remove o ✔ falso da tela
+          setFileName("");
+        }
+      })
+      .catch((e) => console.warn("Erro ao ler a base de clientes salva:", e))
+      .finally(() => {
+        if (!cancelled) setBaseHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Planilha 2: Lote / Responsável (upload manual ou integração)
   const [excelDataResp, setExcelDataResp] = useSessionStorage<any[]>("redator_excelDataResp", []);
@@ -116,7 +160,7 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        // Mapeia e compacta apenas os campos essenciais para caber perfeitamente no armazenamento local
+        // Mapeia e compacta apenas os campos essenciais
         const dataMapped = data.map((row: any) => {
           const getRowVal = (patterns: RegExp[]) => {
             for (const pattern of patterns) {
@@ -139,7 +183,9 @@ export function useRedatorNotificacao() {
           };
         }).filter(item => item.matricula !== ""); // Remove linhas vazias
 
+        // Atualiza RAM, cache de módulo e IndexedDB
         setExcelData(dataMapped);
+        setBaseHydrated(true);
         setFileModal({ type: "success", message: `${dataMapped.length} registros de clientes carregados com sucesso!` });
       } catch (error) {
         setFileModal({ type: "error", message: "Erro ao ler a planilha de clientes." });
@@ -234,7 +280,9 @@ export function useRedatorNotificacao() {
     if (excelData.length === 0) {
       setFileModal({ 
         type: "warning", 
-        message: "A 'Base de Dados do Cliente' (Planilha 1) não foi carregada. Faça o upload dela para que a busca automática por matrícula funcione." 
+        message: baseHydrated
+          ? "A 'Base de Dados do Cliente' (Planilha 1) não foi carregada. Faça o upload dela para que a busca automática por matrícula funcione."
+          : "Carregando a 'Base de Dados do Cliente'... aguarde um instante e clique em 'Buscar' novamente."
       });
       return;
     }
@@ -389,7 +437,7 @@ export function useRedatorNotificacao() {
     apiKey, setApiKey, dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,
-    excelData, fileLoading, fileModal, setFileModal, fileName,
+    excelData, baseHydrated, fileLoading, fileModal, setFileModal, fileName,
     
     excelDataResp, fileNameResp, handleFileUploadResp, importarDoControleAnalises,
     
