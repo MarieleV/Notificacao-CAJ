@@ -20,7 +20,7 @@ import { useProcessoOuvidoria } from "../hooks/useProcessoOuvidoria";
 
 type ProcessoState = ReturnType<typeof useProcessoOuvidoria>;
 
-// ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
+// ─── COMPONENTE PRINCIPAL ───────────────────────────────────────────────────
 export function ProcessoOuvidoria() {
   const state = useProcessoOuvidoria();
 
@@ -42,7 +42,7 @@ export function ProcessoOuvidoria() {
   );
 }
 
-// ─── SUBCOMPONENTES ISOLADOS (JSX) ───────────────────────────────────────────
+// ─── SUBCOMPONENTES ISOLADOS (JSX) ──────────────────────────────────────────
 
 function Header({ state }: { state: ProcessoState }) {
   const {
