@@ -178,7 +178,7 @@ export function useRedatorNotificacao() {
             ativEconomica: getRowVal([/ativ.*econ[ôo]mica|categoria|tarifa/i]),
             numeroHidrometro: getRowVal([/n[úu]mero.*hidr[ôo]metro|hidrometro|medidor/i])
           };
-        }).filter(item => item.matricula !== ""); // Remove linhas vazias
+        }).filter(item => item.matricula !== "");
 
         // Atualiza RAM, cache de módulo e IndexedDB
         setExcelData(dataMapped);
