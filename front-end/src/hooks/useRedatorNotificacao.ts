@@ -158,7 +158,6 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        // Mapeia e compacta apenas os campos essenciais
         const dataMapped = data.map((row: any) => {
           const getRowVal = (patterns: RegExp[]) => {
             for (const pattern of patterns) {
