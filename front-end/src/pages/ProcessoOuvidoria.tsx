@@ -285,7 +285,7 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
 function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
   const { 
     isRecurso, setIsRecurso, handleTipoCasoChange, tipoCaso, 
-    tipoServico, setTipoServico, tipoCorte, setTipoCorte // Agora puxamos o tipoCorte do estado
+    tipoServico, setTipoServico, tipoCorte, setTipoCorte
   } = state;
 
   return (
