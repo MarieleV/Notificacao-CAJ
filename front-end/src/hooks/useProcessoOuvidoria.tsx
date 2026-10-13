@@ -149,7 +149,6 @@ export function useProcessoOuvidoria() {
   const showDataRecebimentoAI = isParcial || isLAPadronizadaRecurso || (isIndeferir && isServico) || isSimples || isCorte;
 
   const isDeferirIncomplete = hasDecisaoButtons && decisao === "deferir" && (!deferirMotivo || (deferirMotivo === "fato_novo" && !fatoNovoStatus));
-  // isParcialIncomplete ignora a fatura quitada caso seja corte de cavalete, pois no corte parcial a fatura sempre é corrigida.
   const isParcialIncomplete = hasDecisaoButtons && decisao === "parcial" && tipoCaso !== "corte_cavalete" && !faturaQuitada;
 
   // --- FUNÇÕES E HANDLERS ---
