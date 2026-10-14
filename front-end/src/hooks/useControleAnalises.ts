@@ -79,7 +79,7 @@ export function useControleAnalises() {
   );
 
   // =======================================================================================
-  // 1. CÁLCULO DOS FILTRADOS (Agora fica ANTES do useEffect para podermos salvar isso)
+  // 1. CÁLCULO DOS FILTRADOS 
   // =======================================================================================
   const filtrados = resultados.filter(r => {
     const matchGlobal = r.matricula.includes(searchTerm) || 
@@ -123,13 +123,13 @@ export function useControleAnalises() {
   });
 
   // =======================================================================================
-  // 2. SALVAMENTO NO LOCALSTORAGE (Agora salva os filtrados e protege contra quebra de limite)
+  // 2. SALVAMENTO NO LOCALSTORAGE
   // =======================================================================================
   useEffect(() => {
     const stateToSave = {
       fileNameOP, fileName989Cliente, fileName989CAJ,
       resultados,
-      resultadosFiltrados: resultadosFiltradosEOrdenados, // <-- AGORA OS FILTRADOS VÃO JUNTO!
+      resultadosFiltrados: resultadosFiltradosEOrdenados,
       searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS,
       sortConfig
     };
@@ -234,7 +234,8 @@ export function useControleAnalises() {
           statusCAJ.toLowerCase().includes("encerrado - executado");
 
         processados.push({
-          id: `${matricula}-${index}`,
+          // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3: ID de renderização 100% único e blindado
+          id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
           dataAbertura: dataAberturaLimpa,
           codigoServico,
           matricula,
