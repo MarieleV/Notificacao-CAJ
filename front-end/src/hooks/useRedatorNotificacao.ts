@@ -35,9 +35,6 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  // Planilha 1: Base de Dados do Cliente
-  // Os dados ficam em estado React (RAM) + cache de módulo + IndexedDB (persistência sem limite de 5MB).
-  // O nome do arquivo continua no sessionStorage, mas é sincronizado com a existência real dos dados.
   const [excelData, setExcelDataState] = useState<any[]>(baseClienteCache);
   const [baseHydrated, setBaseHydrated] = useState<boolean>(baseClienteCache.length > 0);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
@@ -50,7 +47,6 @@ export function useRedatorNotificacao() {
     );
   };
 
-  // Reidrata a base ao montar (aba recarregada/descartada pelo Chrome, troca de tela, deploy novo...)
   useEffect(() => {
     if (baseClienteCache.length > 0) {
       setBaseHydrated(true);
@@ -76,7 +72,6 @@ export function useRedatorNotificacao() {
     };
   }, []);
 
-  // Planilha 2: Lote / Responsável (upload manual ou integração)
   const [excelDataResp, setExcelDataResp] = useSessionStorage<any[]>("redator_excelDataResp", []);
   const [fileNameResp, setFileNameResp] = useSessionStorage<string>("redator_fileNameResp", "");
 
@@ -158,7 +153,7 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        const dataMapped = data.map((row: any) => {
+        const dataMapped = data.map((row: any, index: number) => {
           const getRowVal = (patterns: RegExp[]) => {
             for (const pattern of patterns) {
               const key = Object.keys(row).find(k => pattern.test(k));
@@ -169,6 +164,8 @@ export function useRedatorNotificacao() {
             return "";
           };
           return {
+            // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3 (Keys Seguras Base de Cliente)
+            id: `cliente-${Date.now()}-${index}`,
             matricula: getRowVal([/matr[ií]cula|matricula|mat/i]),
             morador: getRowVal([/morador|cliente|nome|proprietario/i]),
             endereco: getRowVal([/endere[çc]o|logradouro|rua|avenida/i]),
@@ -180,7 +177,6 @@ export function useRedatorNotificacao() {
           };
         }).filter(item => item.matricula !== "");
 
-        // Atualiza RAM, cache de módulo e IndexedDB
         setExcelData(dataMapped);
         setBaseHydrated(true);
         setFileModal({ type: "success", message: `${dataMapped.length} registros de clientes carregados com sucesso!` });
@@ -210,8 +206,10 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        setExcelDataResp(data);
-        setFileModal({ type: "success", message: `${data.length} registros carregados para lote!` });
+        // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3 (Adição de IDs em lotes inseridos manualmente)
+        const securedData = data.map((d: any, i) => ({ ...d, uniqueId: `lote-${Date.now()}-${i}` }));
+        setExcelDataResp(securedData);
+        setFileModal({ type: "success", message: `${securedData.length} registros carregados para lote!` });
       } catch (error) {
         setFileModal({ type: "error", message: "Erro ao ler a planilha de responsáveis." });
       } finally {
@@ -222,10 +220,8 @@ export function useRedatorNotificacao() {
     e.target.value = "";
   };
 
-  // IMPORTAÇÃO DIRETA DO CONTROLE DE ANÁLISES 
   const importarDoControleAnalises = () => {
     try {
-      // 1. Tenta pegar os dados salvos da tela Controle de Análises
       const savedStr = localStorage.getItem("@ControleAnalises:state");
       if (!savedStr) {
         setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
@@ -233,31 +229,25 @@ export function useRedatorNotificacao() {
       }
       
       const savedState = JSON.parse(savedStr);
-      
-      // 2. Tenta pegar os dados.
       let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
       
-      // Se não achar os filtrados, tenta pegar os originais como fallback.
       if (casosParaImportar.length === 0) {
           casosParaImportar = savedState.resultados || savedState.dadosOriginais || [];
       }
 
-      // Se ainda assim estiver vazio...
       if (casosParaImportar.length === 0) {
         setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
         return;
       }
 
-      // 3. Converte os dados filtrados para o formato que nosso Lote espera
-      const dataMapped = casosParaImportar.map((item: any) => ({
-        // Aceita variações comuns do nome da chave
+      const dataMapped = casosParaImportar.map((item: any, i: number) => ({
+        uniqueId: `import-${Date.now()}-${i}`,
         "Matrícula": item.matricula || item.Matrícula || item.Matricula || "",
         "Responsável": item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || "",
         "Código": item.codigoServico || item.codigo || item.Codigo || "",
         "Status": item.situacao || item.status || item.Situacao || ""
       }));
 
-      // 4. Salva no estado da Planilha 2 (Lotes)
       setExcelDataResp(dataMapped);
       setFileNameResp(`Importado: ${casosParaImportar.length} casos analisados`);
       setFiltroResponsavel("");
@@ -284,7 +274,6 @@ export function useRedatorNotificacao() {
       return;
     }
 
-    // Procura o registro na base otimizada
     const encontrado = excelData.find((row) => row.matricula === matTrimmed);
 
     if (encontrado) {
@@ -297,7 +286,6 @@ export function useRedatorNotificacao() {
         categoriaTarifa: encontrado.ativEconomica,
         numeroHidrometro: encontrado.numeroHidrometro
       });
-      // O card verde aparecerá automaticamente com base no estado atualizado!
     } else {
       setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
       setFileModal({ 
