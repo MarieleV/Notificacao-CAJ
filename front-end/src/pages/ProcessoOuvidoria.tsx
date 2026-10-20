@@ -762,10 +762,17 @@ function GuiaSansys({ state }: { state: ProcessoState }) {
             {(decisao === "deferir" || decisao === "parcial") && (
               <div>
                 <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1.5">Restituição de Multa?</label>
-                <select value={temRestituicao ? "sim" : "nao"} onChange={(e) => setTemRestituicao(e.target.value === "sim")} className="w-full px-3 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500">
-                  <option value="nao">Não</option>
-                  <option value="sim">Sim (Solicitar restituição)</option>
-                </select>
+                <div className="relative w-full">
+                  <select value={temRestituicao ? "sim" : "nao"} onChange={(e) => setTemRestituicao(e.target.value === "sim")} className="w-full pl-3 pr-9 py-2 border border-emerald-300 rounded-lg text-xs bg-emerald-50 focus:outline-none focus:border-emerald-500 appearance-none">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim (Solicitar restituição)</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-emerald-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
             {decisao === "indeferir" && (
