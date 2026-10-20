@@ -265,18 +265,30 @@ export function useProcessoOuvidoria() {
             const hasPadronizacao = deferirMotivo === "la_padronizada";
             const isMultadoCorte = foiMultado === "sim";
 
+            // Singular quando NÃO há padronização
+            const singular = !hasPadronizacao;
+
             // Sem defesa + apenas notificado: o parágrafo "Como não houve apresentação de defesa..." é removido.
             let p1_defesa = "";
             if (hasDefesa) {
-                const textoSancao = isMultadoCorte ? `, com sanções aplicadas em ${tplAplicacao}` : "";
+                const textoSancao = isMultadoCorte
+                  ? (singular ? `, com sanção aplicada em ${tplAplicacao}` : `, com sanções aplicadas em ${tplAplicacao}`)
+                  : "";
                 p1_defesa = `Foi apresentado defesa em ${tplDataDefesa} (Prot. ${tplProtDefesa}) e foi indeferida em ${tplDataIndeferimento} (Prot. ${tplProtIndeferimento})${textoSancao}, pois segundo a Resolução 19/2019 ARIS no Art. 144. Constitui infração a prática decorrente da ação ou omissão do usuário, relativa ao seguinte fato:\n${incisoText}`;
             } else if (isMultadoCorte) {
-                p1_defesa = `Como não houve apresentação de defesa nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.`;
+                p1_defesa = singular
+                  ? `Como não houve apresentação de defesa, a sanção foi aplicada em ${tplAplicacao} e consta na FAT ${tplFatura}.`
+                  : `Como não houve apresentação de defesa nem a padronização obrigatória da ligação de água, as sanções foram aplicadas em ${tplAplicacao} e constam na FAT ${tplFatura}.`;
             }
             const blocoDefesa = p1_defesa ? `${p1_defesa}\n\n` : "";
 
             // "Multa" só aparece quando a multa já foi aplicada; caso contrário é apenas "Notificação".
             const tipoObjeto = isMultadoCorte ? "Multa" : "Notificação";
+
+            // Frase do item 01 (singular/plural)
+            const frasePenalidade = singular
+              ? "da aplicação de penalidade administrativa relativa"
+              : "da aplicação de penalidades administrativas relativas";
 
             // Parágrafo do Considerando
             const paragrafoConsiderando = `Considerando a manifestação apresentada, visto que **[EDIÇÃO PECULIAR]**`;
@@ -289,7 +301,7 @@ export function useProcessoOuvidoria() {
               ? `**02.** RETIFICAR a decisão proferida em ${tplDecisaoAnterior}, RETIRANDO ${penUp}.\n**A fatura ref. ${tplFatura} foi corrigida e está anexa.**`
               : `**02.** DEFERIR a manifestação apresentada, tendo sido retirado ${pen} e anulado o respectivo Auto de Infração.`;
 
-            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. Objeto:** ${tipoObjeto} por Violação do corte ${tipoCorte}${hasPadronizacao ? ' e Não padronização obrigatória da ligação de água' : ''}.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso ${inciso} da Resolução 019/2019 - ARIS.\nFato gerador: Violação do corte de ${tipoCorte}.\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, por ${tipoRecebimentoAI}, no endereço do imóvel, e recebido por ${tplRecebedor} em ${tplRecebimentoAR || "[DATA]"}.\n\n${blocoDefesa}${paragrafoConsiderando}\n\n**DECIDIMOS:**\n\n${inciso02}`;
+            tpl = `**Recurso protocolo ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. Objeto:** ${tipoObjeto} por Violação do corte ${tipoCorte}${hasPadronizacao ? ' e Não padronização obrigatória da ligação de água' : ''}.\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão ${frasePenalidade} ao Auto de Infração nº ${tplAI} gerado em ${tplGeracao}.\nDispositivo legal infringido: Artigo 144, inciso ${inciso} da Resolução 019/2019 - ARIS.\nFato gerador: Violação do corte de ${tipoCorte}.\nData da constatação: ${tplConstatacao}.\nO Auto de Infração foi entregue, por ${tipoRecebimentoAI}, no endereço do imóvel, e recebido por ${tplRecebedor} em ${tplRecebimentoAR || "[DATA]"}.\n\n${blocoDefesa}${paragrafoConsiderando}\n\n**DECIDIMOS:**\n\n${inciso02}`;
           } 
           else if (deferirMotivo === "la_padronizada") {
             tpl = `**Recurso prot. ${tplProc}**\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**01. OBJETO:** AUTO DE INFRAÇÃO Nº ${tplAI}\n\nCliente padronizou a ligação de água e solicita cancelamento das multas.${txtDefesaItem01}\n\n**02. DECISÃO:**\nA Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável, com a exclusão das multas aplicadas, em estrita observância à Instrução Normativa nº 83/2025, não havendo, portanto, prejuízo ao usuário.\nA FAT ${tplFatura} foi corrigida e está anexa.`;
