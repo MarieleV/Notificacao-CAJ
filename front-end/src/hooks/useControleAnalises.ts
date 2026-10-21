@@ -228,9 +228,12 @@ export function useControleAnalises() {
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
 
-        const statusClienteValidos = ["para reprogramar", "pendente", "programado", "postergada"];
+        const statusClienteInvalidos = ["para reprogramar", "pendente", "programado", "postergada", "—"];
+        const statusAtual = statusCliente.toLowerCase().trim();
+
         const isPadronizado = 
-          statusClienteValidos.includes(statusCliente.toLowerCase()) && 
+          statusAtual !== "" && 
+          !statusClienteInvalidos.includes(statusAtual) && 
           statusCAJ.toLowerCase().includes("encerrado - executado");
 
         processados.push({
