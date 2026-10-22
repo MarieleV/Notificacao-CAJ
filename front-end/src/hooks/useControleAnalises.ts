@@ -140,7 +140,6 @@ export function useControleAnalises() {
     }
   }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
 
-
   // FUNÇÕES DE AÇÃO
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
@@ -188,7 +187,8 @@ export function useControleAnalises() {
       const mapStatusCliente = new Map<string, string>();
       const mapStatusCAJ = new Map<string, string>();
 
-      const registrar989 = (dados: any[], mapStatus: Map<string, string>) => {
+      // Lógica original estritamente para a planilha do Cliente (989 Status)
+      const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
@@ -199,8 +199,33 @@ export function useControleAnalises() {
         });
       };
 
-      registrar989(dados989Cliente, mapStatusCliente);
-      registrar989(dados989CAJ, mapStatusCAJ);
+      // Nova lógica específica para a Planilha CAJ com filtro de Códigos de Encerramento
+      const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>) => {
+        // Códigos válidos mapeados
+        const codigosValidos = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
+
+        dados.forEach(row => {
+          const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
+          // Lê a nova coluna de situação
+          const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
+          // Lê a coluna com o código de encerramento da OS
+          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || row["CODIGO_ABERTURA_OS"] || "").trim();
+
+          // Extrai apenas os primeiros números ignorando pontos (ex: "14.631" vira "14631")
+          const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
+
+          if (mat && codigosValidos.includes(prefixoCodigo)) {
+            const situacaoAtual = mapStatus.get(mat);
+            // Dá prioridade se a linha já existente não for "encerrado - executado" e a nova for
+            if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
+              mapStatus.set(mat, situacao || "—");
+            }
+          }
+        });
+      };
+
+      registrar989Cliente(dados989Cliente, mapStatusCliente);
+      registrarPlanilhaCAJ(dados989CAJ, mapStatusCAJ);
 
       const hojeStr = new Date().toLocaleDateString("pt-BR");
       const processados: AnaliseProcessada[] = [];
@@ -237,7 +262,6 @@ export function useControleAnalises() {
           statusCAJ.toLowerCase().includes("encerrado - executado");
 
         processados.push({
-          // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3: ID de renderização 100% único e blindado
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
           dataAbertura: dataAberturaLimpa,
           codigoServico,
