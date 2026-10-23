@@ -186,7 +186,7 @@ export function useControleAnalises() {
     try {
       const mapStatusCliente = new Map<string, string>();
       const mapStatusCAJ = new Map<string, string>();
-      const mapCodigosCAJ = new Map<string, string>(); // Novo map para armazenar os códigos de encerramento
+      const mapCodigosCAJ = new Map<string, string>();
 
       const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
         dados.forEach(row => {
@@ -210,13 +210,11 @@ export function useControleAnalises() {
           const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
 
           if (mat) {
-            // Salva a situação (prioriza o texto 'encerrado - executado' caso haja duplicatas na planilha)
             const situacaoAtual = mapStatus.get(mat);
             if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
               mapStatus.set(mat, situacao || "—");
             }
 
-            // Salva o código de encerramento (prioriza reter os códigos aprovados caso a matrícula se repita)
             if (prefixoCodigo) {
               const codigoAtual = mapCodigos.get(mat);
               if (!codigoAtual || (!codigosAprovados.includes(codigoAtual) && codigosAprovados.includes(prefixoCodigo))) {
@@ -257,12 +255,11 @@ export function useControleAnalises() {
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
         const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
-        // REGRA 1: Baseada na situação de textos (Cliente e CAJ)
-        const statusClienteInvalidos = ["para reprogramar", "pendente", "programado", "postergada", "—"];
         const statusAtual = statusCliente.toLowerCase().trim();
+
+        // REGRA 1: Status Cliente deve conter "cancelado" E CAJ "encerrado - executado"
         const regraTextos = 
-          statusAtual !== "" && 
-          !statusClienteInvalidos.includes(statusAtual) && 
+          statusAtual.includes("cancelado") && 
           statusCAJ.toLowerCase().includes("encerrado - executado");
 
         // REGRA 2: Baseada no Código de Encerramento OS (CAJ)
