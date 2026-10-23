@@ -257,17 +257,27 @@ export function useControleAnalises() {
 
         const statusAtual = statusCliente.toLowerCase().trim();
 
-        // REGRA 1: Status Cliente deve conter "cancelado" E CAJ "encerrado - executado"
-        const regraTextos = 
-          statusAtual.includes("cancelado") && 
-          statusCAJ.toLowerCase().includes("encerrado - executado");
+        // ==========================================
+        // FILTROS DE PADRONIZAÇÃO RÍGIDOS
+        // ==========================================
 
-        // REGRA 2: Baseada no Código de Encerramento OS (CAJ)
+        // 1. TRAVA DE EXECUÇÃO: Deve estar encerrado na CAJ
+        const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
+
+        // 2. TRAVA DE PENDÊNCIA: Não pode estar pendente, programado, postergado, para reprogramar ou suspenso
+        const statusBloqueados = ["para reprogramar", "pendente", "programado", "postergada", "suspenso"];
+        const isBloqueado = statusBloqueados.some(s => statusAtual.includes(s));
+
+        // 3. REGRA A (Texto): Status do cliente deve ser exatamente "cancelado"
+        const isCancelado = statusAtual.includes("cancelado");
+
+        // 4. REGRA B (Código OS): Código de encerramento da CAJ está aprovado
         const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-        const regraCodigo = codigosAprovados.includes(codigoOSCAJ);
+        const hasCodigoAprovado = codigosAprovados.includes(codigoOSCAJ);
 
-        // A análise é padronizada se passar na Regra 1 OU na Regra 2
-        const isPadronizado = regraTextos || regraCodigo;
+        // A análise SÓ é padronizada se estiver executada na CAJ, não estiver bloqueada no cliente 
+        // e passar em pelo menos uma das regras de Aceite (Cancelado ou Código Aprovado).
+        const isPadronizado = isEncerradoCAJ && !isBloqueado && (isCancelado || hasCodigoAprovado);
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
