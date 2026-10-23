@@ -140,7 +140,6 @@ export function useControleAnalises() {
     }
   }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
 
-
   // FUNÇÕES DE AÇÃO
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
     const file = e.target.files?.[0];
@@ -187,8 +186,9 @@ export function useControleAnalises() {
     try {
       const mapStatusCliente = new Map<string, string>();
       const mapStatusCAJ = new Map<string, string>();
+      const mapCodigosCAJ = new Map<string, string>();
 
-      const registrar989 = (dados: any[], mapStatus: Map<string, string>) => {
+      const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
@@ -199,8 +199,34 @@ export function useControleAnalises() {
         });
       };
 
-      registrar989(dados989Cliente, mapStatusCliente);
-      registrar989(dados989CAJ, mapStatusCAJ);
+      const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
+        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
+        
+        dados.forEach(row => {
+          const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
+          const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
+          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || row["CODIGO_ABERTURA_OS"] || "").trim();
+
+          const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
+
+          if (mat) {
+            const situacaoAtual = mapStatus.get(mat);
+            if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
+              mapStatus.set(mat, situacao || "—");
+            }
+
+            if (prefixoCodigo) {
+              const codigoAtual = mapCodigos.get(mat);
+              if (!codigoAtual || (!codigosAprovados.includes(codigoAtual) && codigosAprovados.includes(prefixoCodigo))) {
+                mapCodigos.set(mat, prefixoCodigo);
+              }
+            }
+          }
+        });
+      };
+
+      registrar989Cliente(dados989Cliente, mapStatusCliente);
+      registrarPlanilhaCAJ(dados989CAJ, mapStatusCAJ, mapCodigosCAJ);
 
       const hojeStr = new Date().toLocaleDateString("pt-BR");
       const processados: AnaliseProcessada[] = [];
@@ -227,17 +253,33 @@ export function useControleAnalises() {
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
+        const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
-        const statusClienteInvalidos = ["para reprogramar", "pendente", "programado", "postergada", "—"];
         const statusAtual = statusCliente.toLowerCase().trim();
 
-        const isPadronizado = 
-          statusAtual !== "" && 
-          !statusClienteInvalidos.includes(statusAtual) && 
-          statusCAJ.toLowerCase().includes("encerrado - executado");
+        // ==========================================
+        // FILTROS DE PADRONIZAÇÃO RÍGIDOS
+        // ==========================================
+
+        // 1. TRAVA DE EXECUÇÃO: Deve estar encerrado na CAJ
+        const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
+
+        // 2. TRAVA DE PENDÊNCIA: Não pode estar pendente, programado, postergado, para reprogramar ou suspenso
+        const statusBloqueados = ["para reprogramar", "pendente", "programado", "postergada", "suspenso"];
+        const isBloqueado = statusBloqueados.some(s => statusAtual.includes(s));
+
+        // 3. REGRA A (Texto): Status do cliente deve ser exatamente "cancelado"
+        const isCancelado = statusAtual.includes("cancelado");
+
+        // 4. REGRA B (Código OS): Código de encerramento da CAJ está aprovado
+        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
+        const hasCodigoAprovado = codigosAprovados.includes(codigoOSCAJ);
+
+        // A análise SÓ é padronizada se estiver executada na CAJ, não estiver bloqueada no cliente 
+        // e passar em pelo menos uma das regras de Aceite (Cancelado ou Código Aprovado).
+        const isPadronizado = isEncerradoCAJ && !isBloqueado && (isCancelado || hasCodigoAprovado);
 
         processados.push({
-          // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3: ID de renderização 100% único e blindado
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
           dataAbertura: dataAberturaLimpa,
           codigoServico,
