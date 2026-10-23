@@ -186,8 +186,8 @@ export function useControleAnalises() {
     try {
       const mapStatusCliente = new Map<string, string>();
       const mapStatusCAJ = new Map<string, string>();
+      const mapCodigosCAJ = new Map<string, string>(); // Novo map para armazenar os códigos de encerramento
 
-      // Lógica original estritamente para a planilha do Cliente (989 Status)
       const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
@@ -199,33 +199,36 @@ export function useControleAnalises() {
         });
       };
 
-      // Nova lógica específica para a Planilha CAJ com filtro de Códigos de Encerramento
-      const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>) => {
-        // Códigos válidos mapeados
-        const codigosValidos = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-
+      const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
+        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
+        
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
-          // Lê a nova coluna de situação
           const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
-          // Lê a coluna com o código de encerramento da OS
           const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || row["CODIGO_ABERTURA_OS"] || "").trim();
 
-          // Extrai apenas os primeiros números ignorando pontos (ex: "14.631" vira "14631")
           const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
 
-          if (mat && codigosValidos.includes(prefixoCodigo)) {
+          if (mat) {
+            // Salva a situação (prioriza o texto 'encerrado - executado' caso haja duplicatas na planilha)
             const situacaoAtual = mapStatus.get(mat);
-            // Dá prioridade se a linha já existente não for "encerrado - executado" e a nova for
             if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
               mapStatus.set(mat, situacao || "—");
+            }
+
+            // Salva o código de encerramento (prioriza reter os códigos aprovados caso a matrícula se repita)
+            if (prefixoCodigo) {
+              const codigoAtual = mapCodigos.get(mat);
+              if (!codigoAtual || (!codigosAprovados.includes(codigoAtual) && codigosAprovados.includes(prefixoCodigo))) {
+                mapCodigos.set(mat, prefixoCodigo);
+              }
             }
           }
         });
       };
 
       registrar989Cliente(dados989Cliente, mapStatusCliente);
-      registrarPlanilhaCAJ(dados989CAJ, mapStatusCAJ);
+      registrarPlanilhaCAJ(dados989CAJ, mapStatusCAJ, mapCodigosCAJ);
 
       const hojeStr = new Date().toLocaleDateString("pt-BR");
       const processados: AnaliseProcessada[] = [];
@@ -252,14 +255,22 @@ export function useControleAnalises() {
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
+        const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
+        // REGRA 1: Baseada na situação de textos (Cliente e CAJ)
         const statusClienteInvalidos = ["para reprogramar", "pendente", "programado", "postergada", "—"];
         const statusAtual = statusCliente.toLowerCase().trim();
-
-        const isPadronizado = 
+        const regraTextos = 
           statusAtual !== "" && 
           !statusClienteInvalidos.includes(statusAtual) && 
           statusCAJ.toLowerCase().includes("encerrado - executado");
+
+        // REGRA 2: Baseada no Código de Encerramento OS (CAJ)
+        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
+        const regraCodigo = codigosAprovados.includes(codigoOSCAJ);
+
+        // A análise é padronizada se passar na Regra 1 OU na Regra 2
+        const isPadronizado = regraTextos || regraCodigo;
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
