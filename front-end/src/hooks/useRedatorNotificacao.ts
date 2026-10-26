@@ -7,7 +7,6 @@ import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../service
 import { kvGet, kvSet } from "../utils/kvStorage";
 
 const BASE_CLIENTE_KEY = "baseCliente";
-// Cache em módulo: sobrevive a remontagens do componente dentro da mesma sessão do app
 let baseClienteCache: any[] = [];
 
 export type PenaltyVariant = "multa" | "multaCP";
@@ -82,6 +81,9 @@ export function useRedatorNotificacao() {
   const [autoInfracao, setAutoInfracao] = useSessionStorage("redator_autoInfracao", "");
   const [equipe, setEquipe] = useSessionStorage("redator_equipe", "");
   
+  // NOVO: Estado específico para o código 20012
+  const [mesesSemAcesso, setMesesSemAcesso] = useSessionStorage("redator_mesesSemAcesso", "");
+  
   const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
   const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("redator_funcionarioBusca", "");
 
@@ -131,7 +133,11 @@ export function useRedatorNotificacao() {
 
   const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
-  const camposObrigatoriosVazios = !matricula.trim() || !dataConstatacao.trim() || !protocolo.trim() || !funcionario.trim() || !equipe.trim();
+  
+  // ATUALIZADO: Trava de botão. Se 20012 for selecionado, mesesSemAcesso torna-se obrigatório
+  const camposObrigatoriosVazios = 
+    !matricula.trim() || !dataConstatacao.trim() || !protocolo.trim() || !funcionario.trim() || !equipe.trim() || 
+    (selectedCodes.includes("20012") && !mesesSemAcesso.trim());
 
   // ACTIONS
   const toggleCode = (code: string) => {
@@ -164,7 +170,6 @@ export function useRedatorNotificacao() {
             return "";
           };
           return {
-            // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3 (Keys Seguras Base de Cliente)
             id: `cliente-${Date.now()}-${index}`,
             matricula: getRowVal([/matr[ií]cula|matricula|mat/i]),
             morador: getRowVal([/morador|cliente|nome|proprietario/i]),
@@ -206,7 +211,6 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        // Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 3 (Adição de IDs em lotes inseridos manualmente)
         const securedData = data.map((d: any, i) => ({ ...d, uniqueId: `lote-${Date.now()}-${i}` }));
         setExcelDataResp(securedData);
         setFileModal({ type: "success", message: `${securedData.length} registros carregados para lote!` });
@@ -341,7 +345,14 @@ export function useRedatorNotificacao() {
     setLoading(true);
     setStep("idle");
 
-    const textosBase = selectedItems.map(item => penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta);
+    // ATUALIZADO: Lógica inteligente para embutir os meses antes de enviar para a IA
+    const textosBase = selectedItems.map(item => {
+      let texto = penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta;
+      if (item.code === "20012" && mesesSemAcesso) {
+        texto = texto.replace(/\[INFORMAR MESES SEM ACESSO\]/gi, `${mesesSemAcesso} meses sem acesso`);
+      }
+      return texto;
+    });
 
     try {
       const data = await gerarNotificacaoApi({
@@ -415,6 +426,7 @@ export function useRedatorNotificacao() {
     setFuncionario("");
     setFuncionarioBusca("");
     setFiltroResponsavel("");
+    setMesesSemAcesso("");
     setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
   }
 
@@ -428,6 +440,7 @@ export function useRedatorNotificacao() {
     
     matricula, setMatricula, dataConstatacao, setDataConstatacao,
     protocolo, setProtocolo, autoInfracao, setAutoInfracao, equipe, setEquipe,
+    mesesSemAcesso, setMesesSemAcesso, // NOVO
     funcionario, setFuncionario, funcionarioBusca, setFuncionarioBusca,
     funcSearchOpen, setFuncSearchOpen, clienteData, generatedText, setGeneratedText,
     
