@@ -577,15 +577,16 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
   </div>
 );
 
-const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios }: any) => {
-  if (!semCodigos && !esqueceuBusca && !camposVazios) return null;
+const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios, faltaMeses }: any) => {
+  if (!semCodigos && !esqueceuBusca && !camposVazios && !faltaMeses) return null;
   let msg = "Preencha todos os Dados da Notificação.";
   if (semCodigos) msg = "Selecione ao menos um código de infração.";
   else if (esqueceuBusca) msg = "Clique no botão 'Buscar' ao lado da Matrícula antes de gerar.";
+  else if (faltaMeses) msg = "Informe a quantidade de meses sem acesso (exigido pelo código 20012).";
+  
   return (
     <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
       <AlertCircle size={13} className="flex-shrink-0" />
-      {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 */}
       <p className="text-xs"><span>{msg}</span></p>
     </div>
   );
