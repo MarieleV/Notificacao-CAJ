@@ -153,7 +153,6 @@ function RedatorNotificacaoConteudo() {
                     
                     {hook.filtroResponsavel && hook.totalCasos > 0 && (
                       <span className="text-[#1a5fa8] font-bold bg-[#eef6ff] px-2 py-0.5 rounded-full border border-[#dce9f7]">
-                        {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 (Naked texts resolvidos) */}
                         <span>Caso </span><span>{hook.currentCasoIndex >= 0 ? hook.currentCasoIndex + 1 : "?"}</span><span> de </span><span>{hook.totalCasos}</span>
                       </span>
                     )}
@@ -225,6 +224,23 @@ function RedatorNotificacaoConteudo() {
                   <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Equipe</label>
                   <input value={hook.equipe} onChange={(e) => hook.setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
+
+                {/* NOVO CAMPO CONDICIONAL PARA O CÓDIGO 20012 */}
+                {hook.selectedCodes.includes("20012") && (
+                  <div className="animate-fadeIn">
+                    <label className="block text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1.5">
+                      Qtd. Meses Sem Acesso <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={hook.mesesSemAcesso}
+                      onChange={(e) => hook.setMesesSemAcesso(e.target.value)}
+                      placeholder="Ex: 3"
+                      className="w-full px-3 py-2 border border-amber-300 bg-amber-50 rounded-lg text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-amber-900 placeholder-amber-400"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -240,7 +256,13 @@ function RedatorNotificacaoConteudo() {
               )}
             </button>
 
-            <AlertaPendencias semCodigos={hook.selectedCodes.length === 0} esqueceuBusca={hook.esqueceuDeBuscar} camposVazios={hook.camposObrigatoriosVazios} />
+            {/* ATUALIZADO: Passando a nova prop para o alerta de pendências */}
+            <AlertaPendencias 
+              semCodigos={hook.selectedCodes.length === 0} 
+              esqueceuBusca={hook.esqueceuDeBuscar} 
+              camposVazios={hook.camposObrigatoriosVazios} 
+              faltaMeses={hook.selectedCodes.includes("20012") && !hook.mesesSemAcesso.trim()}
+            />
           </SectionBlock>
 
 
@@ -555,15 +577,16 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
   </div>
 );
 
-const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios }: any) => {
-  if (!semCodigos && !esqueceuBusca && !camposVazios) return null;
+const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios, faltaMeses }: any) => {
+  if (!semCodigos && !esqueceuBusca && !camposVazios && !faltaMeses) return null;
   let msg = "Preencha todos os Dados da Notificação.";
   if (semCodigos) msg = "Selecione ao menos um código de infração.";
   else if (esqueceuBusca) msg = "Clique no botão 'Buscar' ao lado da Matrícula antes de gerar.";
+  else if (faltaMeses) msg = "Informe a quantidade de meses sem acesso (exigido pelo código 20012).";
+  
   return (
     <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
       <AlertCircle size={13} className="flex-shrink-0" />
-      {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 */}
       <p className="text-xs"><span>{msg}</span></p>
     </div>
   );
