@@ -150,6 +150,20 @@ export const INFRACTION_CODES: InfractionCode[] = [
     category: "fraude",
   },
   {
+    code: "20011",
+    title: "Falta de acesso para execução de serviços",
+    category: "Acesso", // Você pode mudar a categoria de acordo com as que já existem no seu sistema
+    clauseMulta: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII.",
+    clauseMultaCP: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII; e obrigatoriedade de padronizar a ligação de água em 90 (noventa) dias úteis conforme Art. 144, § 3º. Entretanto, caso o usuário padronize a ligação de água em 90 dias úteis, as multas não serão aplicadas. Caso o usuário não atenda à obrigatoriedade de padronização, será aplicada multa por não padronização, juntamente com a multa pela infração cometida."
+  },
+  {
+    code: "20012",
+    title: "Falta de acesso para leitura",
+    category: "Acesso", // Você pode mudar a categoria de acordo com as que já existem no seu sistema
+    clauseMulta: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para leitura. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Observação: [INFORMAR MESES SEM ACESSO]. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII.",
+    clauseMultaCP: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para leitura. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Observação: [INFORMAR MESES SEM ACESSO]. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII; e obrigatoriedade de padronizar a ligação de água em 90 (noventa) dias úteis conforme Art. 144, § 3º. Entretanto, caso usuário padronize a ligação de água em 90 dias úteis, as multas não serão aplicadas. Caso usuário não atenda à obrigatoriedade de padronização, será aplicado multa por não padronização, juntamente com a multa pela infração cometida."
+  },
+  {
     code: "20013",
     title: "Notificação para Atualização Cadastral",
     clauseMulta: "NOTIFICAÇÃO PARA ATUALIZAÇÃO CADASTRAL  Prezado(a) cliente,  Conforme Comunicado Extra emitido junto à sua fatura, para atualização cadastral, identificamos que seu cadastro ainda não foi atualizado.  Em razão das mudanças decorrentes da Reforma Tributária (Emenda Constitucional nº 132/2023 e Lei Complementar nº 214), a correta identificação do cliente tornou-se obrigatória.  Conforme disposto no art. 48, inciso VI, da Norma de Referência ANA nº 11/2024, cabe ao titular do serviço público de saneamento básico estabelecer a responsabilidade dos usuários quanto à atualização cadastral, sendo dever do próprio usuário manter suas informações atualizadas junto ao Prestador de Serviços.  Notificamos V.Sa. para que no prazo de 15 dias úteis, a partir do recebimento desta notificação, providencie a atualização cadastral junto ao Prestador de Serviços.",
