@@ -377,8 +377,9 @@ export function useRedatorNotificacao() {
       const data = await gerarNotificacaoApi({
         api_key: apiKey, 
         textos_base: textosBase,
-        dataConstatacao: is20012 ? "" : dataConstatacao, // Omitido no 20012 para não criar a linha 'Data da constatação:'
-        protocolo: is20012 ? "" : protocolo,             // Omitido no 20012 para não criar a linha 'Protocolo:'
+        // ENVIAMOS OS DADOS COMPLETOS PARA NÃO QUEBRAR O SCHEMA DO BACKEND
+        dataConstatacao: dataConstatacao, 
+        protocolo: protocolo,             
         funcionario, 
         equipe
       });
