@@ -5,12 +5,11 @@ import {
   ChevronLeft, ChevronRight, RefreshCw
 } from "lucide-react";
 
-import { DatePicker } from "../components/shared/DatePicker";
 import { SectionBlock } from "../components/shared/SectionBlock";
 import { CATEGORY_COLORS } from "../services/notificacoes";
 import { useRedatorNotificacao, FileModalState } from "../hooks/useRedatorNotificacao";
 
-// Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 4: Error Boundary interno
+// Error Boundary para proteção contra modificações indevidas no DOM pelo tradutor
 class ComponenteProtegido extends Component<{children: ReactNode}, {hasError: boolean}> {
   constructor(props: {children: ReactNode}) {
     super(props);
@@ -67,7 +66,6 @@ function RedatorNotificacaoConteudo() {
             {hook.selectedItems.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {hook.selectedItems.map((item) => (
-                  // Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 3 (Keys seguras)
                   <div key={`badge-${item.code}`} className="flex items-center gap-1.5 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-2.5 py-1.5">
                     <span className="text-xs font-mono font-bold text-[#1a5fa8]"><span>{item.code}</span></span>
                     <span className="text-xs text-[#0b1e35]"><span>{item.title}</span></span>
@@ -116,7 +114,6 @@ function RedatorNotificacaoConteudo() {
                       Trabalhar em Lote por Responsável
                     </label>
                     <div className="relative">
-                      {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 1 */}
                       <select
                         translate="no"
                         value={hook.filtroResponsavel}
@@ -213,10 +210,14 @@ function RedatorNotificacaoConteudo() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
-                  <input value={hook.protocolo} onChange={(e) => hook.setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
-                </div>
+                
+                {/* Protocolo (ocultado se o código 20012 estiver selecionado) */}
+                {!hook.selectedCodes.includes("20012") && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
+                    <input value={hook.protocolo} onChange={(e) => hook.setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
+                  </div>
+                )}
                 
                 <BuscaFuncionarioInput hook={hook} />
 
@@ -225,7 +226,7 @@ function RedatorNotificacaoConteudo() {
                   <input value={hook.equipe} onChange={(e) => hook.setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
 
-                {/* NOVO CAMPO CONDICIONAL PARA O CÓDIGO 20012 */}
+                {/* Campo condicional para o código 20012 */}
                 {hook.selectedCodes.includes("20012") && (
                   <div className="animate-fadeIn">
                     <label className="block text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1.5">
@@ -256,7 +257,6 @@ function RedatorNotificacaoConteudo() {
               )}
             </button>
 
-            {/* ATUALIZADO: Passando a nova prop para o alerta de pendências */}
             <AlertaPendencias 
               semCodigos={hook.selectedCodes.length === 0} 
               esqueceuBusca={hook.esqueceuDeBuscar} 
@@ -278,7 +278,6 @@ function RedatorNotificacaoConteudo() {
                   {hook.generatedText}
                 </div>
               ) : (
-                // Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 1: translate="no" na área de texto livre que interage com React
                 <textarea
                   translate="no"
                   ref={textAreaRef} autoFocus value={hook.generatedText}
@@ -364,7 +363,6 @@ const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
     <div>
       <div className="flex items-center gap-2">
         <FileText size={18} className="text-[#1a5fa8]" />
-        {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 (Naked texts resolvidos) */}
         <h1 className="text-[#0b1e35] font-semibold text-lg"><span>Redigir Notificação Extrajudicial</span></h1>
       </div>
       <p className="text-gray-500 text-sm mt-0.5"><span>Assistente de redação jurídica com Inteligência Artificial</span></p>
@@ -381,7 +379,6 @@ const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
   </div>
 );
 
-// Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 1 e 2 no contêiner principal dos botões de Upload de Arquivos
 const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title, subtitle, inputId, compact, onlyImport, children }: any) => (
   <div translate="no" className={`notranslate mb-4 bg-[#f8fafe] border border-[#dce9f7] rounded-xl flex flex-col transition-all duration-300 overflow-hidden shadow-sm`}>
     
@@ -436,7 +433,6 @@ const PainelUploadPlanilha = ({ fileLoading, fileName, onUpload, onImport, title
 const MenuDropdownCodigos = ({ hook }: any) => (
   <div className="relative">
     <button onClick={() => hook.setDropdownOpen((v: boolean) => !v)} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:border-[#1a5fa8]">
-      {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 */}
       <span className="text-gray-500">
         <span>{hook.selectedCodes.length === 0 ? "Clique para selecionar códigos de infração..." : `${hook.selectedCodes.length} código(s) selecionado(s)`}</span>
       </span>
@@ -455,7 +451,6 @@ const MenuDropdownCodigos = ({ hook }: any) => (
             hook.filteredCodes.map((item: any, index: number) => {
               const selected = hook.selectedCodes.includes(item.code);
               return (
-                // Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 3
                 <button key={`cod-${item.code}-${index}`} onClick={() => hook.toggleCode(item.code)} className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#f0f7ff] ${selected ? "bg-[#f0f7ff]" : ""}`}>
                   <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center ${selected ? "bg-[#1a5fa8] border-[#1a5fa8]" : "border-gray-300"}`}>
                     {selected && <CheckCircle2 size={10} className="text-white" />}
@@ -466,7 +461,6 @@ const MenuDropdownCodigos = ({ hook }: any) => (
                       <span className="text-sm font-medium text-gray-800"><span>{item.title}</span></span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${CATEGORY_COLORS[item.category as keyof typeof CATEGORY_COLORS]}`}><span>{item.category}</span></span>
                     </div>
-                    {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 */}
                     <p className="text-xs text-gray-500 mt-1 truncate"><span>{item.clauseMulta.substring(0, 90)}</span><span>…</span></p>
                   </div>
                 </button>
@@ -499,7 +493,6 @@ const PreviaClausulas = ({ itens, variante }: any) => (
     <div className="flex items-center gap-1.5"><Info size={12} className="text-gray-400" /><p className="text-xs text-gray-400 font-medium">Prévia das cláusulas selecionadas</p></div>
     <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg p-3 space-y-2 max-h-32 overflow-y-auto">
       {itens.map((item: any) => (
-        // Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 e 3
         <div key={`prev-${item.code}-${variante}`} className="text-xs text-gray-600 leading-relaxed">
           <span className="font-bold text-[#1a5fa8]"><span>[</span><span>{item.code}</span><span>]</span></span> <span>{variante === "multaCP" ? item.clauseMultaCP : item.clauseMulta}</span>
         </div>
@@ -519,7 +512,6 @@ const CardClienteLocalizado = ({ cliente, isProcessed }: { cliente: any, isProce
       <div className="flex-1">
         <p className="text-sm font-bold text-[#0c6b3b]">Cliente localizado e dados importados com sucesso!</p>
         <p className="text-xs text-[#108c4e] mt-1">
-          {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 (Naked texts resolvidos) */}
           <span className="font-bold"><span>Nome:</span></span> <span>{cliente.nomeCliente}</span> 
           <span className="text-[#9ae3b7] mx-1.5">|</span> 
           <span className="font-bold"><span>Endereço:</span></span> <span>{cliente.logradouro}</span>
@@ -560,7 +552,6 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
     {hook.funcSearchOpen && (
       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
         {hook.filteredFuncionarios.map((f: any, index: number) => (
-          // Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 e 3
           <div key={`func-${f.matricula}-${index}`} className="px-3 py-2 flex items-center justify-between gap-2 text-sm text-gray-700 hover:bg-[#f0f7ff] cursor-pointer" onMouseDown={(e) => {
             e.preventDefault();
             hook.setFuncionario(`${f.nome} (Mat. ${f.matricula})`);
@@ -599,7 +590,6 @@ const AcoesRevisao = ({ hook }: any) => (
       {hook.reviewMode === "preview" ? "Editar Texto" : "Modo Visualização"}
     </button>
     <button onClick={hook.handleCopy} className="flex items-center gap-1.5 py-1.5 px-3 border border-[#1a5fa8] text-[#1a5fa8] rounded-lg text-xs font-semibold hover:bg-[#eef6ff] bg-white">
-      {/* Para o DOM permanecer blindado CAMADA DE PROTEÇÃO 2 */}
       {hook.copied ? <><CheckCircle2 size={14} className="text-emerald-500" /><span className="text-emerald-600"><span>Copiado!</span></span></> : <><Copy size={14} /><span>Copiar Texto</span></>}
     </button>
   </div>
