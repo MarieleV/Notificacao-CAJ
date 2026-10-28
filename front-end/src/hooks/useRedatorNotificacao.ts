@@ -134,10 +134,15 @@ export function useRedatorNotificacao() {
   const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
-  // ATUALIZADO: Trava de botão. Se 20012 for selecionado, mesesSemAcesso torna-se obrigatório
+  // ATUALIZADO: Verificação de campos com is20012 (Protocolo fica opcional)
+  const is20012 = selectedCodes.includes("20012");
   const camposObrigatoriosVazios = 
-    !matricula.trim() || !dataConstatacao.trim() || !protocolo.trim() || !funcionario.trim() || !equipe.trim() || 
-    (selectedCodes.includes("20012") && !mesesSemAcesso.trim());
+    !matricula.trim() || 
+    !dataConstatacao.trim() || 
+    (!protocolo.trim() && !is20012) || // Ignora protocolo se for 20012
+    !funcionario.trim() || 
+    !equipe.trim() || 
+    (is20012 && !mesesSemAcesso.trim());
 
   // ACTIONS
   const toggleCode = (code: string) => {
@@ -345,11 +350,30 @@ export function useRedatorNotificacao() {
     setLoading(true);
     setStep("idle");
 
-    // ATUALIZADO: Lógica inteligente para embutir os meses antes de enviar para a IA
+    // ATUALIZADO: Lógica para retroagir meses com base na Data de Constatação e Qtd de Meses
+    let textoMesesCalc = `${mesesSemAcesso} meses`;
+    const m = dataConstatacao.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    
+    if (m && mesesSemAcesso && !isNaN(Number(mesesSemAcesso))) {
+      const qtd = Number(mesesSemAcesso);
+      const result = [];
+      let mes = parseInt(m[2], 10);
+      let ano = parseInt(m[3], 10);
+      
+      for(let i = 0; i < qtd; i++) {
+        result.unshift(`${String(mes).padStart(2, '0')}/${ano}`);
+        mes--;
+        if(mes === 0) { mes = 12; ano--; }
+      }
+      textoMesesCalc = `${qtd} meses (Referência: ${result.join(', ')})`;
+    } else if (mesesSemAcesso) {
+      textoMesesCalc = `${mesesSemAcesso} meses (até ${dataConstatacao || 'a data atual'})`;
+    }
+
     const textosBase = selectedItems.map(item => {
       let texto = penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta;
-      if (item.code === "20012" && mesesSemAcesso) {
-        texto = texto.replace(/\[INFORMAR MESES SEM ACESSO\]/gi, `${mesesSemAcesso} meses sem acesso`);
+      if (item.code === "20012") {
+        texto = texto.replace(/\[MESES_SEM_ACESSO\]/gi, textoMesesCalc);
       }
       return texto;
     });
@@ -440,7 +464,7 @@ export function useRedatorNotificacao() {
     
     matricula, setMatricula, dataConstatacao, setDataConstatacao,
     protocolo, setProtocolo, autoInfracao, setAutoInfracao, equipe, setEquipe,
-    mesesSemAcesso, setMesesSemAcesso, // NOVO
+    mesesSemAcesso, setMesesSemAcesso,
     funcionario, setFuncionario, funcionarioBusca, setFuncionarioBusca,
     funcSearchOpen, setFuncSearchOpen, clienteData, generatedText, setGeneratedText,
     
