@@ -134,13 +134,14 @@ export function useRedatorNotificacao() {
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
   const is20012 = selectedCodes.includes("20012");
+
+  // VALIDAÇÃO RÍGIDA DE CAMPOS OBRIGATÓRIOS
   const camposObrigatoriosVazios = 
     !matricula.trim() || 
     !dataConstatacao.trim() || 
-    (!protocolo.trim() && !is20012) || 
     !funcionario.trim() || 
     !equipe.trim() || 
-    (is20012 && !mesesSemAcesso.trim());
+    (is20012 ? !mesesSemAcesso.trim() : !protocolo.trim());
 
   // ACTIONS
   const toggleCode = (code: string) => {
@@ -342,7 +343,7 @@ export function useRedatorNotificacao() {
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
     if (!apiKey) return alert("Insira sua Chave de API do Gemini.");
-    if (camposObrigatoriosVazios) return alert("Preencha todos os Dados da Notificação.");
+    if (camposObrigatoriosVazios) return alert("Preencha todos os Dados obrigatórios da Notificação.");
     if (esqueceuDeBuscar && excelData.length > 0) return alert("Você alterou a matrícula, clique em 'Buscar' antes de gerar.");
 
     setLoading(true);
@@ -377,9 +378,8 @@ export function useRedatorNotificacao() {
       const data = await gerarNotificacaoApi({
         api_key: apiKey, 
         textos_base: textosBase,
-        // ENVIAMOS OS DADOS COMPLETOS PARA NÃO QUEBRAR O SCHEMA DO BACKEND
         dataConstatacao: dataConstatacao, 
-        protocolo: protocolo,             
+        protocolo: is20012 ? "Não se aplica" : protocolo,             
         funcionario, 
         equipe
       });
@@ -413,7 +413,7 @@ export function useRedatorNotificacao() {
     if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarWordApi({
-        texto_final: generatedText, protocolo, autoInfracao, matricula, ...clienteData
+        texto_final: generatedText, protocolo: is20012 ? "Não se aplica" : protocolo, autoInfracao, matricula, ...clienteData
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.docx`);
       marcarComoProcessada();
@@ -426,7 +426,7 @@ export function useRedatorNotificacao() {
     if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarPdfApi({
-        texto_final: generatedText, protocolo, autoInfracao, matricula, ...clienteData
+        texto_final: generatedText, protocolo: is20012 ? "Não se aplica" : protocolo, autoInfracao, matricula, ...clienteData
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.pdf`);
       marcarComoProcessada();
