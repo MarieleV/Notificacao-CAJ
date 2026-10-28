@@ -1,3 +1,4 @@
+// front-end/src/hooks/useRedatorNotificacao.ts
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { useSessionStorage } from "./useSessionStorage"; 
@@ -8,6 +9,8 @@ import { kvGet, kvSet } from "../utils/kvStorage";
 
 const BASE_CLIENTE_KEY = "baseCliente";
 let baseClienteCache: any[] = [];
+
+const CODIGO_SEM_PROTOCOLO = "20012";
 
 export type PenaltyVariant = "multa" | "multaCP";
 export type FileModalType = "success" | "warning" | "error";
@@ -133,7 +136,13 @@ export function useRedatorNotificacao() {
   const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
-  const is20012 = selectedCodes.includes("20012");
+  // ── REGRAS DO 20012 (Falta de acesso para leitura) ────────────────────────
+  // exigeMeses: 20012 está entre os códigos (sozinho ou combinado)
+  // soEh20012:  20012 é o ÚNICO código selecionado → não tem protocolo
+  // precisaProtocolo: qualquer outro cenário (inclusive 20012 + outros códigos)
+  const exigeMeses = selectedCodes.includes(CODIGO_SEM_PROTOCOLO);
+  const soEh20012 = selectedCodes.length > 0 && selectedCodes.every((c) => c === CODIGO_SEM_PROTOCOLO);
+  const precisaProtocolo = !soEh20012;
 
   // VALIDAÇÃO RÍGIDA DE CAMPOS OBRIGATÓRIOS
   const camposObrigatoriosVazios = 
@@ -141,7 +150,11 @@ export function useRedatorNotificacao() {
     !dataConstatacao.trim() || 
     !funcionario.trim() || 
     !equipe.trim() || 
-    (is20012 ? !mesesSemAcesso.trim() : !protocolo.trim());
+    (exigeMeses && !mesesSemAcesso.trim()) ||
+    (precisaProtocolo && !protocolo.trim());
+
+  // Protocolo efetivo enviado ao backend / exportações
+  const protocoloEfetivo = precisaProtocolo ? protocolo.trim() : "Não se aplica";
 
   // ACTIONS
   const toggleCode = (code: string) => {
@@ -342,7 +355,7 @@ export function useRedatorNotificacao() {
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
-    if (!apiKey) return alert("Insira sua Chave de API do Gemini.");
+    if (!apiKey.trim()) return alert("Insira sua Chave de API do Gemini.");
     if (camposObrigatoriosVazios) return alert("Preencha todos os Dados obrigatórios da Notificação.");
     if (esqueceuDeBuscar && excelData.length > 0) return alert("Você alterou a matrícula, clique em 'Buscar' antes de gerar.");
 
@@ -368,7 +381,7 @@ export function useRedatorNotificacao() {
 
     const textosBase = selectedItems.map(item => {
       let texto = penaltyVariant === "multaCP" ? item.clauseMultaCP : item.clauseMulta;
-      if (item.code === "20012") {
+      if (item.code === CODIGO_SEM_PROTOCOLO) {
         texto = texto.replace(/\[MESES_SEM_ACESSO\]/gi, textoMesesCalc);
       }
       return texto;
@@ -376,10 +389,10 @@ export function useRedatorNotificacao() {
 
     try {
       const data = await gerarNotificacaoApi({
-        api_key: apiKey, 
+        api_key: apiKey.trim(), 
         textos_base: textosBase,
         dataConstatacao: dataConstatacao, 
-        protocolo: is20012 ? "Não se aplica" : protocolo,             
+        protocolo: protocoloEfetivo,             
         funcionario, 
         equipe
       });
@@ -413,7 +426,7 @@ export function useRedatorNotificacao() {
     if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarWordApi({
-        texto_final: generatedText, protocolo: is20012 ? "Não se aplica" : protocolo, autoInfracao, matricula, ...clienteData
+        texto_final: generatedText, protocolo: protocoloEfetivo, autoInfracao, matricula, ...clienteData
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.docx`);
       marcarComoProcessada();
@@ -426,7 +439,7 @@ export function useRedatorNotificacao() {
     if (!autoInfracao.trim()) return alert("Informe o Nº do Auto de Infração.");
     try {
       const blob = await exportarPdfApi({
-        texto_final: generatedText, protocolo: is20012 ? "Não se aplica" : protocolo, autoInfracao, matricula, ...clienteData
+        texto_final: generatedText, protocolo: protocoloEfetivo, autoInfracao, matricula, ...clienteData
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.pdf`);
       marcarComoProcessada();
@@ -473,6 +486,9 @@ export function useRedatorNotificacao() {
     
     selectedItems, filteredCodes, filteredFuncionarios,
     funcionarioSelecionado, esqueceuDeBuscar, camposObrigatoriosVazios,
+
+    // novos flags (20012)
+    exigeMeses, precisaProtocolo, soEh20012,
     
     toggleCode, handleFileUpload, handleSearchMatricula,
     handleGenerate, handleCopy, handleDownload, handleDownloadPDF, limparTela
