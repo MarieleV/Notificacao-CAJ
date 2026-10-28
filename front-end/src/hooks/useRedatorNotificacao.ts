@@ -81,7 +81,6 @@ export function useRedatorNotificacao() {
   const [autoInfracao, setAutoInfracao] = useSessionStorage("redator_autoInfracao", "");
   const [equipe, setEquipe] = useSessionStorage("redator_equipe", "");
   
-  // NOVO: Estado específico para o código 20012
   const [mesesSemAcesso, setMesesSemAcesso] = useSessionStorage("redator_mesesSemAcesso", "");
   
   const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
@@ -134,12 +133,11 @@ export function useRedatorNotificacao() {
   const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
-  // ATUALIZADO: Verificação de campos com is20012 (Protocolo fica opcional)
   const is20012 = selectedCodes.includes("20012");
   const camposObrigatoriosVazios = 
     !matricula.trim() || 
     !dataConstatacao.trim() || 
-    (!protocolo.trim() && !is20012) || // Ignora protocolo se for 20012
+    (!protocolo.trim() && !is20012) || 
     !funcionario.trim() || 
     !equipe.trim() || 
     (is20012 && !mesesSemAcesso.trim());
@@ -350,7 +348,6 @@ export function useRedatorNotificacao() {
     setLoading(true);
     setStep("idle");
 
-    // ATUALIZADO: Lógica para retroagir meses com base na Data de Constatação e Qtd de Meses
     let textoMesesCalc = `${mesesSemAcesso} meses`;
     const m = dataConstatacao.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     
@@ -360,14 +357,12 @@ export function useRedatorNotificacao() {
       let mes = parseInt(m[2], 10);
       let ano = parseInt(m[3], 10);
       
-      for(let i = 0; i < qtd; i++) {
+      for (let i = 0; i < qtd; i++) {
         result.unshift(`${String(mes).padStart(2, '0')}/${ano}`);
         mes--;
-        if(mes === 0) { mes = 12; ano--; }
+        if (mes === 0) { mes = 12; ano--; }
       }
       textoMesesCalc = `${qtd} meses (Referência: ${result.join(', ')})`;
-    } else if (mesesSemAcesso) {
-      textoMesesCalc = `${mesesSemAcesso} meses (até ${dataConstatacao || 'a data atual'})`;
     }
 
     const textosBase = selectedItems.map(item => {
@@ -380,8 +375,12 @@ export function useRedatorNotificacao() {
 
     try {
       const data = await gerarNotificacaoApi({
-        api_key: apiKey, textos_base: textosBase,
-        dataConstatacao, protocolo, funcionario, equipe
+        api_key: apiKey, 
+        textos_base: textosBase,
+        dataConstatacao: is20012 ? "" : dataConstatacao, // Omitido no 20012 para não criar a linha 'Data da constatação:'
+        protocolo: is20012 ? "" : protocolo,             // Omitido no 20012 para não criar a linha 'Protocolo:'
+        funcionario, 
+        equipe
       });
       setGeneratedText(data.texto_gerado);
       setStep("generated");
