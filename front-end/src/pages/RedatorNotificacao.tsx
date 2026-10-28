@@ -1,3 +1,4 @@
+// front-end/src/pages/RedatorNotificacao.tsx
 import React, { Component, ErrorInfo, ReactNode, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
@@ -211,8 +212,8 @@ function RedatorNotificacaoConteudo() {
                   />
                 </div>
                 
-                {/* Protocolo (ocultado se o código 20012 estiver selecionado) */}
-                {!hook.selectedCodes.includes("20012") && (
+                {/* Protocolo: oculto apenas quando o 20012 é o ÚNICO código selecionado */}
+                {hook.precisaProtocolo && (
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Protocolo</label>
                     <input value={hook.protocolo} onChange={(e) => hook.setProtocolo(e.target.value)} placeholder="Ex: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
@@ -226,8 +227,8 @@ function RedatorNotificacaoConteudo() {
                   <input value={hook.equipe} onChange={(e) => hook.setEquipe(e.target.value)} placeholder="Ex: Leiturista" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]" />
                 </div>
 
-                {/* Campo condicional para o código 20012 */}
-                {hook.selectedCodes.includes("20012") && (
+                {/* Meses sem acesso: aparece sempre que o 20012 estiver selecionado (sozinho ou combinado) */}
+                {hook.exigeMeses && (
                   <div className="animate-fadeIn">
                     <label className="block text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1.5">
                       Qtd. Meses Sem Acesso <span className="text-red-500">*</span>
@@ -261,7 +262,8 @@ function RedatorNotificacaoConteudo() {
               semCodigos={hook.selectedCodes.length === 0} 
               esqueceuBusca={hook.esqueceuDeBuscar} 
               camposVazios={hook.camposObrigatoriosVazios} 
-              faltaMeses={hook.selectedCodes.includes("20012") && !hook.mesesSemAcesso.trim()}
+              faltaMeses={hook.exigeMeses && !hook.mesesSemAcesso.trim()}
+              faltaProtocolo={hook.precisaProtocolo && !hook.protocolo.trim()}
             />
           </SectionBlock>
 
@@ -568,12 +570,13 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
   </div>
 );
 
-const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios, faltaMeses }: any) => {
-  if (!semCodigos && !esqueceuBusca && !camposVazios && !faltaMeses) return null;
+const AlertaPendencias = ({ semCodigos, esqueceuBusca, camposVazios, faltaMeses, faltaProtocolo }: any) => {
+  if (!semCodigos && !esqueceuBusca && !camposVazios && !faltaMeses && !faltaProtocolo) return null;
   let msg = "Preencha todos os Dados da Notificação.";
   if (semCodigos) msg = "Selecione ao menos um código de infração.";
   else if (esqueceuBusca) msg = "Clique no botão 'Buscar' ao lado da Matrícula antes de gerar.";
   else if (faltaMeses) msg = "Informe a quantidade de meses sem acesso (exigido pelo código 20012).";
+  else if (faltaProtocolo) msg = "Informe o número do Protocolo.";
   
   return (
     <div className="mt-3 flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

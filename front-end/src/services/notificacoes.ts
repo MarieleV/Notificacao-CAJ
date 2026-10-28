@@ -149,12 +149,12 @@ export const INFRACTION_CODES: InfractionCode[] = [
     clauseMultaCP: "Descrição do fato gerador: Violação do lacre da porta caixa ou cubículo de proteção do hidrômetro.  Dispositivo legal infringido: Artigo 144, inciso XIV da Resolução 019/2019 - ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por violação do lacre da porta caixa ou cubículo de proteção do hidrômetro, conforme Art. 144, inciso XIV.",
     category: "fraude",
   },
-  {
+    {
     code: "20011",
     title: "Falta de acesso para execução de serviços",
     category: "acesso",
-    clauseMulta: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII.",
-    clauseMultaCP: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços. Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS. Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII; e obrigatoriedade de padronizar a ligação de água em 90 (noventa) dias úteis conforme Art. 144, § 3º. Entretanto, caso o usuário padronize a ligação de água em 90 dias úteis, as multas não serão aplicadas. Caso o usuário não atenda à obrigatoriedade de padronização, será aplicada multa por não padronização, juntamente com a multa pela infração cometida."
+    clauseMulta: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços.  Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII.",
+    clauseMultaCP: "Descrição do fato gerador: Impedimento involuntário de acesso a ligação de água para execução de serviços.  Dispositivo legal infringido: Artigo 144, inciso XII da Resolução 019/2019 - ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por impedimento involuntário de acesso a ligação de água e esgoto, conforme Art. 144, inciso XII; e obrigatoriedade de padronizar a ligação de água em 90 (noventa) dias úteis conforme Art. 144, § 3º. Entretanto, caso o usuário padronize a ligação de água em 90 dias úteis, as multas não serão aplicadas. Caso o usuário não atenda à obrigatoriedade de padronização, será aplicada multa por não padronização, juntamente com a multa pela infração cometida."
   },
   {
     code: "20012",
