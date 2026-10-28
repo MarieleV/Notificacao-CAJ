@@ -20,12 +20,13 @@ const isSemProtocolo = (p) => !p || /^n[ãa]o se aplica$/i.test(String(p).trim()
 
 // Divide uma cláusula em { rotulo: valor } independente de usar \n ou espaços duplos
 const parseClausula = (texto) => {
+  const str = String(texto);
   const campos = {};
-  const matches = [...String(texto).matchAll(RE_LABELS)];
+  const matches = [...str.matchAll(RE_LABELS)];
   matches.forEach((m, i) => {
     const inicio = m.index + m[0].length;
-    const fim = i + 1 < matches.length ? matches[i + 1].index : texto.length;
-    campos[m[1].toLowerCase()] = String(texto).slice(inicio, fim).trim();
+    const fim = i + 1 < matches.length ? matches[i + 1].index : str.length;
+    campos[m[1].toLowerCase()] = str.slice(inicio, fim).trim();
   });
   return campos;
 };
@@ -71,7 +72,7 @@ const generateNotificationText = async (apiKey, baseTexts, metadata = {}) => {
     .map((p, i) => {
       const ehAcessoLeitura = Boolean(p["meses sem acesso"]);
       const cabecalho = `INFRAÇÃO ${i + 1}${
-        ehAcessoListagem(ehAcessoLeitura)
+        ehAcessoLeitura ? " (falta de acesso para leitura)" : ""
       }`;
 
       if (!p["descrição do fato gerador"] && !p["penalidade prevista"]) {
