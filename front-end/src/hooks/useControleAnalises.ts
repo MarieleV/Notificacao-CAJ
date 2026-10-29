@@ -200,10 +200,8 @@ export function useControleAnalises() {
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
           const situacaoLower = situacao.toLowerCase();
 
-          // Passa apenas se for Pendente, Programado ou para reprogramar
           const eStatusPermitido = statusPermitidos.some(status => situacaoLower.includes(status));
 
-          // Aplica a Trava de Unicidade apenas nos itens filtrados
           if (mat && eStatusPermitido && !mapStatus.has(mat)) {
             mapStatus.set(mat, situacao || "—");
           }
@@ -262,17 +260,19 @@ export function useControleAnalises() {
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
+        const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
         // ==========================================
-        // REGRA DE PADRONIZAÇÃO ATUALIZADA
+        // REGRA DE PADRONIZAÇÃO COMPLETA RESTAURADA
         // ==========================================
         const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
+        const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
         
         const statusClienteLower = statusCliente.toLowerCase();
         const isStatusClienteAlvo = ["pendente", "programado", "para reprogramar"].some(s => statusClienteLower.includes(s));
 
-        // Padronizado = Status CAJ é "Encerrado - Executado" E Status Cliente é "Pendente", "Programado" ou "para reprogramar"
-        const isPadronizado = isEncerradoCAJ && isStatusClienteAlvo;
+        // Padronizado se estiver Encerrado-Executado na CAJ E (tiver Código Aprovado OU Status Cliente Alvo)
+        const isPadronizado = isEncerradoCAJ && (hasCodigoAprovado || isStatusClienteAlvo);
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
