@@ -7,8 +7,6 @@ import {
 import { SectionBlock } from "./../components/shared/SectionBlock";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
 
-// Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 4: Error Boundary interno
-// Se um componente quebrar, isso renderiza um aviso no lugar da tela branca
 class ComponenteProtegido extends Component<{children: ReactNode}, {hasError: boolean}> {
   constructor(props: {children: ReactNode}) {
     super(props);
@@ -35,27 +33,6 @@ class ComponenteProtegido extends Component<{children: ReactNode}, {hasError: bo
   }
 }
 
-// ─── KPI CARD Padrão SaaS Moderno ──────────────────────────────────
-function KpiCard({ title, value, subtitle, type, icon: Icon }: any) {
-  const styles = { primary: "border-blue-100 text-blue-900", success: "border-emerald-100 text-emerald-900", danger: "border-red-100 text-red-900" };
-  const iconStyles = { primary: "bg-blue-50 text-[#1a5fa8]", success: "bg-emerald-50 text-emerald-600", danger: "bg-red-50 text-red-600" };
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-white border p-5 transition-all hover:shadow-md ${styles[type as keyof typeof styles]}`}>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</p>
-        <div className={`p-2 rounded-xl ${iconStyles[type as keyof typeof iconStyles]}`}><Icon size={16} strokeWidth={2.5} /></div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 2: Variável isolada */}
-        <h3 className="text-3xl font-black tabular-nums tracking-tight"><span>{value}</span></h3>
-      </div>
-      <p className="text-[11px] font-medium text-gray-400 mt-2">{subtitle}</p>
-    </div>
-  );
-}
-
-// ─── COMPONENTE PRINCIPAL (Envelopado) ────────────────────────────────────────────────────
 export function ControleAnalises() {
   return (
     <ComponenteProtegido>
@@ -67,7 +44,6 @@ export function ControleAnalises() {
 function ControleAnalisesConteudo() {
   const hook = useControleAnalises();
 
-  // ─── CÁLCULOS DINÂMICOS PARA OS KPIS 
   const data = hook.resultadosFiltrados;
   const total = data.length;
   
@@ -141,7 +117,6 @@ function ControleAnalisesConteudo() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               
-              {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 1: Atributo translate="no" */}
               <label translate="no" htmlFor="up-op" className={`notranslate h-full relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileNameOP ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-blue-200 bg-[#f8fafe] hover:bg-blue-50/50 hover:border-[#1a5fa8]'}`}>
                 <input id="up-op" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "OP")} className="hidden" />
                 
@@ -162,7 +137,6 @@ function ControleAnalisesConteudo() {
 
               <div className="flex flex-col gap-4">
                 
-                {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 1: Atributo translate="no" */}
                 <label translate="no" htmlFor="up-989-cliente" className={`notranslate flex-1 relative flex items-center p-4 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileName989Cliente ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
                   <input id="up-989-cliente" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989_Cliente")} className="hidden" />
                   
@@ -185,7 +159,6 @@ function ControleAnalisesConteudo() {
                   )}
                 </label>
 
-                {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 1: Atributo translate="no" */}
                 <label translate="no" htmlFor="up-989-caj" className={`notranslate flex-1 relative flex items-center p-4 border-2 border-dashed rounded-xl transition-all cursor-pointer group ${hook.fileName989CAJ ? 'border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'}`}>
                   <input id="up-989-caj" type="file" accept=".csv, .xlsx, .xls" onChange={(e) => hook.handleFileUpload(e, "989_CAJ")} className="hidden" />
                   
@@ -226,14 +199,12 @@ function ControleAnalisesConteudo() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Volume Listado</p>
-                      {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 2: Variável Envelopada */}
                       <h3 className="text-3xl font-black text-[#0b1e35] mt-2"><span>{total}</span></h3>
                     </div>
                     <div className="p-2 bg-blue-50 text-[#1a5fa8] rounded-xl"><PieChart size={20} /></div>
                   </div>
                   <div className="mt-5">
                     <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-1.5">
-                      {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 2: Divisão Textos/Variáveis */}
                       <span className="text-emerald-600"><span>{noPrazo}</span> <span>No Prazo</span></span>
                       <span className="text-red-500"><span>{qtdVencidas}</span> <span>Vencidas</span></span>
                     </div>
@@ -313,7 +284,6 @@ function ControleAnalisesConteudo() {
                   {/* DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
                   <div className="relative">
                     <button onClick={() => hook.setDropdownOSOpen(!hook.dropdownOSOpen)} className="w-36 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 flex justify-between items-center hover:bg-gray-50 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] transition-all shadow-sm">
-                      {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 2 */}
                       <span className="truncate">
                         <span>{hook.filtroSituacaoOS.length === 0 ? "Situação OS" : `${hook.filtroSituacaoOS.length} Selecionada(s)`}</span>
                       </span>
@@ -357,7 +327,6 @@ function ControleAnalisesConteudo() {
 
                 {/* ─── TABELA DE DADOS ─── */}
                 <div className="overflow-auto max-h-[450px] -mx-4 mb-[-24px] custom-scrollbar border-t border-gray-100">
-                  {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 1: Evita do tradutor desalinhar colunas */}
                   <table translate="no" className="notranslate w-full text-sm min-w-[900px] border-collapse relative">
                     <thead className="sticky top-0 z-20">
                       <tr>
@@ -375,10 +344,6 @@ function ControleAnalisesConteudo() {
                         
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCliente')}>
                           <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider"><span>Status Cliente</span> <SortIcon columnKey="statusCliente" /></div>
-                        </th>
-                        
-                        <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('statusCAJ')}>
-                          <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider"><span>Status CAJ</span> <SortIcon columnKey="statusCAJ" /></div>
                         </th>
 
                         <th className="bg-white shadow-[0_1px_0_0_#e5e7eb] px-2 py-3 text-left group cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => hook.requestSort('situacaoOS')}>
@@ -431,16 +396,6 @@ function ControleAnalisesConteudo() {
                           </td>
 
                           <td className="px-2 py-3">
-                            {row.statusCAJ !== "—" ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 truncate max-w-[130px]" title={row.statusCAJ}>
-                                {row.statusCAJ}
-                              </span>
-                            ) : (
-                              <span className="text-gray-300 font-medium text-[10px]">—</span>
-                            )}
-                          </td>
-
-                          <td className="px-2 py-3">
                             {row.situacaoOS !== "—" ? (
                               <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-[#1a5fa8] border border-blue-100 truncate max-w-[100px]" title={row.situacaoOS}>
                                 {row.situacaoOS}
@@ -460,7 +415,6 @@ function ControleAnalisesConteudo() {
                             )}
                           </td>
                           
-                          {/* Para o DOM permanecer blindado -  CAMADA DE PROTEÇÃO 2 */}
                           <td className="px-2 py-3 text-right text-xs font-medium text-gray-600 whitespace-nowrap"><span>{row.diasTranscorridos}</span> <span>dias</span></td>
                           
                           <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
@@ -489,7 +443,7 @@ function ControleAnalisesConteudo() {
                       
                       {hook.resultadosFiltrados.length === 0 && (
                         <tr>
-                          <td colSpan={11} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
+                          <td colSpan={10} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
                             <Search size={28} className="mx-auto text-gray-200 mb-2" />
                             Nenhum resultado encontrado para os filtros aplicados.
                           </td>
