@@ -31,10 +31,15 @@ const PRAZOS_SERVICO: Record<string, number> = {
   "3769": 1
 };
 
-// Chave onde os dados ficarão salvos no navegador
+// LISTA DE CÓDIGOS APROVADOS PARA O CODIGO_ENCERRAMENTO_OS DA 344v3setor
+const CODIGOS_APROVADOS_CAJ = [
+  "14201", "14203", "14211", "14213", "14231", "14233", "14254", "14261", "14271",
+  "14601", "14603", "14604", "14605", "14631", "14633", "14654",
+  "14901", "14903", "14931"
+];
+
 const STORAGE_KEY = "@ControleAnalises:state";
 
-// Função para buscar a "memória" salva no navegador
 function loadSavedState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -56,8 +61,6 @@ export function useControleAnalises() {
   const [fileName989Cliente, setFileName989Cliente] = useState<string>(savedState.fileName989Cliente || "");
   const [fileName989CAJ, setFileName989CAJ] = useState<string>(savedState.fileName989CAJ || "");
 
-  // IMPORTANTE: NÃO carregamos os dados brutos salvos do LocalStorage para evitar o estouro do limite de 5MB.
-  // Eles ficam apenas na memória volátil (RAM) enquanto a aba está aberta.
   const [dadosOP, setDadosOP] = useState<any[]>([]);
   const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
   const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
@@ -188,40 +191,44 @@ export function useControleAnalises() {
       const mapStatusCAJ = new Map<string, string>();
       const mapCodigosCAJ = new Map<string, string>();
 
+      // REGISTRAR PLANILHA 989 COM PRÉ-FILTRAGEM DE STATUS
       const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
+        const statusPermitidos = ["pendente", "programado", "para reprogramar"];
+
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
-          
-          if (mat && !mapStatus.has(mat)) {
+          const situacaoLower = situacao.toLowerCase();
+
+          const eStatusPermitido = statusPermitidos.some(status => situacaoLower.includes(status));
+
+          if (mat && eStatusPermitido && !mapStatus.has(mat)) {
             mapStatus.set(mat, situacao || "—");
           }
         });
       };
 
+      // REGISTRAR PLANILHA 344v3setor (CAJ) COM FILTRO DE CÓDIGOS APROVADOS
       const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
-        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-        
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
-          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || row["CODIGO_ABERTURA_OS"] || "").trim();
+          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || "").trim();
+
+          if (!mat || !codigoOS) return;
 
           const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
 
-          if (mat) {
-            const situacaoAtual = mapStatus.get(mat);
-            if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
-              mapStatus.set(mat, situacao || "—");
-            }
-
-            if (prefixoCodigo) {
-              const codigoAtual = mapCodigos.get(mat);
-              if (!codigoAtual || (!codigosAprovados.includes(codigoAtual) && codigosAprovados.includes(prefixoCodigo))) {
-                mapCodigos.set(mat, prefixoCodigo);
-              }
-            }
+          if (!CODIGOS_APROVADOS_CAJ.includes(prefixoCodigo)) {
+            return;
           }
+
+          const situacaoAtual = mapStatus.get(mat);
+          if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
+            mapStatus.set(mat, situacao || "—");
+          }
+
+          mapCodigos.set(mat, prefixoCodigo);
         });
       };
 
@@ -255,29 +262,17 @@ export function useControleAnalises() {
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
         const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
-        const statusAtual = statusCliente.toLowerCase().trim();
-
         // ==========================================
-        // FILTROS DE PADRONIZAÇÃO RÍGIDOS
+        // REGRA DE PADRONIZAÇÃO COMPLETA RESTAURADA
         // ==========================================
-
-        // 1. TRAVA DE EXECUÇÃO: Deve estar encerrado na CAJ
         const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
+        const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
+        
+        const statusClienteLower = statusCliente.toLowerCase();
+        const isStatusClienteAlvo = ["pendente", "programado", "para reprogramar"].some(s => statusClienteLower.includes(s));
 
-        // 2. TRAVA DE PENDÊNCIA: Não pode estar pendente, programado, postergado, para reprogramar ou suspenso
-        const statusBloqueados = ["para reprogramar", "pendente", "programado", "postergada", "suspenso"];
-        const isBloqueado = statusBloqueados.some(s => statusAtual.includes(s));
-
-        // 3. REGRA A (Texto): Status do cliente deve ser exatamente "cancelado"
-        const isCancelado = statusAtual.includes("cancelado");
-
-        // 4. REGRA B (Código OS): Código de encerramento da CAJ está aprovado
-        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-        const hasCodigoAprovado = codigosAprovados.includes(codigoOSCAJ);
-
-        // A análise SÓ é padronizada se estiver executada na CAJ, não estiver bloqueada no cliente 
-        // e passar em pelo menos uma das regras de Aceite (Cancelado ou Código Aprovado).
-        const isPadronizado = isEncerradoCAJ && !isBloqueado && (isCancelado || hasCodigoAprovado);
+        // Padronizado se estiver Encerrado-Executado na CAJ E (tiver Código Aprovado OU Status Cliente Alvo)
+        const isPadronizado = isEncerradoCAJ && (hasCodigoAprovado || isStatusClienteAlvo);
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
