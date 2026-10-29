@@ -38,7 +38,6 @@ const CODIGOS_APROVADOS_CAJ = [
   "14901", "14903", "14931"
 ];
 
-// Chave onde os dados ficarão salvos no navegador
 const STORAGE_KEY = "@ControleAnalises:state";
 
 function loadSavedState() {
@@ -192,34 +191,40 @@ export function useControleAnalises() {
       const mapStatusCAJ = new Map<string, string>();
       const mapCodigosCAJ = new Map<string, string>();
 
+      // REGISTRAR PLANILHA 989 COM PRÉ-FILTRAGEM DE STATUS
       const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
+        const statusPermitidos = ["pendente", "programado", "para reprogramar"];
+
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO_SERVICO"] || row["Situação"] || row["Situacao"] || "").trim();
-          
-          if (mat && !mapStatus.has(mat)) {
+          const situacaoLower = situacao.toLowerCase();
+
+          // Passa apenas se for Pendente, Programado ou para reprogramar
+          const eStatusPermitido = statusPermitidos.some(status => situacaoLower.includes(status));
+
+          // Aplica a Trava de Unicidade apenas nos itens filtrados
+          if (mat && eStatusPermitido && !mapStatus.has(mat)) {
             mapStatus.set(mat, situacao || "—");
           }
         });
       };
 
+      // REGISTRAR PLANILHA 344v3setor (CAJ) COM FILTRO DE CÓDIGOS APROVADOS
       const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
-          // LER APENAS CODIGO_ENCERRAMENTO_OS (DESCONSIDERAR CODIGO_ABERTURA_OS)
           const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || "").trim();
 
           if (!mat || !codigoOS) return;
 
           const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
 
-          // REGRA DE FILTRO RIGOROSA: Se o código de encerramento não for aprovado, ignora totalmente a linha
           if (!CODIGOS_APROVADOS_CAJ.includes(prefixoCodigo)) {
             return;
           }
 
-          // Se chegou até aqui, o código é válido e aprovado:
           const situacaoAtual = mapStatus.get(mat);
           if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
             mapStatus.set(mat, situacao || "—");
@@ -257,30 +262,17 @@ export function useControleAnalises() {
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
-        const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
-
-        const statusAtual = statusCliente.toLowerCase().trim();
 
         // ==========================================
-        // FILTROS DE PADRONIZAÇÃO RÍGIDOS
+        // REGRA DE PADRONIZAÇÃO ATUALIZADA
         // ==========================================
-
-        // 1. TRAVA DE EXECUÇÃO: Deve estar encerrado na CAJ
         const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
+        
+        const statusClienteLower = statusCliente.toLowerCase();
+        const isStatusClienteAlvo = ["pendente", "programado", "para reprogramar"].some(s => statusClienteLower.includes(s));
 
-        // 2. TRAVA DE PENDÊNCIA: Não pode estar pendente, programado, postergado, para reprogramar ou suspenso
-        const statusBloqueados = ["para reprogramar", "pendente", "programado", "postergada", "suspenso"];
-        const isBloqueado = statusBloqueados.some(s => statusAtual.includes(s));
-
-        // 3. REGRA A (Texto): Status do cliente deve ser exatamente "cancelado"
-        const isCancelado = statusAtual.includes("cancelado");
-
-        // 4. REGRA B (Código OS): Código de encerramento da CAJ está aprovado
-        const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
-
-        // A análise SÓ é padronizada se estiver executada na CAJ, não estiver bloqueada no cliente 
-        // e passar em pelo menos uma das regras de Aceite (Cancelado ou Código Aprovado).
-        const isPadronizado = isEncerradoCAJ && !isBloqueado && (isCancelado || hasCodigoAprovado);
+        // Padronizado = Status CAJ é "Encerrado - Executado" E Status Cliente é "Pendente", "Programado" ou "para reprogramar"
+        const isPadronizado = isEncerradoCAJ && isStatusClienteAlvo;
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
