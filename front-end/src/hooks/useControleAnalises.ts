@@ -31,10 +31,16 @@ const PRAZOS_SERVICO: Record<string, number> = {
   "3769": 1
 };
 
+// LISTA DE CÓDIGOS APROVADOS PARA O CODIGO_ENCERRAMENTO_OS DA 344v3setor
+const CODIGOS_APROVADOS_CAJ = [
+  "14201", "14203", "14211", "14213", "14231", "14233", "14254", "14261", "14271",
+  "14601", "14603", "14604", "14605", "14631", "14633", "14654",
+  "14901", "14903", "14931"
+];
+
 // Chave onde os dados ficarão salvos no navegador
 const STORAGE_KEY = "@ControleAnalises:state";
 
-// Função para buscar a "memória" salva no navegador
 function loadSavedState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -56,8 +62,6 @@ export function useControleAnalises() {
   const [fileName989Cliente, setFileName989Cliente] = useState<string>(savedState.fileName989Cliente || "");
   const [fileName989CAJ, setFileName989CAJ] = useState<string>(savedState.fileName989CAJ || "");
 
-  // IMPORTANTE: NÃO carregamos os dados brutos salvos do LocalStorage para evitar o estouro do limite de 5MB.
-  // Eles ficam apenas na memória volátil (RAM) enquanto a aba está aberta.
   const [dadosOP, setDadosOP] = useState<any[]>([]);
   const [dados989Cliente, setDados989Cliente] = useState<any[]>([]);
   const [dados989CAJ, setDados989CAJ] = useState<any[]>([]);
@@ -200,28 +204,28 @@ export function useControleAnalises() {
       };
 
       const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
-        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-        
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
           const situacao = String(row["SITUACAO"] || row["Situação"] || row["Situacao"] || "").trim();
-          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || row["CODIGO_ABERTURA_OS"] || "").trim();
+          // LER APENAS CODIGO_ENCERRAMENTO_OS (DESCONSIDERAR CODIGO_ABERTURA_OS)
+          const codigoOS = String(row["CODIGO_ENCERRAMENTO_OS"] || "").trim();
+
+          if (!mat || !codigoOS) return;
 
           const prefixoCodigo = codigoOS.split(" ")[0].replace(/\./g, "").trim();
 
-          if (mat) {
-            const situacaoAtual = mapStatus.get(mat);
-            if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
-              mapStatus.set(mat, situacao || "—");
-            }
-
-            if (prefixoCodigo) {
-              const codigoAtual = mapCodigos.get(mat);
-              if (!codigoAtual || (!codigosAprovados.includes(codigoAtual) && codigosAprovados.includes(prefixoCodigo))) {
-                mapCodigos.set(mat, prefixoCodigo);
-              }
-            }
+          // REGRA DE FILTRO RIGOROSA: Se o código de encerramento não for aprovado, ignora totalmente a linha
+          if (!CODIGOS_APROVADOS_CAJ.includes(prefixoCodigo)) {
+            return;
           }
+
+          // Se chegou até aqui, o código é válido e aprovado:
+          const situacaoAtual = mapStatus.get(mat);
+          if (!situacaoAtual || (!situacaoAtual.toLowerCase().includes("encerrado - executado") && situacao.toLowerCase().includes("encerrado - executado"))) {
+            mapStatus.set(mat, situacao || "—");
+          }
+
+          mapCodigos.set(mat, prefixoCodigo);
         });
       };
 
@@ -272,8 +276,7 @@ export function useControleAnalises() {
         const isCancelado = statusAtual.includes("cancelado");
 
         // 4. REGRA B (Código OS): Código de encerramento da CAJ está aprovado
-        const codigosAprovados = ["14601", "14603", "14604", "14605", "14631", "14633", "14654", "14901", "14903", "14931"];
-        const hasCodigoAprovado = codigosAprovados.includes(codigoOSCAJ);
+        const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
 
         // A análise SÓ é padronizada se estiver executada na CAJ, não estiver bloqueada no cliente 
         // e passar em pelo menos uma das regras de Aceite (Cancelado ou Código Aprovado).
