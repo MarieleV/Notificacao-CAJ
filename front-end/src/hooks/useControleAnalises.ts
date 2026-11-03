@@ -72,8 +72,11 @@ export function useControleAnalises() {
   const [filtroCodigo, setFiltroCodigo] = useState(savedState.filtroCodigo || "");
   const [filtroFuncionario, setFiltroFuncionario] = useState(savedState.filtroFuncionario || "");
   const [filtroSituacao, setFiltroSituacao] = useState(savedState.filtroSituacao || "Todas"); 
-  const [filtroStatusCliente, setFiltroStatusCliente] = useState(savedState.filtroStatusCliente || "");
+  const [filtroStatusCliente, setFiltroStatusCliente] = useState(savedState.filtroStatusCliente || "Todos");
   
+  // NOVO ESTADO: Filtro de Padronizado
+  const [filtroPadronizado, setFiltroPadronizado] = useState(savedState.filtroPadronizado || "Todos");
+
   const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>(savedState.filtroSituacaoOS || []); 
   const [dropdownOSOpen, setDropdownOSOpen] = useState(false);
 
@@ -94,11 +97,18 @@ export function useControleAnalises() {
     
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
-    const matchStatusCliente = filtroStatusCliente === "" || r.statusCliente.toLowerCase().includes(filtroStatusCliente.toLowerCase());
+    
+    // Filtro de Status Cliente (Select)
+    const matchStatusCliente = filtroStatusCliente === "Todos" || r.statusCliente.toLowerCase() === filtroStatusCliente.toLowerCase();
+    
+    // Filtro de Padronizado (Select)
+    const matchPadronizado = filtroPadronizado === "Todos" 
+                             || (filtroPadronizado === "Sim" && r.isPadronizado) 
+                             || (filtroPadronizado === "Não" && !r.isPadronizado);
     
     const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
 
-    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchSituacaoOS;
+    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchPadronizado && matchSituacaoOS;
   });
 
   const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
@@ -133,7 +143,7 @@ export function useControleAnalises() {
       fileNameOP, fileName989Cliente, fileName989CAJ,
       resultados,
       resultadosFiltrados: resultadosFiltradosEOrdenados,
-      searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS,
+      searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizado, filtroSituacaoOS,
       sortConfig
     };
     try {
@@ -141,7 +151,7 @@ export function useControleAnalises() {
     } catch (error) {
       console.warn("Aviso: Limite de armazenamento local atingido.", error);
     }
-  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroSituacaoOS, sortConfig]);
+  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizado, filtroSituacaoOS, sortConfig]);
 
   // FUNÇÕES DE AÇÃO
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
@@ -271,10 +281,6 @@ export function useControleAnalises() {
         const statusClienteLower = statusCliente.toLowerCase();
         const isStatusClienteAlvo = ["pendente", "programado", "para reprogramar"].some(s => statusClienteLower.includes(s));
 
-        // Padronizado se:
-        // 1. Estiver Encerrado/Executado E tiver código aprovado na CAJ
-        // OU
-        // 2. Tiver o status alvo na planilha do Cliente
         const isPadronizado = (isEncerradoCAJ && hasCodigoAprovado) || isStatusClienteAlvo;
 
         processados.push({
@@ -337,7 +343,8 @@ export function useControleAnalises() {
     setFiltroCodigo("");
     setFiltroFuncionario("");
     setFiltroSituacao("Todas");
-    setFiltroStatusCliente("");
+    setFiltroStatusCliente("Todos");
+    setFiltroPadronizado("Todos");
     setFiltroSituacaoOS([]); 
     setDropdownOSOpen(false);
     setSortConfig({ key: null, direction: 'asc' });
@@ -354,6 +361,7 @@ export function useControleAnalises() {
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
+    filtroPadronizado, setFiltroPadronizado,
     filtroSituacaoOS, setFiltroSituacaoOS, toggleFiltroSituacaoOS, dropdownOSOpen, setDropdownOSOpen,
     requestSort, sortConfig, limparTela,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
