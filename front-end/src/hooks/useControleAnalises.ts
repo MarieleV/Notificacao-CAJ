@@ -263,7 +263,7 @@ export function useControleAnalises() {
         const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
         // ==========================================
-        // REGRA DE PADRONIZAÇÃO COMPLETA RESTAURADA
+        // REGRA DE PADRONIZAÇÃO (OU/OR)
         // ==========================================
         const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
         const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
@@ -271,8 +271,11 @@ export function useControleAnalises() {
         const statusClienteLower = statusCliente.toLowerCase();
         const isStatusClienteAlvo = ["pendente", "programado", "para reprogramar"].some(s => statusClienteLower.includes(s));
 
-        // Padronizado se estiver Encerrado-Executado na CAJ E (tiver Código Aprovado OU Status Cliente Alvo)
-        const isPadronizado = isEncerradoCAJ && (hasCodigoAprovado || isStatusClienteAlvo);
+        // Padronizado se:
+        // 1. Estiver Encerrado/Executado E tiver código aprovado na CAJ
+        // OU
+        // 2. Tiver o status alvo na planilha do Cliente
+        const isPadronizado = (isEncerradoCAJ && hasCodigoAprovado) || isStatusClienteAlvo;
 
         processados.push({
           id: `${matricula}-${codigoServico}-${index}-${Date.now()}`,
