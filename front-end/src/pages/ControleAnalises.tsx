@@ -65,14 +65,15 @@ function ControleAnalisesConteudo() {
 
   const limparFiltros = () => {
     hook.setSearchTerm("");
-    hook.setFiltroCodigo("");
-    hook.setFiltroStatusCliente("");
+    hook.setFiltroCodigo("Todos");
+    hook.setFiltroStatusCliente("Todos");
+    hook.setFiltroPadronizadoAtivo(false);
     hook.setFiltroFuncionario("");
     hook.setFiltroSituacao("Todas");
     hook.setFiltroSituacaoOS([]); 
   };
 
-  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas" || hook.filtroSituacaoOS.length > 0;
+  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "Todos" || hook.filtroStatusCliente !== "Todos" || hook.filtroPadronizadoAtivo || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas" || hook.filtroSituacaoOS.length > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -278,8 +279,40 @@ function ControleAnalisesConteudo() {
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtros</span>
                   </div>
                   
-                  <input type="text" placeholder="Código..." value={hook.filtroCodigo} onChange={(e) => hook.setFiltroCodigo(e.target.value)} className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm" />
-                  <input type="text" placeholder="Status Cliente..." value={hook.filtroStatusCliente} onChange={(e) => hook.setFiltroStatusCliente(e.target.value)} className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm" />
+                  {/* SELECT DE CÓDIGOS DINÂMICO */}
+                  <div className="relative">
+                    <select value={hook.filtroCodigo} onChange={(e) => hook.setFiltroCodigo(e.target.value)} className="w-32 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer">
+                      <option value="Todos">Código</option>
+                      {hook.codigosDisponiveis.map(cod => (
+                        <option key={cod} value={cod}>{cod}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+
+                  {/* SELECT DE STATUS CLIENTE */}
+                  <div className="relative">
+                    <select value={hook.filtroStatusCliente} onChange={(e) => hook.setFiltroStatusCliente(e.target.value)} className="w-36 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer">
+                      <option value="Todos">Status Cliente</option>
+                      <option value="Pendente">Pendente</option>
+                      <option value="Programado">Programado</option>
+                      <option value="Para Reprogramar">Para Reprogramar</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+
+                  {/* BOTÃO TOGGLE DE PADRONIZADO */}
+                  <button 
+                    onClick={() => hook.setFiltroPadronizadoAtivo(!hook.filtroPadronizadoAtivo)} 
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 border ${hook.filtroPadronizadoAtivo ? 'bg-emerald-600 text-white border-emerald-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    {hook.filtroPadronizadoAtivo && <CheckCircle2 size={14} className="text-white" />}
+                    <span>Padronizado</span>
+                  </button>
 
                   {/* DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
                   <div className="relative">
