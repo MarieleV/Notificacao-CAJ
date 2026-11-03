@@ -69,13 +69,13 @@ export function useControleAnalises() {
   
   // --- ESTADOS DE FILTRO E ORDENAÇÃO ---
   const [searchTerm, setSearchTerm] = useState(savedState.searchTerm || "");
-  const [filtroCodigo, setFiltroCodigo] = useState(savedState.filtroCodigo || "");
+  const [filtroCodigo, setFiltroCodigo] = useState(savedState.filtroCodigo || "Todos");
   const [filtroFuncionario, setFiltroFuncionario] = useState(savedState.filtroFuncionario || "");
   const [filtroSituacao, setFiltroSituacao] = useState(savedState.filtroSituacao || "Todas"); 
   const [filtroStatusCliente, setFiltroStatusCliente] = useState(savedState.filtroStatusCliente || "Todos");
   
-  // NOVO ESTADO: Filtro de Padronizado
-  const [filtroPadronizado, setFiltroPadronizado] = useState(savedState.filtroPadronizado || "Todos");
+  // NOVO ESTADO: Filtro Booleano de Padronizado (true para filtrar apenas padronizados, false para desligado)
+  const [filtroPadronizadoAtivo, setFiltroPadronizadoAtivo] = useState<boolean>(savedState.filtroPadronizadoAtivo || false);
 
   const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>(savedState.filtroSituacaoOS || []); 
   const [dropdownOSOpen, setDropdownOSOpen] = useState(false);
@@ -83,6 +83,9 @@ export function useControleAnalises() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>(
     savedState.sortConfig || { key: null, direction: 'asc' }
   );
+
+  // Lista dinâmica de códigos únicos disponíveis nos resultados para o <select>
+  const codigosDisponiveis = Array.from(new Set(resultados.map(r => r.codigoServico))).sort();
 
   // =======================================================================================
   // 1. CÁLCULO DOS FILTRADOS 
@@ -92,19 +95,14 @@ export function useControleAnalises() {
                         r.codigoServico.includes(searchTerm) || 
                         r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const codigosArray = filtroCodigo.split(",").map((c: string) => c.trim()).filter((c: string) => c !== "");
-    const matchCodigo = codigosArray.length === 0 || codigosArray.includes(r.codigoServico);
+    const matchCodigo = filtroCodigo === "Todos" || r.codigoServico === filtroCodigo;
     
     const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
     const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
-    
-    // Filtro de Status Cliente (Select)
     const matchStatusCliente = filtroStatusCliente === "Todos" || r.statusCliente.toLowerCase() === filtroStatusCliente.toLowerCase();
     
-    // Filtro de Padronizado (Select)
-    const matchPadronizado = filtroPadronizado === "Todos" 
-                             || (filtroPadronizado === "Sim" && r.isPadronizado) 
-                             || (filtroPadronizado === "Não" && !r.isPadronizado);
+    // Se o botão toggle estiver ativo, exige que r.isPadronizado seja true
+    const matchPadronizado = !filtroPadronizadoAtivo || r.isPadronizado;
     
     const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
 
@@ -143,7 +141,7 @@ export function useControleAnalises() {
       fileNameOP, fileName989Cliente, fileName989CAJ,
       resultados,
       resultadosFiltrados: resultadosFiltradosEOrdenados,
-      searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizado, filtroSituacaoOS,
+      searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS,
       sortConfig
     };
     try {
@@ -151,7 +149,7 @@ export function useControleAnalises() {
     } catch (error) {
       console.warn("Aviso: Limite de armazenamento local atingido.", error);
     }
-  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizado, filtroSituacaoOS, sortConfig]);
+  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS, sortConfig]);
 
   // FUNÇÕES DE AÇÃO
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
@@ -201,7 +199,6 @@ export function useControleAnalises() {
       const mapStatusCAJ = new Map<string, string>();
       const mapCodigosCAJ = new Map<string, string>();
 
-      // REGISTRAR PLANILHA 989 COM PRÉ-FILTRAGEM DE STATUS
       const registrar989Cliente = (dados: any[], mapStatus: Map<string, string>) => {
         const statusPermitidos = ["pendente", "programado", "para reprogramar"];
 
@@ -218,7 +215,6 @@ export function useControleAnalises() {
         });
       };
 
-      // REGISTRAR PLANILHA 344v3setor (CAJ) COM FILTRO DE CÓDIGOS APROVADOS
       const registrarPlanilhaCAJ = (dados: any[], mapStatus: Map<string, string>, mapCodigos: Map<string, string>) => {
         dados.forEach(row => {
           const mat = String(row["MATRICULA"] || row["Matrícula"] || row["Matricula"] || "").trim();
@@ -272,9 +268,6 @@ export function useControleAnalises() {
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
         const codigoOSCAJ = mapCodigosCAJ.get(matricula) || "";
 
-        // ==========================================
-        // REGRA DE PADRONIZAÇÃO (OU/OR)
-        // ==========================================
         const isEncerradoCAJ = statusCAJ.toLowerCase().includes("encerrado - executado");
         const hasCodigoAprovado = CODIGOS_APROVADOS_CAJ.includes(codigoOSCAJ);
         
@@ -340,11 +333,11 @@ export function useControleAnalises() {
     setDados989CAJ([]);
     setResultados([]); 
     setSearchTerm("");
-    setFiltroCodigo("");
+    setFiltroCodigo("Todos");
     setFiltroFuncionario("");
     setFiltroSituacao("Todas");
     setFiltroStatusCliente("Todos");
-    setFiltroPadronizado("Todos");
+    setFiltroPadronizadoAtivo(false);
     setFiltroSituacaoOS([]); 
     setDropdownOSOpen(false);
     setSortConfig({ key: null, direction: 'asc' });
@@ -358,10 +351,11 @@ export function useControleAnalises() {
     handleFileUpload, processarDados, 
     searchTerm, setSearchTerm, 
     filtroCodigo, setFiltroCodigo, 
+    codigosDisponiveis,
     filtroFuncionario, setFiltroFuncionario, 
     filtroSituacao, setFiltroSituacao,
     filtroStatusCliente, setFiltroStatusCliente, 
-    filtroPadronizado, setFiltroPadronizado,
+    filtroPadronizadoAtivo, setFiltroPadronizadoAtivo,
     filtroSituacaoOS, setFiltroSituacaoOS, toggleFiltroSituacaoOS, dropdownOSOpen, setDropdownOSOpen,
     requestSort, sortConfig, limparTela,
     resultadosFiltrados: resultadosFiltradosEOrdenados, 
