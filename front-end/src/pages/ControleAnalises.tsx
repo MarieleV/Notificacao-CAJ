@@ -66,13 +66,14 @@ function ControleAnalisesConteudo() {
   const limparFiltros = () => {
     hook.setSearchTerm("");
     hook.setFiltroCodigo("");
-    hook.setFiltroStatusCliente("");
+    hook.setFiltroStatusCliente("Todos");
+    hook.setFiltroPadronizado("Todos");
     hook.setFiltroFuncionario("");
     hook.setFiltroSituacao("Todas");
     hook.setFiltroSituacaoOS([]); 
   };
 
-  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas" || hook.filtroSituacaoOS.length > 0;
+  const isFiltroAtivo = hook.searchTerm !== "" || hook.filtroCodigo !== "" || hook.filtroStatusCliente !== "Todos" || hook.filtroPadronizado !== "Todos" || hook.filtroFuncionario !== "" || hook.filtroSituacao !== "Todas" || hook.filtroSituacaoOS.length > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -279,7 +280,31 @@ function ControleAnalisesConteudo() {
                   </div>
                   
                   <input type="text" placeholder="Código..." value={hook.filtroCodigo} onChange={(e) => hook.setFiltroCodigo(e.target.value)} className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm" />
-                  <input type="text" placeholder="Status Cliente..." value={hook.filtroStatusCliente} onChange={(e) => hook.setFiltroStatusCliente(e.target.value)} className="w-32 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm" />
+
+                  {/* SELECT DE STATUS CLIENTE */}
+                  <div className="relative">
+                    <select value={hook.filtroStatusCliente} onChange={(e) => hook.setFiltroStatusCliente(e.target.value)} className="w-36 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer">
+                      <option value="Todos">Status Cliente</option>
+                      <option value="Pendente">Pendente</option>
+                      <option value="Programado">Programado</option>
+                      <option value="Para Reprogramar">Para Reprogramar</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+
+                  {/* SELECT DE PADRONIZADO */}
+                  <div className="relative">
+                    <select value={hook.filtroPadronizado} onChange={(e) => hook.setFiltroPadronizado(e.target.value)} className="w-32 pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8] focus:outline-none transition-all shadow-sm appearance-none cursor-pointer">
+                      <option value="Todos">Padronizado?</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
 
                   {/* DROPDOWN DE MÚLTIPLA ESCOLHA PARA SITUAÇÃO OS */}
                   <div className="relative">
