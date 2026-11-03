@@ -306,8 +306,11 @@ function ControleAnalisesConteudo() {
                   </div>
 
                   {/* BOTÃO TOGGLE DE PADRONIZADO */}
-                  <button onClick={() => hook.setFiltroPadronizadoAtivo(!hook.filtroPadronizadoAtivo)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 border ${hook.filtroPadronizadoAtivo ? 'bg-emerald-600 text-white border-emerald-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>
-                    <CheckCircle2 size={14} className={hook.filtroPadronizadoAtivo ? 'text-white' : 'text-gray-400'} />
+                  <button 
+                    onClick={() => hook.setFiltroPadronizadoAtivo(!hook.filtroPadronizadoAtivo)} 
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 border ${hook.filtroPadronizadoAtivo ? 'bg-emerald-600 text-white border-emerald-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    {hook.filtroPadronizadoAtivo && <CheckCircle2 size={14} className="text-white" />}
                     <span>Padronizado</span>
                   </button>
 
