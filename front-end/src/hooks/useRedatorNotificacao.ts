@@ -363,7 +363,7 @@ export function useRedatorNotificacao() {
     setStep("idle");
 
     let textoMesesCalc = `${mesesSemAcesso} meses`;
-    const m = dataConstatacao.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const m = dataConstatacao.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     
     if (m && mesesSemAcesso && !isNaN(Number(mesesSemAcesso))) {
       const qtd = Number(mesesSemAcesso);
@@ -391,8 +391,8 @@ export function useRedatorNotificacao() {
       const data = await gerarNotificacaoApi({
         api_key: apiKey.trim(), 
         textos_base: textosBase,
-        dataConstatacao: dataConstatacao, 
-        protocolo: protocoloEfetivo,             
+        dataConstatacao: dataConstatacao.trim(), 
+        protocolo: protocoloEfetivo,            
         funcionario, 
         equipe
       });
