@@ -196,16 +196,11 @@ function RedatorNotificacaoConteudo() {
                     type="text"
                     value={hook.dataConstatacao}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^[\d/]*$/.test(val)) {
-                        const digits = val.replace(/\D/g, "").slice(0, 8);
-                        let masked = digits;
-                        if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
-                        if (digits.length > 4) masked = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
-                        hook.setDataConstatacao(masked);
-                      } else {
-                        hook.setDataConstatacao(val);
-                      }
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+                      let masked = digits;
+                      if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
+                      if (digits.length > 4) masked = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+                      hook.setDataConstatacao(masked);
                     }}
                     placeholder="DD/MM/AAAA"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8]"
