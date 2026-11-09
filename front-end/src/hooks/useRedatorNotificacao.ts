@@ -487,7 +487,6 @@ export function useRedatorNotificacao() {
     selectedItems, filteredCodes, filteredFuncionarios,
     funcionarioSelecionado, esqueceuDeBuscar, camposObrigatoriosVazios,
 
-    // novos flags (20012)
     exigeMeses, precisaProtocolo, soEh20012,
     
     toggleCode, handleFileUpload, handleSearchMatricula,
