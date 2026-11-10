@@ -1,4 +1,4 @@
-const BASE_URL = "https://notificacao-caj.vercel.app/api";
+import { apiFetch } from "./http";
 
 { /* ----------------- Tela de Geração de Notificação --------------------- */ }
 
@@ -28,7 +28,7 @@ export interface ExportarDocumentoPayload {
 
 // 1. Serviço para Gerar o Texto (IA)
 export async function gerarNotificacaoApi(payload: GerarNotificacaoPayload) {
-  const response = await fetch(`${BASE_URL}/gerar`, {
+  const response = await apiFetch(`/gerar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -43,7 +43,7 @@ export async function gerarNotificacaoApi(payload: GerarNotificacaoPayload) {
 
 // 2. Serviço para Exportar Word
 export async function exportarWordApi(payload: ExportarDocumentoPayload) {
-  const response = await fetch(`${BASE_URL}/exportar_word`, {
+  const response = await apiFetch(`/exportar_word`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -58,7 +58,7 @@ export async function exportarWordApi(payload: ExportarDocumentoPayload) {
 
 // 3. Serviço para Exportar PDF
 export async function exportarPdfApi(payload: ExportarDocumentoPayload) {
-  const response = await fetch(`${BASE_URL}/exportar_pdf`, {
+  const response = await apiFetch(`/exportar_pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -81,7 +81,7 @@ export interface ExportarParecerPayload {
 }
 
 export const exportarParecerPDF = async (payload: ExportarParecerPayload): Promise<Blob> => {
-  const response = await fetch(`${BASE_URL}/exportar_parecer_pdf`, {
+  const response = await apiFetch(`/exportar_parecer_pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -92,7 +92,7 @@ export const exportarParecerPDF = async (payload: ExportarParecerPayload): Promi
 };
 
 export const exportarParecerWord = async (payload: ExportarParecerPayload): Promise<Blob> => {
-  const response = await fetch(`${BASE_URL}/exportar_parecer_word`, {
+  const response = await apiFetch(`/exportar_parecer_word`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

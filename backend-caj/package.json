@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "hash": "node scripts/gerar-hash.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,9 +15,12 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "docx": "^9.7.1",
+    "dotenv": "^18.0.10",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.19.1"
   }
 }

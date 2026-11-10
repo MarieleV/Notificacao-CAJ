@@ -5,6 +5,16 @@ const router = express.Router();
 const aiController = require("../controllers/aiController");
 const calculatorController = require("../controllers/calculatorController");
 const documentController = require("../controllers/documentController");
+const authController = require("../controllers/authController");
+const { requireAuth } = require("../middlewares/authMiddleware");
+
+// Rotas públicas de autenticação
+router.post("/auth/login", authController.login);
+
+// Daqui para baixo, todas as rotas exigem token JWT válido
+router.use(requireAuth);
+
+router.get("/auth/me", authController.me);
 
 // Rotas da IA
 router.post("/gerar", aiController.generateNotification);
