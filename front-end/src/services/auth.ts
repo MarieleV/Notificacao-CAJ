@@ -7,9 +7,13 @@ const USER_KEY = "caj_auth_user";
 /** Evento disparado quando a sessão é encerrada (logout ou token inválido/expirado). */
 export const AUTH_LOGOUT_EVENT = "caj:auth-logout";
 
+export type Perfil = "admin" | "usuario";
+
 export interface Usuario {
+  id: number;
   usuario: string;
   nome: string;
+  perfil: Perfil;
 }
 
 export interface LoginResponse {

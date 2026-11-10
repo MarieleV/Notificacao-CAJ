@@ -1,5 +1,6 @@
 // src/controllers/authController.js
 const authService = require("../services/authService");
+const userService = require("../services/userService");
 
 const login = async (req, res) => {
   const { usuario, senha } = req.body || {};
@@ -21,8 +22,21 @@ const login = async (req, res) => {
 };
 
 const me = (req, res) => {
-  const { usuario, nome } = req.user;
-  res.json({ usuario: { usuario, nome } });
+  res.json({ usuario: req.user });
 };
 
-module.exports = { login, me };
+const trocarSenha = async (req, res) => {
+  const { senhaAtual, novaSenha } = req.body || {};
+  try {
+    await userService.trocarPropriaSenha(req.user.id, senhaAtual, novaSenha);
+    res.json({ detail: "Senha alterada com sucesso." });
+  } catch (error) {
+    if (error instanceof userService.UserError) {
+      return res.status(error.status).json({ detail: error.message });
+    }
+    console.error("Erro ao trocar senha:", error.message);
+    res.status(500).json({ detail: "Erro interno ao trocar senha." });
+  }
+};
+
+module.exports = { login, me, trocarSenha };

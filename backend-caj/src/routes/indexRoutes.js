@@ -6,7 +6,8 @@ const aiController = require("../controllers/aiController");
 const calculatorController = require("../controllers/calculatorController");
 const documentController = require("../controllers/documentController");
 const authController = require("../controllers/authController");
-const { requireAuth } = require("../middlewares/authMiddleware");
+const userController = require("../controllers/userController");
+const { requireAuth, requireAdmin } = require("../middlewares/authMiddleware");
 
 // Rotas públicas de autenticação
 router.post("/auth/login", authController.login);
@@ -15,6 +16,14 @@ router.post("/auth/login", authController.login);
 router.use(requireAuth);
 
 router.get("/auth/me", authController.me);
+router.put("/auth/senha", authController.trocarSenha);
+
+// Gestão de usuários (somente admin)
+router.get("/usuarios", requireAdmin, userController.list);
+router.post("/usuarios", requireAdmin, userController.create);
+router.put("/usuarios/:id", requireAdmin, userController.update);
+router.put("/usuarios/:id/senha", requireAdmin, userController.resetSenha);
+router.delete("/usuarios/:id", requireAdmin, userController.remove);
 
 // Rotas da IA
 router.post("/gerar", aiController.generateNotification);

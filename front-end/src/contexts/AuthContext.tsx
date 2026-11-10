@@ -12,6 +12,7 @@ import {
 interface AuthContextValue {
   user: Usuario | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   login: (usuario: string, senha: string) => Promise<void>;
   logout: () => void;
 }
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => clearSession(), []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isAdmin: user?.perfil === "admin", login, logout }}>
       {children}
     </AuthContext.Provider>
   );

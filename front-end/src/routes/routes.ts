@@ -8,6 +8,8 @@ import { RespostaDefesa } from "../pages/RespostaDefesa";
 import { ControleAnalises } from "../pages/ControleAnalises";
 import { Pagina404 } from "../pages/Pagina404";
 import { Login } from "../pages/Login";
+import { GerenciarUsuarios } from "../pages/GerenciarUsuarios";
+import { AdminRoute } from "../components/AdminRoute";
 
 
 export const router = createHashRouter([
@@ -27,6 +29,8 @@ export const router = createHashRouter([
           { path: "ouvidoria", Component: ProcessoOuvidoria },
           { path: "resposta-defesa", Component: RespostaDefesa },
           { path: "controle-analises", Component: ControleAnalises },
+          // Somente administradores
+          { Component: AdminRoute, children: [{ path: "usuarios", Component: GerenciarUsuarios }] },
           { path: "*", Component: Pagina404 }, // O 404 catch-all precisa ser sempre o último
         ],
       },
