@@ -206,14 +206,6 @@ npm run dev
 > [!WARNING]
 > Nunca versione o arquivo `.env`. A chave do Gemini deve ficar apenas no back-end.
 
-<br/>
-
-##  → Licença
-
-Distribuído sob a licença BSD 3-Clause. Veja o arquivo [LICENSE](./LICENSE).
-
-<br/>
-
 <p align="center">
   <a href="https://github.com/MarieleV">
     <img src="https://img.shields.io/badge/Mariele%20Vieira-334155?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
@@ -225,7 +217,3 @@ Distribuído sob a licença BSD 3-Clause. Veja o arquivo [LICENSE](./LICENSE).
     <img src="https://img.shields.io/badge/E--mail-64748B?style=for-the-badge&logo=gmail&logoColor=white" alt="E-mail" />
   </a>
 </p>
-
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:334155,100:64748B&height=100&section=footer" width="100%"/>
-</div>
