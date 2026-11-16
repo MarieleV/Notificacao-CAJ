@@ -1,3 +1,5 @@
+import { apiFetch } from "./http";
+
 export interface DefesaTemplate {
   code: string;
   title: string;
@@ -151,10 +153,10 @@ export interface ExportPayload {
   matricula: string;
 }
 
-const API_URL = "https://notificacao-caj.vercel.app/api";
+
 
 export const exportarParecerWord = async (payload: ExportPayload): Promise<Blob> => {
-  const response = await fetch(`${API_URL}/exportar_parecer_word`, {
+  const response = await apiFetch(`/exportar_parecer_word`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -168,7 +170,7 @@ export const exportarParecerWord = async (payload: ExportPayload): Promise<Blob>
 };
 
 export const exportarParecerPDF = async (payload: ExportPayload): Promise<Blob> => {
-  const response = await fetch(`${API_URL}/exportar_parecer_pdf`, {
+  const response = await apiFetch(`/exportar_parecer_pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
