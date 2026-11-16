@@ -39,47 +39,23 @@ export function Login() {
   const fieldClass = `${inputClass.replace("h-10", "h-11")} pl-10`;
 
   return (
-    <div className="min-h-screen grid md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] bg-white">
-      {/* Painel institucional */}
-      <aside className="hidden md:flex flex-col justify-between bg-navy text-white px-12 py-10 relative overflow-hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-brand flex items-center justify-center overflow-hidden">
-            <img src="/logo.resolucao.boa.png" alt="" className="w-full h-full object-cover" />
-          </div>
-          <div>
-            <p className="font-semibold text-sm leading-tight">CAJ</p>
-            <p className="text-[11px] text-navy-muted leading-tight">Sistema</p>
-          </div>
-        </div>
-
-        <div className="max-w-sm">
-          <h2 className="text-white text-2xl font-semibold leading-snug">
-            Gestão de notificações judiciais e multas de consumo de água
-          </h2>
-          <p className="text-navy-text text-sm mt-3 leading-relaxed">
-            Redação de notificações, retorno de defesas, controle de prazos e cálculo de multas em um só lugar.
-          </p>
-        </div>
-
-        <p className="text-navy-muted text-xs">Acesso restrito a usuários autorizados.</p>
-      </aside>
-
-      {/* Formulário */}
-      <main className="flex items-center justify-center bg-canvas md:bg-white px-4 py-10">
-        <div className="w-full max-w-sm">
-          <div className="md:hidden flex flex-col items-center text-center mb-8">
-            <div className="w-14 h-14 rounded-md bg-brand flex items-center justify-center overflow-hidden mb-4">
+    <main className="min-h-screen flex items-center justify-center bg-canvas px-4 py-10">
+      <div className="w-full max-w-sm">
+        {/* Card */}
+        <div className="bg-white border border-gray-200 rounded-[14px] shadow-sm overflow-hidden">
+          {/* Cabeçalho */}
+          <div className="px-8 pt-8 pb-6 border-b border-gray-100 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-md bg-brand flex items-center justify-center overflow-hidden mb-4">
               <img src="/logo.resolucao.boa.png" alt="Logo CAJ" className="w-full h-full object-cover" />
             </div>
-            <p className="text-ink-muted text-xs leading-relaxed">
+            <h1 className="text-ink text-xl font-semibold">Acesso ao Sistema CAJ</h1>
+            <p className="text-ink-muted text-xs mt-1 leading-relaxed">
               Gestão de Notificações Judiciais e Multas de Consumo de Água
             </p>
           </div>
 
-          <h1 className="text-ink text-2xl font-semibold">Entrar no sistema</h1>
-          <p className="text-ink-muted text-sm mt-1">Use o usuário e a senha cadastrados pelo administrador.</p>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5" noValidate>
             <div>
               <label htmlFor="usuario" className={labelClass}>
                 Usuário
@@ -133,12 +109,15 @@ export function Login() {
               {carregando ? "Entrando…" : "Entrar"}
             </Button>
           </form>
-
-          <p className="text-xs text-ink-muted mt-8 pt-6 border-t border-gray-200">
-            Esqueceu a senha? Procure um administrador do sistema.
-          </p>
         </div>
-      </main>
-    </div>
+
+        <p className="text-center text-xs text-ink-muted mt-6">
+          Acesso restrito a usuários autorizados.
+        </p>
+        <p className="text-center text-xs text-ink-muted mt-1">
+          Esqueceu a senha? Procure um administrador do sistema.
+        </p>
+      </div>
+    </main>
   );
 }
