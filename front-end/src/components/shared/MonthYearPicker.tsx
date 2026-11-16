@@ -43,36 +43,36 @@ export function MonthYearPicker({ value, onChange, placeholder, size = "sm" }: M
   }
 
   const buttonSizeClasses =
-    size === "md" ? "w-full px-3 py-2.5 text-sm rounded-lg" : "w-[128px] px-2.5 py-1.5 text-xs rounded-md";
+    size === "md" ? "w-full h-10 px-3 text-sm rounded-md" : "w-[128px] h-8 px-2.5 text-xs rounded-md";
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 border transition-all bg-white ${buttonSizeClasses} ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        className={`flex items-center justify-between gap-1.5 border transition-colors bg-white ${buttonSizeClasses} ${
+          isOpen ? "border-brand ring-3 ring-brand/15" : "border-gray-300 hover:border-gray-400"
         } ${selected ? "text-gray-700" : "text-gray-400"}`}
       >
         <span className="truncate">{selected ? labelMonth(value) : placeholder}</span>
-        <CalendarIcon size={size === "md" ? 14 : 12} className="text-[#1a5fa8] flex-shrink-0" />
+        <CalendarIcon size={size === "md" ? 14 : 12} className="text-brand flex-shrink-0" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[210px] bg-white border border-gray-200 rounded-lg shadow-xl p-3 animate-slideUp">
           <div className="flex items-center justify-between mb-2.5">
             <button
               type="button"
               onClick={() => setViewYear((y) => y - 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="text-sm font-bold text-[#0b1e35] tabular-nums">{viewYear}</span>
+            <span className="text-sm font-semibold text-ink tabular-nums">{viewYear}</span>
             <button
               type="button"
               onClick={() => setViewYear((y) => y + 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronRight size={14} />
             </button>
@@ -86,7 +86,7 @@ export function MonthYearPicker({ value, onChange, placeholder, size = "sm" }: M
                   type="button"
                   onClick={() => selectMonth(idx)}
                   className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    isSelected ? "bg-[#1a5fa8] text-white" : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                    isSelected ? "bg-brand text-white" : "text-gray-600 hover:bg-brand-soft hover:text-brand"
                   }`}
                 >
                   {m}

@@ -95,29 +95,29 @@ export function MonthYearRangePicker({ value, onChange, placeholder }: MonthYear
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all text-left ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20 bg-[#eef6ff]" : "border-gray-200 bg-white hover:border-[#1a5fa8]"
-        } ${value ? "text-[#0b1e35] font-medium" : "text-gray-500"}`}
+        className={`flex items-center justify-between gap-1.5 w-full h-10 px-3 border rounded-md text-sm transition-colors text-left ${
+          isOpen ? "border-brand ring-3 ring-brand/15 bg-white" : "border-gray-300 bg-white hover:border-gray-400"
+        } ${value ? "text-ink font-medium" : "text-gray-500"}`}
       >
         <span className="truncate block flex-1">{value ? displayLabel : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+        <CalendarIcon size={14} className="text-brand flex-shrink-0" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 top-full right-0 lg:left-0 lg:right-auto mt-1 w-[220px] bg-white border border-gray-200 rounded-lg shadow-xl p-2.5">
+        <div className="absolute z-50 top-full right-0 lg:left-0 lg:right-auto mt-1 w-[220px] bg-white border border-gray-200 rounded-lg shadow-xl p-2.5 animate-slideUp">
           <div className="flex items-center justify-between mb-2">
             <button
               type="button"
               onClick={() => setViewYear((y) => y - 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="font-bold text-sm text-[#0b1e35]">{viewYear}</span>
+            <span className="font-semibold text-sm text-ink">{viewYear}</span>
             <button
               type="button"
               onClick={() => setViewYear((y) => y + 1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronRight size={14} />
             </button>
@@ -135,8 +135,8 @@ export function MonthYearRangePicker({ value, onChange, placeholder }: MonthYear
                 ((val > startVal && val <= hoverVal) || (val >= hoverVal && val < startVal));
 
               let baseClass = "py-1.5 rounded-md text-[11px] font-medium transition-colors text-center cursor-pointer ";
-              if (isSelected) baseClass += "bg-[#1a5fa8] text-white shadow-sm";
-              else if (isBetween || isHover) baseClass += "bg-[#eef6ff] text-[#1a5fa8]";
+              if (isSelected) baseClass += "bg-brand text-white shadow-sm";
+              else if (isBetween || isHover) baseClass += "bg-brand-soft text-brand";
               else baseClass += "text-gray-600 hover:bg-gray-100";
 
               return (
@@ -148,14 +148,14 @@ export function MonthYearRangePicker({ value, onChange, placeholder }: MonthYear
           </div>
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-2 mt-1">
-            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-red-500 transition-colors">
+            <button type="button" onClick={handleClear} className="text-xs font-medium text-gray-500 hover:text-danger transition-colors">
               Limpar
             </button>
             <button
               type="button"
               onClick={handleConfirm}
               disabled={!startVal}
-              className="text-xs font-bold text-white bg-[#1a5fa8] hover:bg-[#154d8a] px-3 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="text-xs font-semibold text-white bg-brand hover:bg-brand-hover px-3 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Confirmar
             </button>

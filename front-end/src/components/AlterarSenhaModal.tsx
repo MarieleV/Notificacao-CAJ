@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { trocarMinhaSenha } from "../services/usuarios";
-import { inputClass, labelClass, Modal, primaryButtonClass, secondaryButtonClass } from "./shared/Modal";
+import { Modal } from "./shared/Modal";
+import { Alert, Button, hintClass, inputClass, labelClass } from "./shared/ui";
 
 interface Props {
   open: boolean;
@@ -47,11 +47,9 @@ export function AlterarSenhaModal({ open, onClose }: Props) {
     <Modal open={open} title="Alterar minha senha" onClose={fechar}>
       {sucesso ? (
         <div className="space-y-4">
-          <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-            Senha alterada com sucesso.
-          </p>
+          <Alert tone="success">Senha alterada. Use a nova senha no próximo acesso.</Alert>
           <div className="flex justify-end">
-            <button onClick={fechar} className={primaryButtonClass}>Fechar</button>
+            <Button onClick={fechar}>Fechar</Button>
           </div>
         </div>
       ) : (
@@ -62,9 +60,10 @@ export function AlterarSenhaModal({ open, onClose }: Props) {
               onChange={(e) => setSenhaAtual(e.target.value)} className={inputClass} autoFocus />
           </div>
           <div>
-            <label htmlFor="nova-senha" className={labelClass}>Nova senha (mín. 8 caracteres)</label>
+            <label htmlFor="nova-senha" className={labelClass}>Nova senha</label>
             <input id="nova-senha" type="password" autoComplete="new-password" value={novaSenha}
-              onChange={(e) => setNovaSenha(e.target.value)} className={inputClass} />
+              onChange={(e) => setNovaSenha(e.target.value)} className={inputClass} aria-describedby="nova-senha-dica" />
+            <p id="nova-senha-dica" className={hintClass}>Mínimo de 8 caracteres.</p>
           </div>
           <div>
             <label htmlFor="confirma-senha" className={labelClass}>Confirmar nova senha</label>
@@ -72,14 +71,11 @@ export function AlterarSenhaModal({ open, onClose }: Props) {
               onChange={(e) => setConfirmacao(e.target.value)} className={inputClass} />
           </div>
 
-          {erro && <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erro}</p>}
+          {erro && <Alert tone="danger">{erro}</Alert>}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={fechar} className={secondaryButtonClass}>Cancelar</button>
-            <button type="submit" disabled={salvando} className={primaryButtonClass}>
-              {salvando && <Loader2 size={14} className="animate-spin" />}
-              Salvar
-            </button>
+            <Button variant="secondary" onClick={fechar}>Cancelar</Button>
+            <Button type="submit" loading={salvando}>Salvar nova senha</Button>
           </div>
         </form>
       )}
