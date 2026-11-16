@@ -8,9 +8,14 @@ import {
   ChevronRight, 
   ChevronLeft,
   Building2,
-  Clock // <-- Ícone novo importado para a nova tela
+  Clock, // <-- Ícone novo importado para a nova tela
+  LogOut,
+  Users,
+  KeyRound
 } from "lucide-react";
 import { ElementType } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { AlterarSenhaModal } from "./AlterarSenhaModal";
 
 // Subcomponente para evitar repetição de código (DRY)
 interface NavItemProps {
@@ -63,6 +68,8 @@ function NavItem({ to, icon: Icon, title, subtitle, end = false, isCollapsed }: 
 
 export function Layout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, logout, isAdmin } = useAuth();
+  const [senhaModalAberto, setSenhaModalAberto] = useState(false);
 
   return (
     <div className="flex h-screen bg-[#0b1e35] overflow-hidden">
@@ -153,25 +160,60 @@ export function Layout() {
             to="/ouvidoria" 
             icon={Scale} 
             title="Ouvidoria e Recursos" 
-            subtitle="Análise de Processos" 
+            subtitle="Análise de Processos"
             isCollapsed={isCollapsed}
           />
+
+          {isAdmin && (
+            <>
+              {!isCollapsed ? (
+                <p className="text-[#2d5070] text-[10px] uppercase tracking-widest font-medium px-2 pt-4 mb-3 animate-fadeIn whitespace-nowrap">
+                  Administração
+                </p>
+              ) : (
+                <div className="h-4 border-b border-[#1a3a5c]/50 mb-3 mx-2"></div>
+              )}
+              <NavItem
+                to="/usuarios"
+                icon={Users}
+                title="Usuários"
+                subtitle="Cadastro e Acessos"
+                isCollapsed={isCollapsed}
+              />
+            </>
+          )}
 
         </nav>
 
         {/* Footer */}
-        <div className={`p-4 border-t border-[#1a3a5c] ${isCollapsed ? "flex justify-center px-2" : ""}`}>
-          <div className={`flex items-center gap-3 overflow-hidden ${!isCollapsed ? "px-2" : ""}`}>
+        <div className={`p-4 border-t border-[#1a3a5c] flex gap-2 ${isCollapsed ? "flex-col items-center px-2" : "items-center"}`}>
+          <div className={`flex items-center gap-3 overflow-hidden flex-1 min-w-0 ${!isCollapsed ? "px-2" : ""}`}>
             <div className="w-8 h-8 rounded-full bg-[#1a3a5c] flex items-center justify-center flex-shrink-0">
               <Building2 size={14} className="text-[#4a7fa5]" />
             </div>
             {!isCollapsed && (
-              <div className="whitespace-nowrap animate-fadeIn">
-                <p className="text-white text-xs font-medium leading-none">Dep. Atendimento</p>
-                <p className="text-[#4a7fa5] text-[10px] mt-0.5">Notificações & Multas</p>
+              <div className="whitespace-nowrap animate-fadeIn min-w-0">
+                <p className="text-white text-xs font-medium leading-none truncate">{user?.nome ?? "Dep. Atendimento"}</p>
+                <p className="text-[#4a7fa5] text-[10px] mt-0.5">{isAdmin ? "Administrador" : "Dep. Atendimento"}</p>
               </div>
             )}
           </div>
+          <button
+            onClick={() => setSenhaModalAberto(true)}
+            title="Alterar minha senha"
+            aria-label="Alterar minha senha"
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[#4a7fa5] hover:text-white hover:bg-[#0f2a45] transition-colors"
+          >
+            <KeyRound size={16} />
+          </button>
+          <button
+            onClick={logout}
+            title="Sair"
+            aria-label="Sair"
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[#4a7fa5] hover:text-white hover:bg-[#0f2a45] transition-colors"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </aside>
 
@@ -179,6 +221,8 @@ export function Layout() {
       <main className="flex-1 overflow-auto bg-[#f0f4f8] relative z-10">
         <Outlet />
       </main>
+
+      <AlterarSenhaModal open={senhaModalAberto} onClose={() => setSenhaModalAberto(false)} />
     </div>
   );
 }
