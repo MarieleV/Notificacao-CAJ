@@ -149,7 +149,7 @@ export const INFRACTION_CODES: InfractionCode[] = [
     clauseMultaCP: "Descrição do fato gerador: Violação do lacre da porta caixa ou cubículo de proteção do hidrômetro.  Dispositivo legal infringido: Artigo 144, inciso XIV da Resolução 019/2019 - ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por violação do lacre da porta caixa ou cubículo de proteção do hidrômetro, conforme Art. 144, inciso XIV.",
     category: "fraude",
   },
-    {
+  {
     code: "20011",
     title: "Falta de acesso para execução de serviços",
     category: "acesso",
@@ -173,8 +173,8 @@ export const INFRACTION_CODES: InfractionCode[] = [
   {
     code: "20419",
     title: "Recusa voluntária de atualização de dados cadastrais",
-    clauseMulta: "Descrição do fato gerador: Inércia do usuário em atender à solicitação formal da Companhia Águas de Joinville para atualização ou complementação de dados cadastrais obrigatórios, conforme Comunicado Extra enviado junto com a Fatura xx/2025  Data do Comunicado Extra: Data de Leitura   Equipe: Leiturista/Fimm  Penalidade prevista: Multa por Recusa voluntaria de atualização de dados cadastrais.",
-    clauseMultaCP: "Descrição do fato gerador: Inércia do usuário em atender à solicitação formal da Companhia Águas de Joinville para atualização ou complementação de dados cadastrais obrigatórios, conforme Comunicado Extra enviado junto com a Fatura xx/2025  Data do Comunicado Extra: Data de Leitura   Equipe: Leiturista/Fimm  Penalidade prevista: Multa por Recusa voluntaria de atualização de dados cadastrais.",
+    clauseMulta: "Descrição do fato gerador: Recusa/Inércia em atualizar o cadastro da unidade.  Dispositivo legal infringido: Artigo 144, inciso XXVI da Resolução 19/2029, alterada pela Resolução 55/2026 – ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por recusa voluntária de atualização de dados cadastrais, conforme ART. 144, inciso XXVI.",
+    clauseMultaCP: "Descrição do fato gerador: Recusa/Inércia em atualizar o cadastro da unidade.  Dispositivo legal infringido: Artigo 144, inciso XXVI da Resolução 19/2029, alterada pela Resolução 55/2026 – ARIS.  Data da constatação:  Protocolo:  Funcionário:  Equipe:  Penalidade prevista: Multa por recusa voluntária de atualização de dados cadastrais, conforme ART. 144, inciso XXVI. Além da multa, deverá providenciar a padronização obrigatória da ligação de água com instalação de caixa padrão em 90 (noventa) dias úteis, conforme Art. 144, § 3º. Caso o usuário não atenda à obrigatoriedade de padronização, será aplicada multa por não padronização, juntamente com a multa pela infração cometida.",
     category: "cadastral",
   },
 ];
