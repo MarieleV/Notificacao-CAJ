@@ -1,6 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
   KeyRound,
   Loader2,
   Pencil,
@@ -22,13 +21,8 @@ import {
   redefinirSenhaUsuario,
   UsuarioCadastro,
 } from "../services/usuarios";
-import {
-  inputClass,
-  labelClass,
-  Modal,
-  primaryButtonClass,
-  secondaryButtonClass,
-} from "../components/shared/Modal";
+import { Modal } from "../components/shared/Modal";
+import { Alert, Badge, Button, EmptyState, hintClass, inputClass, labelClass, PageHeader, table } from "../components/shared/ui";
 
 type ModalState =
   | { tipo: "novo" }
@@ -40,9 +34,7 @@ type ModalState =
 function ErroMsg({ erro }: { erro: string | null }) {
   if (!erro) return null;
   return (
-    <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-      {erro}
-    </p>
+    <Alert tone="danger">{erro}</Alert>
   );
 }
 
@@ -112,7 +104,7 @@ function UsuarioForm({
           autoComplete="off"
         />
         {!editando && (
-          <p className="text-[11px] text-gray-400 mt-1">Letras minúsculas, números, ponto, hífen ou sublinhado.</p>
+          <p className={hintClass}>Letras minúsculas, números, ponto, hífen ou sublinhado.</p>
         )}
       </div>
       <div>
@@ -127,14 +119,15 @@ function UsuarioForm({
           <option value="usuario">Usuário — acessa os módulos do sistema</option>
           <option value="admin">Administrador — também gerencia usuários</option>
         </select>
-        {souEu && <p className="text-[11px] text-gray-400 mt-1">Você não pode alterar o seu próprio perfil.</p>}
+        {souEu && <p className={hintClass}>Você não pode alterar o seu próprio perfil.</p>}
       </div>
       {!editando && (
         <>
           <div>
-            <label htmlFor="u-senha" className={labelClass}>Senha inicial (mín. 8 caracteres)</label>
+            <label htmlFor="u-senha" className={labelClass}>Senha inicial</label>
             <input id="u-senha" type="password" autoComplete="new-password" value={senha}
-              onChange={(e) => setSenha(e.target.value)} className={inputClass} />
+              onChange={(e) => setSenha(e.target.value)} className={inputClass} aria-describedby="u-senha-dica" />
+            <p id="u-senha-dica" className={hintClass}>Mínimo de 8 caracteres.</p>
           </div>
           <div>
             <label htmlFor="u-confirma" className={labelClass}>Confirmar senha</label>
@@ -147,11 +140,10 @@ function UsuarioForm({
       <ErroMsg erro={erro} />
 
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancelar} className={secondaryButtonClass}>Cancelar</button>
-        <button type="submit" disabled={salvando} className={primaryButtonClass}>
-          {salvando && <Loader2 size={14} className="animate-spin" />}
+        <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
+        <Button type="submit" loading={salvando}>
           {editando ? "Salvar alterações" : "Criar usuário"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -191,13 +183,14 @@ function RedefinirSenhaForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-body leading-relaxed">
         Defina uma nova senha para <strong>{usuario.nome}</strong> ({usuario.usuario}) e repasse a ela.
       </p>
       <div>
-        <label htmlFor="r-senha" className={labelClass}>Nova senha (mín. 8 caracteres)</label>
+        <label htmlFor="r-senha" className={labelClass}>Nova senha</label>
         <input id="r-senha" type="password" autoComplete="new-password" value={senha}
-          onChange={(e) => setSenha(e.target.value)} className={inputClass} autoFocus />
+          onChange={(e) => setSenha(e.target.value)} className={inputClass} autoFocus aria-describedby="r-senha-dica" />
+        <p id="r-senha-dica" className={hintClass}>Mínimo de 8 caracteres.</p>
       </div>
       <div>
         <label htmlFor="r-confirma" className={labelClass}>Confirmar nova senha</label>
@@ -206,11 +199,8 @@ function RedefinirSenhaForm({
       </div>
       <ErroMsg erro={erro} />
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancelar} className={secondaryButtonClass}>Cancelar</button>
-        <button type="submit" disabled={salvando} className={primaryButtonClass}>
-          {salvando && <Loader2 size={14} className="animate-spin" />}
-          Redefinir senha
-        </button>
+        <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
+        <Button type="submit" loading={salvando}>Redefinir senha</Button>
       </div>
     </form>
   );
@@ -243,21 +233,16 @@ function ExcluirConfirmacao({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-body leading-relaxed">
         Tem certeza que deseja excluir <strong>{usuario.nome}</strong> ({usuario.usuario})? Essa ação não pode ser
         desfeita. Se quiser apenas bloquear o acesso temporariamente, use <em>Desativar</em>.
       </p>
       <ErroMsg erro={erro} />
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancelar} className={secondaryButtonClass}>Cancelar</button>
-        <button
-          onClick={confirmar}
-          disabled={excluindo}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition shadow-sm"
-        >
-          {excluindo && <Loader2 size={14} className="animate-spin" />}
-          Excluir
-        </button>
+        <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
+        <Button variant="danger" icon={Trash2} loading={excluindo} onClick={confirmar}>
+          Excluir usuário
+        </Button>
       </div>
     </div>
   );
@@ -332,124 +317,109 @@ export function GerenciarUsuarios() {
     : "";
 
   const acaoClass =
-    "p-1.5 rounded-lg text-gray-400 hover:text-[#1a5fa8] hover:bg-blue-50 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400";
+    "w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-brand hover:bg-brand-soft transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400";
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0">
-        <div>
-          <div className="flex items-center gap-2">
-            <Users size={18} className="text-[#1a5fa8]" />
-            <h1 className="text-[#0b1e35] font-semibold text-lg">Gestão de Usuários</h1>
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">Cadastre quem pode acessar o sistema e defina os perfis de acesso.</p>
-        </div>
-        <button onClick={() => setModal({ tipo: "novo" })} className={primaryButtonClass}>
-          <UserPlus size={16} />
-          Novo usuário
-        </button>
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Gestão de Usuários"
+        description="Cadastre quem pode acessar o sistema e defina os perfis de acesso."
+        actions={<Button icon={UserPlus} onClick={() => setModal({ tipo: "novo" })}>Novo usuário</Button>}
+      />
 
-      <div className="flex-1 overflow-auto bg-[#f4f7f9] custom-scrollbar">
-        <div className="p-8 max-w-[1200px] mx-auto space-y-4">
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="px-8 py-8 max-w-[1200px] mx-auto space-y-4">
           {/* Barra de busca */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-sm">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
+                aria-label="Buscar usuário por nome ou login"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar por nome ou login"
-                className={`${inputClass} pl-9 bg-white`}
+                className={`${inputClass} pl-9`}
               />
             </div>
-            <button onClick={carregar} title="Atualizar lista" className={`${secondaryButtonClass} flex items-center gap-2`}>
-              <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
+            <Button variant="secondary" onClick={carregar} title="Atualizar lista" disabled={carregando}>
+              <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
               Atualizar
-            </button>
+            </Button>
           </div>
 
           {aviso && (
-            <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 animate-fadeIn">
-              {aviso}
-            </p>
+            <Alert tone="success">{aviso}</Alert>
           )}
           {erro && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-              <AlertCircle size={16} /> {erro}
-            </div>
+            <Alert tone="danger">{erro}</Alert>
           )}
 
           {/* Tabela */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">
-                  <th className="px-4 py-3 font-semibold">Nome</th>
-                  <th className="px-4 py-3 font-semibold">Login</th>
-                  <th className="px-4 py-3 font-semibold">Perfil</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Criado em</th>
-                  <th className="px-4 py-3 font-semibold text-right">Ações</th>
+          <div className={`bg-white rounded-[10px] border border-gray-200 ${table.wrapper}`}>
+            <table className={table.table}>
+              <thead className={table.thead}>
+                <tr>
+                  <th className={table.th}>Nome</th>
+                  <th className={table.th}>Login</th>
+                  <th className={table.th}>Perfil</th>
+                  <th className={table.th}>Status</th>
+                  <th className={table.th}>Criado em</th>
+                  <th className={`${table.th} text-right`}>Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {carregando && usuarios.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
-                      <Loader2 size={20} className="animate-spin inline mr-2" /> Carregando usuários...
+                    <td colSpan={6} className="px-4 py-12 text-center text-ink-muted" role="status">
+                      <Loader2 size={20} className="animate-spin inline mr-2 text-brand" /> Carregando usuários…
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400">Nenhum usuário encontrado.</td>
+                    <td colSpan={6}>
+                      <EmptyState
+                        icon={Users}
+                        title="Nenhum usuário encontrado"
+                        description={busca ? "Nenhum nome ou login corresponde à busca." : "Cadastre o primeiro usuário para liberar o acesso ao sistema."}
+                      />
+                    </td>
                   </tr>
                 ) : (
                   filtrados.map((u) => {
                     const souEu = u.id === user?.id;
                     return (
-                      <tr key={u.id} className={`hover:bg-gray-50/60 ${!u.ativo ? "opacity-60" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-[#0b1e35]">
+                      <tr key={u.id} className={`${table.tr} ${!u.ativo ? "opacity-60" : ""}`}>
+                        <td className={`${table.td} font-medium text-ink`}>
                           {u.nome}
-                          {souEu && <span className="ml-2 text-[10px] text-gray-400 font-normal">(você)</span>}
+                          {souEu && <span className="ml-2 text-xs text-ink-muted font-normal">(você)</span>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 font-mono text-xs">{u.usuario}</td>
-                        <td className="px-4 py-3">
+                        <td className={`${table.td} font-mono text-xs`}>{u.usuario}</td>
+                        <td className={table.td}>
                           {u.perfil === "admin" ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#1a5fa8] border border-blue-200">
-                              <ShieldCheck size={12} /> Admin
-                            </span>
+                            <Badge tone="brand" icon={ShieldCheck}>Admin</Badge>
                           ) : (
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                              Usuário
-                            </span>
+                            <Badge>Usuário</Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                              u.ativo
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
-                          >
-                            {u.ativo ? "Ativo" : "Inativo"}
-                          </span>
+                        <td className={table.td}>
+                          <Badge tone={u.ativo ? "success" : "danger"}>{u.ativo ? "Ativo" : "Inativo"}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
+                        <td className={`${table.td} text-xs`}>
                           {new Date(u.criado_em).toLocaleDateString("pt-BR")}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className={table.td}>
                           <div className="flex justify-end gap-1">
-                            <button title="Editar" onClick={() => setModal({ tipo: "editar", usuario: u })} className={acaoClass}>
+                            <button title="Editar" aria-label={`Editar ${u.nome}`} onClick={() => setModal({ tipo: "editar", usuario: u })} className={acaoClass}>
                               <Pencil size={15} />
                             </button>
-                            <button title="Redefinir senha" onClick={() => setModal({ tipo: "senha", usuario: u })} className={acaoClass}>
+                            <button title="Redefinir senha" aria-label={`Redefinir senha de ${u.nome}`} onClick={() => setModal({ tipo: "senha", usuario: u })} className={acaoClass}>
                               <KeyRound size={15} />
                             </button>
                             <button
                               title={souEu ? "Você não pode desativar sua própria conta" : u.ativo ? "Desativar" : "Reativar"}
+                              aria-label={`${u.ativo ? "Desativar" : "Reativar"} ${u.nome}`}
                               onClick={() => alternarAtivo(u)}
                               disabled={souEu || alternandoId === u.id}
                               className={acaoClass}
@@ -458,9 +428,10 @@ export function GerenciarUsuarios() {
                             </button>
                             <button
                               title={souEu ? "Você não pode excluir sua própria conta" : "Excluir"}
+                              aria-label={`Excluir ${u.nome}`}
                               onClick={() => setModal({ tipo: "excluir", usuario: u })}
                               disabled={souEu}
-                              className={`${acaoClass} hover:!text-red-600 hover:!bg-red-50`}
+                              className={`${acaoClass} hover:!text-danger hover:!bg-danger-soft`}
                             >
                               <Trash2 size={15} />
                             </button>
