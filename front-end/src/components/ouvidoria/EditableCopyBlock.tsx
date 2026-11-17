@@ -31,21 +31,21 @@ export function EditableCopyBlock({ defaultText }: EditableCopyBlockProps) {
   const dynamicRows = Math.max(lineCount, 2);
 
   return (
-    <div className="p-3 bg-gray-50 rounded-lg text-xs font-mono border border-gray-200 focus-within:border-[#1a5fa8] focus-within:ring-1 focus-within:ring-[#1a5fa8]/20 focus-within:bg-white transition-all shadow-sm">
+    <div className="p-3 bg-gray-50 rounded-md text-xs font-mono border border-gray-200 focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/15 focus-within:bg-white transition-colors">
       <div className="flex justify-end mb-1.5 gap-4">
         {isDirty && (
           <button 
             onClick={handleReset} 
-            className="text-[10px] text-amber-600 hover:underline flex items-center font-bold"
+            className="text-xs text-warning hover:underline flex items-center font-semibold"
           >
             Desfazer Edição
           </button>
         )}
         <button 
           onClick={handleCopy} 
-          className="text-[10px] text-[#1a5fa8] hover:underline flex items-center gap-1 font-bold"
+          className="text-xs text-brand hover:underline flex items-center gap-1 font-semibold"
         >
-          {copied ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12}/>}
+          {copied ? <CheckCircle2 size={12} className="text-success" /> : <Copy size={12}/>}
           {copied ? "Copiado!" : "Copiar"}
         </button>
       </div>
@@ -57,7 +57,7 @@ export function EditableCopyBlock({ defaultText }: EditableCopyBlockProps) {
           setIsDirty(true);
         }}
         rows={dynamicRows}
-        className="w-full bg-transparent border-none resize-none focus:outline-none text-gray-700 leading-relaxed overflow-hidden"
+        className="w-full bg-transparent border-none resize-none focus:outline-none text-ink-body leading-relaxed overflow-hidden"
       />
     </div>
   );

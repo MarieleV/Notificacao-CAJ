@@ -68,36 +68,36 @@ export function DatePicker({ value, onChange, placeholder }: DatePickerProps) {
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex items-center justify-between gap-1.5 w-full px-3 py-2 border rounded-lg text-sm transition-all bg-white ${
-          isOpen ? "border-[#1a5fa8] ring-1 ring-[#1a5fa8]/20" : "border-gray-200"
+        className={`flex items-center justify-between gap-1.5 w-full h-10 px-3 border rounded-md text-sm transition-colors bg-white ${
+          isOpen ? "border-brand ring-3 ring-brand/15" : "border-gray-300 hover:border-gray-400"
         } ${selected ? "text-gray-700" : "text-gray-400"}`}
       >
         <span className="truncate">{selected ? labelFullDate(value) : placeholder}</span>
-        <CalendarIcon size={14} className="text-[#1a5fa8] flex-shrink-0" />
+        <CalendarIcon size={14} className="text-brand flex-shrink-0" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+        <div className="absolute z-50 top-full left-0 mt-1.5 w-[260px] bg-white border border-gray-200 rounded-lg shadow-xl p-3 animate-slideUp">
           <div className="flex items-center justify-between mb-2.5">
             <button
               type="button"
               onClick={() => changeMonth(-1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="text-sm font-bold text-[#0b1e35]">{monthLabel}</span>
+            <span className="text-sm font-semibold text-ink">{monthLabel}</span>
             <button
               type="button"
               onClick={() => changeMonth(1)}
-              className="p-1 rounded hover:bg-[#eef6ff] text-gray-500 hover:text-[#1a5fa8] transition-colors"
+              className="p-1 rounded hover:bg-brand-soft text-gray-500 hover:text-brand transition-colors"
             >
               <ChevronRight size={14} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {WEEKDAYS_SHORT.map((w, i) => (
-              <div key={i} className="text-[10px] text-center text-gray-400 font-semibold">
+              <div key={i} className="text-[11px] text-center text-gray-400 font-semibold">
                 {w}
               </div>
             ))}
@@ -117,8 +117,8 @@ export function DatePicker({ value, onChange, placeholder }: DatePickerProps) {
                   onClick={() => selectDay(day)}
                   className={`h-7 w-7 rounded-md text-xs font-medium transition-all ${
                     isSelected
-                      ? "bg-[#1a5fa8] text-white"
-                      : "text-gray-600 hover:bg-[#eef6ff] hover:text-[#1a5fa8]"
+                      ? "bg-brand text-white"
+                      : "text-gray-600 hover:bg-brand-soft hover:text-brand"
                   }`}
                 >
                   {day}

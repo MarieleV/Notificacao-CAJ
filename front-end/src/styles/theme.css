@@ -1,5 +1,78 @@
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * ─── Design tokens do Sistema CAJ ───────────────────────────────────────────
+ * Use estas classes nas telas em vez de hex fixos:
+ *   bg-brand / text-brand / border-brand ........ Azul CAJ (ações primárias, foco)
+ *   bg-brand-soft / border-brand-line ........... realces informativos em azul
+ *   bg-navy ..................................... marinho institucional (sidebar)
+ *   text-ink / text-ink-body / text-ink-muted ... títulos / corpo / auxiliar
+ *   bg-canvas ................................... fundo das páginas
+ *   success / warning / danger (+ -soft, -line) . estados semânticos e de prazo
+ * A escala "gray" do Tailwind foi recalibrada para um cinza-azulado que
+ * conversa com o marinho da marca.
+ */
+@theme {
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --color-brand: #1a5fa8;
+  --color-brand-hover: #154d8a;
+  --color-brand-soft: #eaf2fb;
+  --color-brand-subtle: #f5f9fd;
+  --color-brand-line: #c9dcf1;
+
+  --color-navy: #0a1f33;
+  --color-navy-raised: #0f2a45;
+  --color-navy-line: #1a3a5c;
+  --color-navy-text: #8fb3d1;
+  --color-navy-muted: #5a85a8;
+  --color-navy-accent: #7ec8e3;
+
+  --color-canvas: #f3f6f9;
+  --color-ink: #0f2133;
+  --color-ink-body: #3c4a5a;
+  --color-ink-muted: #6b7785;
+
+  --color-success: #0f7a4a;
+  --color-success-soft: #e8f6ee;
+  --color-success-line: #b7e2c8;
+  --color-warning: #b26a00;
+  --color-warning-soft: #fff4e0;
+  --color-warning-line: #f5d49a;
+  --color-danger: #c2263a;
+  --color-danger-hover: #a51f31;
+  --color-danger-soft: #fcecee;
+  --color-danger-line: #f2c2c9;
+
+  --color-gray-50: #f7f9fb;
+  --color-gray-100: #eef2f6;
+  --color-gray-200: #dde3ea;
+  --color-gray-300: #c5ced8;
+  --color-gray-400: #9aa4af;
+  --color-gray-500: #6b7785;
+  --color-gray-600: #4f5b69;
+  --color-gray-700: #3c4a5a;
+  --color-gray-800: #24313f;
+  --color-gray-900: #0f2133;
+
+  --animate-fadeIn: fadeIn 0.2s ease-out both;
+  --animate-slideUp: slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-scaleIn: scaleIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
 :root {
   --font-size: 16px;
   --background: #ffffff;
@@ -8,7 +81,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
+  --primary: #1a5fa8;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.95 0.0058 264.53);
   --secondary-foreground: #030213;
@@ -16,15 +89,15 @@
   --muted-foreground: #717182;
   --accent: #e9ebef;
   --accent-foreground: #030213;
-  --destructive: #d4183d;
+  --destructive: #c2263a;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --border: #dde3ea;
   --input: transparent;
   --input-background: #f3f3f5;
   --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
+  --ring: #1a5fa8;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -125,7 +198,24 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-ink-body font-sans antialiased;
+    /* Algarismos tabulares: datas, prazos e valores alinham em colunas. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco visível só na navegação por teclado (inputs já têm anel próprio). */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible,
+  label:has(> input[type="file"]):focus-within {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-brand-line);
+    color: var(--color-ink);
   }
 
   /**
@@ -137,32 +227,40 @@
     font-size: var(--font-size);
   }
 
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+    letter-spacing: -0.005em;
+  }
+
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: 1.4;
   }
 
   h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: 1.4;
   }
 
   h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.4;
   }
 
   label {
-    font-size: var(--text-base);
+    font-size: var(--text-xs);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
@@ -177,5 +275,40 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+/* Barra de rolagem discreta para áreas de conteúdo longas. */
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-gray-300);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-gray-400);
+  }
+}
+
+/* Respeita quem prefere reduzir animações no sistema operacional. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

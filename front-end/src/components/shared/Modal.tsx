@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { X } from "lucide-react";
+import { dialogClass, overlayClass } from "./ui";
 
 interface ModalProps {
   open: boolean;
@@ -20,14 +21,15 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 animate-fadeIn"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div role="dialog" aria-modal="true" aria-label={title} className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-[#0b1e35] font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
+    <div className={overlayClass} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={`${dialogClass} max-w-md`}>
+        <div className="flex items-center justify-between pl-6 pr-4 h-14 border-b border-gray-100">
+          <h2 className="text-ink text-base font-semibold">{title}</h2>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-ink hover:bg-gray-100 transition-colors"
+          >
             <X size={18} />
           </button>
         </div>
@@ -37,11 +39,5 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
   );
 }
 
-/** Classes reutilizáveis para campos de formulário dentro dos modais. */
-export const inputClass =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/20 transition disabled:bg-gray-100 disabled:text-gray-500";
-export const labelClass = "block text-xs font-medium text-gray-600 mb-1";
-export const primaryButtonClass =
-  "flex items-center justify-center gap-2 px-4 py-2 bg-[#1a5fa8] hover:bg-[#154d8a] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow-sm";
-export const secondaryButtonClass =
-  "px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition";
+/** Classes de formulário reexportadas do kit de UI (mantidas aqui por compatibilidade). */
+export { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "./ui";

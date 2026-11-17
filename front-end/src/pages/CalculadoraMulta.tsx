@@ -1,7 +1,7 @@
 import { ElementType, useState, useEffect } from "react";
 import {
   Trash2, Calculator, ClipboardList, AlertCircle, 
-  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw, Eraser
+  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw, Eraser, Plus
 } from "lucide-react";
 
 import { parseMonthYear, labelMonth } from "./../utils/dates";
@@ -10,6 +10,7 @@ import { DatePicker } from "./../components/shared/DatePicker";
 import { MonthYearPicker } from "./../components/shared/MonthYearPicker";
 import { MonthYearRangePicker } from "./../components/shared/MonthYearRangePicker";
 import { SectionBlock } from "./../components/shared/SectionBlock";
+import { Button, buttonClass, inputClass, labelClass, PageHeader, textareaClass } from "./../components/shared/ui";
 
 import { useCalculadoraMulta, ManualRow } from "./../hooks/useCalculadoraMulta";
 
@@ -18,11 +19,12 @@ import { useCalculadoraMulta, ManualRow } from "./../hooks/useCalculadoraMulta";
 const GridInput = ({ hasError, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { hasError?: boolean }) => (
   <input
     {...props}
-    className={`w-full px-2.5 py-2 border rounded-lg text-xs focus:outline-none focus:ring-1 transition-all h-[34px] placeholder-gray-400 ${
+    className={`w-full px-2.5 border rounded-md text-xs text-ink focus:outline-none focus:ring-3 transition-colors h-[34px] placeholder:text-gray-400 ${
       hasError
-        ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
-        : "border-gray-200 focus:border-[#1a5fa8] focus:ring-[#1a5fa8]/20 bg-white"
+        ? "border-danger bg-danger-soft focus:border-danger focus:ring-danger/15"
+        : "border-gray-300 hover:border-gray-400 focus:border-brand focus:ring-brand/15 bg-white"
     } ${props.className || ""}`}
+    aria-invalid={hasError || undefined}
   />
 );
 
@@ -36,22 +38,22 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, subtitle, icon: Icon, theme }: KpiCardProps) {
   const themes = {
-    default: { wrapper: "border-gray-100 bg-[#f8fafe]", icon: "text-[#1a5fa8]", title: "text-gray-500", value: "text-[#0b1e35]", subtitle: "text-gray-400" },
-    blue: { wrapper: "border-[#c3ddf8] bg-[#eef6ff]", icon: "text-[#1a5fa8]", title: "text-[#1a5fa8]", value: "text-[#1a5fa8]", subtitle: "text-[#4a7fa5]" },
-    red: { wrapper: "border-red-200 bg-red-50", icon: "text-red-500", title: "text-red-500", value: "text-red-600", subtitle: "text-red-400" },
-    emerald: { wrapper: "border-emerald-200 bg-emerald-50", icon: "text-emerald-600", title: "text-emerald-700", value: "text-emerald-700", subtitle: "text-emerald-600" }
+    default: { wrapper: "border-gray-200 bg-white", icon: "text-ink-muted", title: "text-ink-muted", value: "text-ink", subtitle: "text-ink-muted" },
+    blue: { wrapper: "border-brand-line bg-brand-subtle", icon: "text-brand", title: "text-brand", value: "text-brand", subtitle: "text-ink-muted" },
+    red: { wrapper: "border-danger-line bg-danger-soft", icon: "text-danger", title: "text-danger", value: "text-danger", subtitle: "text-ink-muted" },
+    emerald: { wrapper: "border-success-line bg-success-soft", icon: "text-success", title: "text-success", value: "text-success", subtitle: "text-ink-muted" }
   };
   
   const active = themes[theme];
 
   return (
-    <div className={`rounded-xl border p-4 transition-colors ${active.wrapper}`}>
+    <div className={`rounded-[10px] border p-4 transition-colors ${active.wrapper}`}>
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={14} className={active.icon} />
-        <p className={`text-[10px] font-semibold uppercase tracking-wider ${active.title}`}>{title}</p>
+        <Icon size={15} className={active.icon} />
+        <p className={`text-xs font-medium ${active.title}`}>{title}</p>
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${active.value}`}>{value}</p>
-      <p className={`text-[10px] mt-1 ${active.subtitle}`}>{subtitle}</p>
+      <p className={`text-2xl font-semibold leading-tight ${active.value}`}>{value}</p>
+      <p className={`text-xs mt-1 ${active.subtitle}`}>{subtitle}</p>
     </div>
   );
 }
@@ -110,7 +112,7 @@ export function CalculadoraMulta() {
                 "Mês/Ano", "Cons. Reg.", "Cons. Irreg.", "Valor Correto", "Serviço Correto", 
                 "Valor Cobrado Errado", "Serv. Cobrado Errado", ""
               ].map((h, i) => (
-                <div key={i} className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{h}</div>
+                <div key={i} className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide leading-tight">{h}</div>
               ))}
             </div>
 
@@ -137,7 +139,7 @@ export function CalculadoraMulta() {
                         value={val}
                         onChange={(e) => changeRow(row.id, field, e.target.value, type)}
                         placeholder={placeholder}
-                        className={`${customClass} ${isHighlighted ? "!bg-[#dce9f7] !border-[#1a5fa8]" : ""}`}
+                        className={`${customClass} ${isHighlighted ? "!bg-brand-line !border-brand" : ""}`}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
@@ -147,7 +149,7 @@ export function CalculadoraMulta() {
                       />
                       {/* Quadradinho azul estilo Excel */}
                       <div 
-                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#1a5fa8] border-[0.5px] border-white cursor-ns-resize opacity-0 group-hover/cell:opacity-100 transition-opacity z-10 shadow-sm"
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-brand border-[0.5px] border-white cursor-ns-resize opacity-0 group-hover/cell:opacity-100 transition-opacity z-10 shadow-sm"
                         onMouseDown={(e) => {
                            e.preventDefault(); // Evita selecionar o texto enquanto arrasta
                            setDragFill({ active: true, type, field, startIdx: idx, currentIdx: idx, val: val });
@@ -176,20 +178,23 @@ export function CalculadoraMulta() {
                       />
                       {renderCell("consumption", row.consumption, "Ex: 20", "")}
                       {renderCell("irregularConsumption", row.irregularConsumption, "Ex: 15", "")}
-                      {renderCell("correctValue", row.correctValue, "R$ Correto", "bg-[#eef6ff]/30 border-[#c3ddf8]")}
-                      {renderCell("correctService", row.correctService, "R$ Serv. Cor.", "bg-[#eef6ff]/30 border-[#c3ddf8]")}
-                      {renderCell("chargedValue", row.chargedValue, "R$ Cobrado", "bg-red-50/50 border-red-200")}
-                      {renderCell("chargedService", row.chargedService, "R$ Serv. Cob.", "bg-red-50/50 border-red-200")}
+                      {renderCell("correctValue", row.correctValue, "R$ Correto", "bg-brand-subtle border-brand-line")}
+                      {renderCell("correctService", row.correctService, "R$ Serv. Cor.", "bg-brand-subtle border-brand-line")}
+                      {renderCell("chargedValue", row.chargedValue, "R$ Cobrado", "bg-danger-soft/50 border-danger-line")}
+                      {renderCell("chargedService", row.chargedService, "R$ Serv. Cob.", "bg-danger-soft/50 border-danger-line")}
                       <button
+                        type="button"
                         onClick={() => removeRow(row.id, type)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors justify-self-center opacity-50 group-hover:opacity-100"
+                        aria-label="Remover mês"
+                        title="Remover mês"
+                        className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-danger hover:bg-danger-soft transition-colors justify-self-center opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
                     {dateError && (
-                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-red-500 px-1">
-                        <AlertCircle size={10} /> Formato inválido. Use MM/AAAA.
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-danger px-1">
+                        <AlertCircle size={12} /> Formato inválido. Use MM/AAAA.
                       </div>
                     )}
                   </div>
@@ -198,24 +203,26 @@ export function CalculadoraMulta() {
             </div>
             
             {rows.length === 0 && (
-              <div className="py-8 text-center text-gray-300 text-sm">
+              <div className="py-8 text-center text-ink-muted text-sm border border-dashed border-gray-300 rounded-md">
                 Utilize o gerador de período acima ou clique abaixo para adicionar manualmente.
               </div>
             )}
             
             <div className="mt-4 flex justify-center">
               <button
+                type="button"
                 onClick={() => addRow(type)}
-                className="text-xs text-[#1a5fa8] hover:text-[#154d8a] font-medium transition-colors"
+                className={buttonClass("ghost", "sm", "text-brand hover:text-brand-hover hover:bg-brand-soft")}
               >
-                Adicionar mês avulso manualmente
+                <Plus size={14} />
+                Adicionar mês avulso
               </button>
             </div>
 
-            <div className="mt-4 bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-              <Info size={16} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[#4a7fa5] leading-relaxed">
-                <strong>Dicas de Produtividade:</strong> Use a tecla <strong>Enter</strong> para pular rapidamente para a célula de baixo.
+            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-md px-4 py-3 flex items-start gap-2">
+              <Info size={15} className="text-ink-muted mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-ink-body leading-relaxed">
+                <strong>Dicas de produtividade:</strong> Use a tecla <strong>Enter</strong> para pular rapidamente para a célula de baixo.
                 Para copiar um valor para outras linhas, passe o mouse sobre o campo preenchido e <strong>clique e arraste o quadradinho azul</strong> no canto inferior direito (como no Excel).
               </p>
             </div>
@@ -234,26 +241,28 @@ export function CalculadoraMulta() {
     if (qtdMeses === 0) return null;
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-fadeIn">
-        <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-[#f8fafe]">
-          {isSewage ? <Droplets size={16} className="text-amber-700" /> : <Droplets size={16} className="text-[#1a5fa8]" />}
-          <h3 className="text-base font-semibold text-[#0b1e35]">{title}</h3>
+      <section className="bg-white rounded-[10px] border border-gray-200 overflow-hidden animate-slideUp">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+          <span className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${isSewage ? "bg-warning-soft text-warning" : "bg-brand-soft text-brand"}`}>
+            <Droplets size={16} />
+          </span>
+          <h3 className="text-base font-semibold text-ink">{title}</h3>
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="overflow-x-auto -mx-2">
-            <table className="w-full text-sm min-w-[800px]">
+          <div className="overflow-x-auto custom-scrollbar -mx-2 px-2">
+            <table className="w-full text-[13px] min-w-[800px]">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mês</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vol. Recup. (m³)</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-l border-white rounded-tl-md">Valor Correto</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff]">Serviço Correto</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-bold text-[#1a5fa8] uppercase tracking-wider bg-[#eef6ff] border-r border-white rounded-tr-md">Total Correto</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50 rounded-tl-md">Valor Errado</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-red-500 uppercase tracking-wider bg-red-50">Serviço Errado</th>
-                  <th className="px-3 py-2.5 text-right text-[11px] font-bold text-red-500 uppercase tracking-wider bg-red-50 rounded-tr-md">Total Errado</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Diferença R$</th>
+                <tr className="border-b border-gray-200 h-10">
+                  <th className="px-4 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Mês</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Vol. Recup. (m³)</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-brand uppercase tracking-wide bg-brand-soft border-l border-white rounded-tl-md">Valor Correto</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-brand uppercase tracking-wide bg-brand-soft">Serviço Correto</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-brand uppercase tracking-wide bg-brand-soft border-r border-white rounded-tr-md">Total Correto</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-danger uppercase tracking-wide bg-danger-soft rounded-tl-md">Valor Errado</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-danger uppercase tracking-wide bg-danger-soft">Serviço Errado</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold text-danger uppercase tracking-wide bg-danger-soft rounded-tr-md">Total Errado</th>
+                  <th className="px-4 py-2 text-right text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Diferença R$</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -261,31 +270,31 @@ export function CalculadoraMulta() {
                   const positive = c.diff >= 0;
                   return (
                     <tr key={c.row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 font-medium text-[#0b1e35] whitespace-nowrap">
+                      <td className="px-4 py-2.5 font-medium text-ink whitespace-nowrap">
                         {labelMonth(c.row.monthYear)}
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-gray-700">
                         {String(c.diffM3).replace(".", ",")} m³
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-brand bg-brand-subtle">
                         {c.row.correctValue ? `R$ ${c.row.correctValue}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-brand bg-brand-subtle">
                         {c.row.correctService ? `R$ ${c.row.correctService}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-[#1a5fa8] bg-[#eef6ff]/40">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-brand bg-brand-subtle">
                         {fmtBRL(c.totalCorrect)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-danger bg-danger-soft/50">
                         {c.row.chargedValue ? `R$ ${c.row.chargedValue}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-danger bg-danger-soft/50">
                         {c.row.chargedService ? `R$ ${c.row.chargedService}` : "R$ 0,00"}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-red-600 bg-red-50/30">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-danger bg-danger-soft/50">
                         {fmtBRL(c.totalCharged)}
                       </td>
-                      <td className={`px-4 py-2.5 text-right tabular-nums font-bold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                      <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${positive ? "text-success" : "text-danger"}`}>
                         {fmtBRL(c.diff)}
                       </td>
                     </tr>
@@ -294,13 +303,13 @@ export function CalculadoraMulta() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-300 bg-gray-50">
-                  <td className="px-4 py-3 text-xs font-bold text-gray-600 uppercase">TOTAIS</td>
-                  <td className="px-3 py-3 text-right tabular-nums text-xs font-bold text-gray-700">{String(results.totalM3).replace(".", ",")} m³</td>
-                  <td colSpan={2} className="bg-[#eef6ff]/60"></td>
-                  <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-[#1a5fa8] bg-[#eef6ff]/60 rounded-b-md">{fmtBRL(results.grandCorrect)}</td>
-                  <td colSpan={2} className="bg-red-50/40"></td>
-                  <td className="px-3 py-3 text-right tabular-nums text-sm font-bold text-red-600 bg-red-50/40 rounded-b-md">{fmtBRL(results.grandCharged)}</td>
-                  <td className={`px-4 py-3 text-right tabular-nums text-sm font-bold ${results.grandDiff >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  <td className="px-4 py-3 text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Totais</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-xs font-semibold text-gray-700">{String(results.totalM3).replace(".", ",")} m³</td>
+                  <td colSpan={2} className="bg-brand-soft/70"></td>
+                  <td className="px-3 py-3 text-right tabular-nums text-sm font-semibold text-brand bg-brand-soft/70 rounded-b-md">{fmtBRL(results.grandCorrect)}</td>
+                  <td colSpan={2} className="bg-danger-soft/70"></td>
+                  <td className="px-3 py-3 text-right tabular-nums text-sm font-semibold text-danger bg-danger-soft/70 rounded-b-md">{fmtBRL(results.grandCharged)}</td>
+                  <td className={`px-4 py-3 text-right tabular-nums text-sm font-semibold ${results.grandDiff >= 0 ? "text-success" : "text-danger"}`}>
                     {fmtBRL(results.grandDiff)}
                   </td>
                 </tr>
@@ -315,42 +324,28 @@ export function CalculadoraMulta() {
             <KpiCard title="Diferença a Lançar" value={fmtBRL(Math.abs(results.grandDiff))} subtitle={results.grandDiff >= 0 ? "a cobrar do cliente" : "cobrado a mais do cliente"} icon={ClipboardList} theme={results.grandDiff >= 0 ? "emerald" : "red"} />
           </div>
 
-          <div className="bg-[#f8fafe] border border-[#dce9f7] rounded-lg px-4 py-3 flex items-start gap-2">
-            <Info size={13} className="text-[#4a7fa5] mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-[#4a7fa5]">
+          <div className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 flex items-start gap-2">
+            <Info size={15} className="text-ink-muted mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-ink-body leading-relaxed">
               <strong>Resumo:</strong> Nos {textoMeses} de irregularidade apurados, o valor correto total seria de <strong>{fmtBRL(results.grandCorrect)}</strong>, porém foi cobrado apenas <strong>{fmtBRL(results.grandCharged)}</strong>. A diferença financeira de <strong>{fmtBRL(Math.abs(results.grandDiff))}</strong> representa o ajuste a ser lançado referente ao volume recuperado de <strong>{String(results.totalM3).replace(".", ",")} m³</strong>.
             </p>
           </div>
         </div>
-      </div>
+      </section>
     );
   };
 
   return (
     <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm z-10">
-        <div>
-          <div className="flex items-center gap-2">
-            <Calculator size={18} className="text-[#1a5fa8]" />
-            <h1 className="text-[#0b1e35] font-semibold text-lg">Cálculo de Diferenças de Faturamento</h1>
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">
-            Apuração do valor correto vs. cobrado
-          </p>
-        </div>
-        
-        {/* BOTÃO LIMPAR TELA */}
-        <button
-          onClick={limparTela}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-all"
-        >
-          <Eraser size={16} />
-          Limpar Tela
-        </button>
-      </div>
+      <PageHeader
+        icon={Calculator}
+        title="Cálculo de Diferenças de Faturamento"
+        description="Apuração do valor correto vs. cobrado"
+        actions={<Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>}
+      />
 
-      <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-5xl mx-auto space-y-10">
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="px-8 py-8 max-w-5xl mx-auto space-y-10">
           
           <div className="space-y-6">
             {renderEntryTable(1, "Lançamento de Água", "Insira os valores corretos (calculados externamente) e os valores cobrados.", "water")}
@@ -369,31 +364,31 @@ export function CalculadoraMulta() {
           <SectionBlock number={3} title="Emissão de Laudos de Apuração" description="Insira os dados complementares para gerar o texto final copiável">
             <div className="space-y-6">
               <div className="mb-8">
-                <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <FileText size={14} className="text-[#1a5fa8]"/> Dados Complementares do Laudo
+                <p className="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
+                  <FileText size={15} className="text-brand"/> Dados complementares do laudo
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Número do AI</label>
-                    <input value={aiNumber} onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 14036735" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" />
+                    <label className={labelClass}>Número do AI</label>
+                    <input value={aiNumber} onChange={(e) => setAiNumber(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 14036735" className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Data de Retirada (Corte)</label>
+                    <label className={labelClass}>Data de Retirada (Corte)</label>
                     <DatePicker value={removalDate} onChange={setRemovalDate} placeholder="DD/MM/AAAA" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Consumo base (m³)</label>
-                    <input value={baseConsumption} onChange={(e) => setBaseConsumption(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 49" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a5fa8] focus:ring-1 focus:ring-[#1a5fa8]/20 transition-all" />
+                    <label className={labelClass}>Consumo base (m³)</label>
+                    <input value={baseConsumption} onChange={(e) => setBaseConsumption(e.target.value.replace(/\D/g, ""))} placeholder="Ex: 49" className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Mês de Referência</label>
+                    <label className={labelClass}>Mês de Referência</label>
                     <MonthYearPicker value={postRegRef} onChange={setPostRegRef} placeholder="MM/AAAA" size="md" />
                   </div>
                 </div>
 
-                <div className="mt-4 bg-[#eef6ff] border border-[#c3ddf8] rounded-lg px-3 py-2 flex items-start gap-2">
-                  <Info size={12} className="text-[#1a5fa8] mt-0.5 flex-shrink-0" />
-                  <p className="text-[11px] text-[#4a7fa5]">
+                <div className="mt-4 bg-brand-soft border border-brand-line rounded-md px-3 py-2.5 flex items-start gap-2">
+                  <Info size={14} className="text-brand mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-ink-body leading-relaxed">
                     Os valores de <strong>período</strong>, <strong>valor correto</strong>, <strong>valor cobrado</strong>,
                     <strong> diferença</strong> e <strong>volume total recuperado</strong> são preenchidos automaticamente a partir dos cálculos das tabelas acima.
                   </p>
@@ -403,38 +398,38 @@ export function CalculadoraMulta() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Água</label>
+                    <h4 className="text-sm font-semibold text-ink">Laudo de Água</h4>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleGenerateText("water")} disabled={waterRows.length === 0} className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm">
-                        <RefreshCw size={12} /> Gerar
-                      </button>
-                      <button onClick={() => handleCopy(waterReportText, setCopiedWater)} disabled={!waterReportText} className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all">
-                        {copiedWater ? <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></> : <><Copy size={12} /> Copiar</>}
-                      </button>
+                      <Button size="sm" icon={RefreshCw} onClick={() => handleGenerateText("water")} disabled={waterRows.length === 0}>
+                        Gerar
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => handleCopy(waterReportText, setCopiedWater)} disabled={!waterReportText} className={copiedWater ? "!text-success !border-success-line" : "text-brand"}>
+                        {copiedWater ? <><CheckCircle2 size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
+                      </Button>
                     </div>
                   </div>
-                  <textarea value={waterReportText} onChange={(e) => setWaterReportText(e.target.value)} placeholder={waterRows.length === 0 ? "Adicione meses na tabela de Água e clique em [Gerar]..." : "O texto da Água aparecerá aqui."} rows={12} className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner" spellCheck={false} />
+                  <textarea value={waterReportText} onChange={(e) => setWaterReportText(e.target.value)} placeholder={waterRows.length === 0 ? "Adicione meses na tabela de Água e clique em [Gerar]..." : "O texto da Água aparecerá aqui."} rows={12} className={`${textareaClass} px-4 py-3 bg-gray-50 focus:bg-white font-mono text-[13px] resize-none`} spellCheck={false} />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider">Laudo de Esgoto</label>
+                    <h4 className="text-sm font-semibold text-ink">Laudo de Esgoto</h4>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleGenerateText("sewage")} disabled={sewageRows.length === 0} className="flex items-center gap-1 px-3 py-1.5 border border-transparent bg-[#1a5fa8] hover:bg-[#154d8a] disabled:bg-gray-200 disabled:cursor-not-allowed text-white rounded-md text-xs font-bold transition-all shadow-sm">
-                        <RefreshCw size={12} /> Gerar
-                      </button>
-                      <button onClick={() => handleCopy(sewageReportText, setCopiedSewage)} disabled={!sewageReportText} className="flex items-center gap-1 px-3 py-1.5 border border-[#1a5fa8] text-[#1a5fa8] hover:bg-[#eef6ff] disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed rounded-md text-xs font-bold transition-all">
-                        {copiedSewage ? <><CheckCircle2 size={12} className="text-emerald-500" /><span className="text-emerald-600">Copiado!</span></> : <><Copy size={12} /> Copiar</>}
-                      </button>
+                      <Button size="sm" icon={RefreshCw} onClick={() => handleGenerateText("sewage")} disabled={sewageRows.length === 0}>
+                        Gerar
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => handleCopy(sewageReportText, setCopiedSewage)} disabled={!sewageReportText} className={copiedSewage ? "!text-success !border-success-line" : "text-brand"}>
+                        {copiedSewage ? <><CheckCircle2 size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
+                      </Button>
                     </div>
                   </div>
-                  <textarea value={sewageReportText} onChange={(e) => setSewageReportText(e.target.value)} placeholder={sewageRows.length === 0 ? "Adicione meses na tabela de Esgoto e clique em [Gerar]..." : "O texto do Esgoto aparecerá aqui."} rows={12} className="w-full px-4 py-3 bg-[#fafbfc] border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:border-[#1a5fa8] focus:ring-2 focus:ring-[#1a5fa8]/10 transition-all font-mono shadow-inner" spellCheck={false} />
+                  <textarea value={sewageReportText} onChange={(e) => setSewageReportText(e.target.value)} placeholder={sewageRows.length === 0 ? "Adicione meses na tabela de Esgoto e clique em [Gerar]..." : "O texto do Esgoto aparecerá aqui."} rows={12} className={`${textareaClass} px-4 py-3 bg-gray-50 focus:bg-white font-mono text-[13px] resize-none`} spellCheck={false} />
                 </div>
               </div>
               
-              <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5">
-                <Info size={11} />
-                Dica: Você pode clicar dentro de qualquer um dos textos gerados para ajustá-los manualmente antes de copiar.
+              <p className="mt-2 text-xs text-ink-muted flex items-center gap-1.5">
+                <Info size={13} />
+                Dica: clique em qualquer texto gerado para ajustá-lo antes de copiar.
               </p>
             </div>
           </SectionBlock>
