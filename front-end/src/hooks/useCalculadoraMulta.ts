@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSessionStorage } from "./useSessionStorage";
+import { useFiltroMatriculaLote } from "./useFiltroMatriculaLote";
 import { parseMonthYear } from "../utils/dates";
 import { maskMonthYear, maskBRL, fmtBRL } from "../utils/masks";
 
@@ -23,6 +24,9 @@ const parseCurrency = (val: string) => {
 };
 
 export function useCalculadoraMulta() {
+  // Filtro de Matrícula (lote por responsável — mesmo da tela Redigir Notificação)
+  const filtroMatricula = useFiltroMatriculaLote("calc");
+
   // ─── Estados com Persistência (Session Storage) ───
   const [waterRows, setWaterRows] = useSessionStorage<ManualRow[]>("calc_waterRows", []);
   const [sewageRows, setSewageRows] = useSessionStorage<ManualRow[]>("calc_sewageRows", []);
@@ -231,6 +235,7 @@ Volume total recuperado: ${formattedTotalM3} m³.`;
     setPostRegRef("");
     setWaterReportText("");
     setSewageReportText("");
+    filtroMatricula.limparFiltro();
   }
 
   return {
@@ -244,6 +249,7 @@ Volume total recuperado: ${formattedTotalM3} m³.`;
     baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
 
     handleGeneratePeriod, addRow, removeRow, changeRow,
-    applyFillRange, handleGenerateText, handleCopy, limparTela
+    applyFillRange, handleGenerateText, handleCopy, limparTela,
+    filtroMatricula
   };
 }
