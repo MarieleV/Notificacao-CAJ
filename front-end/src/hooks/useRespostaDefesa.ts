@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSessionStorage } from "./useSessionStorage";
+import { useFiltroMatriculaLote } from "./useFiltroMatriculaLote";
 import { calculateEndDate } from "../utils/dates";
 import { DEFESAS_TEMPLATES, exportarParecerWord, exportarParecerPDF } from "../services/defesas";
 
@@ -10,6 +11,9 @@ export function useRespostaDefesa() {
   const [reviewMode, setReviewMode] = useState<"preview" | "edit">("preview");
   const [copied, setCopied] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+
+  // Filtro de Matrícula (lote por responsável — mesmo da tela Redigir Notificação)
+  const filtroMatricula = useFiltroMatriculaLote("defesa");
 
   // 2. Estados dos Dados
   const [step, setStep] = useSessionStorage<"idle" | "generated">("defesa_step", "idle");
@@ -77,7 +81,10 @@ export function useRespostaDefesa() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Resposta_Defesa_${new Date().toISOString().split("T")[0]}.${ext}`;
+    const mat = filtroMatricula.matricula.trim();
+    a.download = mat
+      ? `Resposta_Defesa_${mat}.${ext}`
+      : `Resposta_Defesa_${new Date().toISOString().split("T")[0]}.${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -86,7 +93,7 @@ export function useRespostaDefesa() {
 
   const handleDownloadWord = async () => {
     try {
-      const blob = await exportarParecerWord({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: "" });
+      const blob = await exportarParecerWord({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: filtroMatricula.matricula.trim() });
       downloadFile(blob, "docx");
     } catch (error) {
       console.error(error);
@@ -96,7 +103,7 @@ export function useRespostaDefesa() {
 
   const handleDownloadPDF = async () => {
     try {
-      const blob = await exportarParecerPDF({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: "" });
+      const blob = await exportarParecerPDF({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: filtroMatricula.matricula.trim() });
       downloadFile(blob, "pdf");
     } catch (error) {
       console.error(error);
@@ -115,6 +122,7 @@ export function useRespostaDefesa() {
     setCalcPrazo("15");
     setCalcCustomPrazo("");
     setCalcDataInicial("");
+    filtroMatricula.limparFiltro();
   }
 
   return {
@@ -131,6 +139,7 @@ export function useRespostaDefesa() {
     calcDataInicial, setCalcDataInicial,
     calcDataFinal,
     selectedCodes, selectedItems, filteredCodes, camposObrigatoriosVazios,
+    filtroMatricula,
     // Ações expostas
     toggleCode, handleGenerate, handleCopy, handleDownloadWord, handleDownloadPDF, limparTela
   };

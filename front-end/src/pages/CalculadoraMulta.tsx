@@ -1,7 +1,7 @@
 import { ElementType, useState, useEffect } from "react";
 import {
   Trash2, Calculator, ClipboardList, AlertCircle, 
-  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw, Eraser, Plus
+  Droplets, Info, FileText, CheckCircle2, Copy, RefreshCw, Eraser, Plus, UserSearch
 } from "lucide-react";
 
 import { parseMonthYear, labelMonth } from "./../utils/dates";
@@ -10,6 +10,7 @@ import { DatePicker } from "./../components/shared/DatePicker";
 import { MonthYearPicker } from "./../components/shared/MonthYearPicker";
 import { MonthYearRangePicker } from "./../components/shared/MonthYearRangePicker";
 import { SectionBlock } from "./../components/shared/SectionBlock";
+import { FiltroMatriculaLote } from "./../components/shared/FiltroMatriculaLote";
 import { Button, buttonClass, inputClass, labelClass, PageHeader, textareaClass } from "./../components/shared/ui";
 
 import { useCalculadoraMulta, ManualRow } from "./../hooks/useCalculadoraMulta";
@@ -65,7 +66,8 @@ export function CalculadoraMulta() {
     waterRows, waterPeriod, setWaterPeriod, waterReportText, setWaterReportText, copiedWater, setCopiedWater, waterResults,
     sewageRows, sewagePeriod, setSewagePeriod, sewageReportText, setSewageReportText, copiedSewage, setCopiedSewage, sewageResults,
     aiNumber, setAiNumber, removalDate, setRemovalDate, baseConsumption, setBaseConsumption, postRegRef, setPostRegRef,
-    handleGeneratePeriod, addRow, removeRow, changeRow, applyFillRange, handleGenerateText, handleCopy, limparTela
+    handleGeneratePeriod, addRow, removeRow, changeRow, applyFillRange, handleGenerateText, handleCopy, limparTela,
+    filtroMatricula
   } = useCalculadoraMulta();
 
   // Estado para controlar o "arrastar" (Drag-to-Fill) estilo Excel
@@ -346,7 +348,11 @@ export function CalculadoraMulta() {
 
       <div className="flex-1 overflow-auto custom-scrollbar">
         <div className="px-8 py-8 max-w-5xl mx-auto space-y-10">
-          
+
+          <SectionBlock icon={UserSearch} title="Filtro de Matrícula" description="Selecione o responsável e navegue pelos casos importados do Controle de Análises">
+            <FiltroMatriculaLote filtro={filtroMatricula} idPrefix="calc" />
+          </SectionBlock>
+
           <div className="space-y-6">
             {renderEntryTable(1, "Lançamento de Água", "Insira os valores corretos (calculados externamente) e os valores cobrados.", "water")}
             {renderResultSection("Apuração Detalhada - Água", waterResults, false)}

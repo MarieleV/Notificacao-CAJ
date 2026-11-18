@@ -7,6 +7,7 @@ import {
 
 import { SectionBlock } from "../components/shared/SectionBlock";
 import { CalculadoraDiasUteis } from "../components/shared/CalculadoraDiasUteis";
+import { FiltroMatriculaLote } from "../components/shared/FiltroMatriculaLote";
 import { Alert, Badge, Button, hintClass, inputClass, labelClass, PageHeader, textareaClass } from "../components/shared/ui";
 import { CATEGORY_COLORS } from "../services/defesas";
 
@@ -154,6 +155,8 @@ export function RespostaDefesa() {
             title="Dados da Notificação"
             description="Preencha os dados necessários para embasar a defesa"
           >
+            <FiltroMatriculaLote filtro={hook.filtroMatricula} idPrefix="defesa" />
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div className="md:col-span-1">
                 <label htmlFor="defesa-ai" className={labelClass}>
