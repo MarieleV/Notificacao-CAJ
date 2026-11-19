@@ -430,8 +430,8 @@ export function useRedatorNotificacao() {
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.docx`);
       marcarComoProcessada();
-    } catch (error) {
-      alert("Erro ao baixar o arquivo Word.");
+    } catch (error: any) {
+      alert(`Erro ao baixar o arquivo Word. ${error?.message ?? ""}`.trim());
     }
   };
 
@@ -443,8 +443,8 @@ export function useRedatorNotificacao() {
       });
       baixarArquivoBrowser(blob, `Notificacao_${matricula}.pdf`);
       marcarComoProcessada();
-    } catch (error) {
-      alert("Erro ao baixar o arquivo PDF.");
+    } catch (error: any) {
+      alert(`Erro ao baixar o arquivo PDF. ${error?.message ?? ""}`.trim());
     }
   };
 

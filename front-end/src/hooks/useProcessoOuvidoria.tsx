@@ -531,9 +531,9 @@ export function useProcessoOuvidoria() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao baixar o arquivo PDF pelo servidor. Certifique-se de que o backend foi atualizado.");
+      alert(`Erro ao baixar o arquivo PDF pelo servidor. ${error?.message ?? ""}`.trim());
     }
   };
 
@@ -553,9 +553,9 @@ export function useProcessoOuvidoria() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao baixar o arquivo Word pelo servidor. Certifique-se de que o backend foi atualizado.");
+      alert(`Erro ao baixar o arquivo Word pelo servidor. ${error?.message ?? ""}`.trim());
     }
   };
 
