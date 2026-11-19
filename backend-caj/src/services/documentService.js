@@ -7,8 +7,9 @@ const {
 } = require("docx");
 const PDFDocument = require("pdfkit");
 
-// Mesma regra de negrito de linha inteira reaproveitada para Word e PDF
-const fullLineBoldRegex = /^(01\.|02\.|03\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
+// Mesma regra de negrito de linha inteira reaproveitada para Word e PDF.
+// Itens numerados com dois dígitos (01., 02., ..., 04. RATIFICAR etc.) ficam inteiros em negrito.
+const fullLineBoldRegex = /^(\d{2}\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
 
 // ==============================================================================
 // FUNÇÕES UTILITÁRIAS INTERNAS
