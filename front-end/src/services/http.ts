@@ -18,3 +18,17 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
 
   return response;
 }
+
+/**
+ * Lança um Error com a mensagem enviada pela API no campo `detail`.
+ * Se a resposta não trouxer `detail` (ou não for JSON), usa a mensagem padrão.
+ */
+export async function throwApiError(response: Response, fallback: string): Promise<never> {
+  let detail: unknown;
+  try {
+    detail = (await response.json())?.detail;
+  } catch {
+    // resposta sem corpo JSON: mantém a mensagem padrão
+  }
+  throw new Error(typeof detail === "string" && detail.trim() ? detail : fallback);
+}

@@ -1,4 +1,4 @@
-import { apiFetch } from "./http";
+import { apiFetch, throwApiError } from "./http";
 
 export interface DefesaTemplate {
   code: string;
@@ -163,7 +163,7 @@ export const exportarParecerWord = async (payload: ExportPayload): Promise<Blob>
   });
   
   if (!response.ok) {
-    throw new Error("Erro ao gerar Word no servidor.");
+    await throwApiError(response, "Erro ao gerar Word no servidor.");
   }
   
   return response.blob();
@@ -177,7 +177,7 @@ export const exportarParecerPDF = async (payload: ExportPayload): Promise<Blob> 
   });
   
   if (!response.ok) {
-    throw new Error("Erro ao gerar PDF no servidor.");
+    await throwApiError(response, "Erro ao gerar PDF no servidor.");
   }
   
   return response.blob();
