@@ -340,7 +340,8 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 - Mantém duas tabelas (água e esgoto) de `ManualRow`: mês, consumo regular, consumo irregular, valor correto, serviço correto, valor cobrado e serviço cobrado. Os valores corretos são calculados fora do sistema e digitados.
 - `handleGeneratePeriod` cria uma linha por mês de um período (`MM/AAAA a MM/AAAA`), sem duplicar meses existentes. `addRow`, `removeRow` e `changeRow` editam linhas, aplicando máscaras (moeda, mês/ano, números). `applyFillRange` replica um valor numa faixa de linhas (arrastar como no Excel).
 - `calculateResults` calcula, por linha, total correto, total cobrado, diferença e o volume recuperado (consumo regular menos consumo irregular), e soma os totais.
-- `handleGenerateText` monta o laudo de água ou de esgoto com os dados complementares (nº do AI, data da retirada, maior consumo após a regularização e referência); campos vazios saem como marcadores entre colchetes. Detalhe do identificador das linhas: PA-01.
+- `handleGenerateText` monta o laudo de água ou de esgoto com os dados complementares (nº do AI, data da retirada, maior consumo após a regularização e referência); campos vazios saem como marcadores entre colchetes. O período do laudo (“de ... até ...”) usa o primeiro e o último mês válidos, ordenados por data, independentemente da ordem das linhas na tabela.
+- Os ids das linhas vêm de um contador do módulo. Como as linhas ficam no `sessionStorage`, `syncUid` ajusta o contador para começar depois do maior id salvo, evitando ids repetidos após recarregar a página.
 
 ### 10.4. `useControleAnalises`
 
@@ -560,7 +561,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-01 | `useCalculadoraMulta` | O contador de ids (`uid`) volta a 1 a cada carga da página, mas as linhas ficam salvas no `sessionStorage`. Depois de recarregar, linhas novas podem repetir ids e editar ou remover uma linha afeta várias. Além disso, o laudo usa a primeira e a última linha da tabela como início e fim do período, o que falha se as linhas estiverem fora de ordem | Iniciar o contador a partir do maior id salvo; ordenar as linhas por mês antes de gerar o laudo |
 | PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, os casos hidrômetro, by-pass e clandestina não têm template e geram **texto vazio** sem aviso; corte devolve o marcador `[COLE AQUI A VERSÃO...]` | Criar os templates ou bloquear a opção na tela |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
@@ -595,6 +595,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Resolução |
 | --- | --- |
+| PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 
