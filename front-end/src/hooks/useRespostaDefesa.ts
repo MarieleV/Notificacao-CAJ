@@ -95,9 +95,9 @@ export function useRespostaDefesa() {
     try {
       const blob = await exportarParecerWord({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: filtroMatricula.matricula.trim() });
       downloadFile(blob, "docx");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao baixar o arquivo Word pelo servidor.");
+      alert(`Erro ao baixar o arquivo Word pelo servidor. ${error?.message ?? ""}`.trim());
     }
   };
 
@@ -105,9 +105,9 @@ export function useRespostaDefesa() {
     try {
       const blob = await exportarParecerPDF({ texto_final: generatedText, protocolo: defesaAI, autoInfracao: "", matricula: filtroMatricula.matricula.trim() });
       downloadFile(blob, "pdf");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao baixar o arquivo PDF.");
+      alert(`Erro ao baixar o arquivo PDF. ${error?.message ?? ""}`.trim());
     }
   };
 

@@ -15,8 +15,27 @@ export interface ManualRow {
   chargedService: string;
 }
 
+// Contador de ids das linhas. Como as linhas ficam salvas no sessionStorage,
+// o contador é ajustado (syncUid) para começar depois do maior id já salvo;
+// caso contrário, após recarregar a página, linhas novas repetiriam ids.
 let uid = 1;
 const newId = () => uid++;
+const syncUid = (rows: ManualRow[]) => {
+  for (const r of rows) {
+    if (r.id >= uid) uid = r.id + 1;
+  }
+};
+
+// Primeiro e último mês válidos (MM/AAAA) das linhas, independentemente da ordem na tabela.
+const getPeriodBounds = (rows: ManualRow[]) => {
+  const months = rows
+    .map(r => ({ label: r.monthYear, date: parseMonthYear(r.monthYear) }))
+    .filter((m): m is { label: string; date: Date } => m.date !== null)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (months.length === 0) return { startMonth: "[MM/AAAA]", endMonth: "[MM/AAAA]" };
+  return { startMonth: months[0].label, endMonth: months[months.length - 1].label };
+};
 
 const parseCurrency = (val: string) => {
   if (!val) return 0;
@@ -38,7 +57,11 @@ export function useCalculadoraMulta() {
   const [removalDate, setRemovalDate] = useSessionStorage("calc_removalDate", "");
   const [baseConsumption, setBaseConsumption] = useSessionStorage("calc_baseConsumption", "");
   const [postRegRef, setPostRegRef] = useSessionStorage("calc_postRegRef", "");
-  
+
+  // Garante que novos ids não colidam com os das linhas restauradas do sessionStorage
+  syncUid(waterRows);
+  syncUid(sewageRows);
+
   // ─── Estados Temporários (Sem Persistência) ───
   const [waterReportText, setWaterReportText] = useState("");
   const [sewageReportText, setSewageReportText] = useState("");
@@ -181,8 +204,7 @@ export function useCalculadoraMulta() {
     if (rows.length === 0) return;
     
     const qtdMeses = rows.length;
-    const startMonth = rows[0].monthYear;
-    const endMonth = rows[qtdMeses - 1].monthYear;
+    const { startMonth, endMonth } = getPeriodBounds(rows);
     
     const textAi = aiNumber || "[Nº do AI]";
     const textData = removalDate || "[data]";

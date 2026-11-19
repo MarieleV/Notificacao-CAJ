@@ -1,4 +1,4 @@
-import { apiFetch } from "./http";
+import { apiFetch, throwApiError } from "./http";
 
 { /* ----------------- Tela de Geração de Notificação --------------------- */ }
 
@@ -35,7 +35,7 @@ export async function gerarNotificacaoApi(payload: GerarNotificacaoPayload) {
   });
 
   if (!response.ok) {
-    throw new Error("Erro na comunicação com o servidor ao gerar notificação");
+    await throwApiError(response, "Erro na comunicação com o servidor ao gerar notificação.");
   }
 
   return response.json();
@@ -50,7 +50,7 @@ export async function exportarWordApi(payload: ExportarDocumentoPayload) {
   });
 
   if (!response.ok) {
-    throw new Error("Erro ao gerar arquivo Word");
+    await throwApiError(response, "Erro ao gerar arquivo Word.");
   }
 
   return response.blob(); 
@@ -65,7 +65,7 @@ export async function exportarPdfApi(payload: ExportarDocumentoPayload) {
   });
 
   if (!response.ok) {
-    throw new Error("Erro ao gerar arquivo PDF");
+    await throwApiError(response, "Erro ao gerar arquivo PDF.");
   }
 
   return response.blob(); 
@@ -87,7 +87,7 @@ export const exportarParecerPDF = async (payload: ExportarParecerPayload): Promi
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) throw new Error("Erro ao gerar PDF no servidor.");
+  if (!response.ok) await throwApiError(response, "Erro ao gerar PDF no servidor.");
   return response.blob();
 };
 
@@ -98,6 +98,6 @@ export const exportarParecerWord = async (payload: ExportarParecerPayload): Prom
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) throw new Error("Erro ao gerar Word no servidor.");
+  if (!response.ok) await throwApiError(response, "Erro ao gerar Word no servidor.");
   return response.blob();
 };

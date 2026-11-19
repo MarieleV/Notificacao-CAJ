@@ -173,7 +173,7 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 **Regras de formatação do texto** (compartilhadas por Word e PDF):
 
 - `**texto**` vira negrito.
-- Linhas que começam com `01.`, `02.`, `03.`, `I –`, `II –`, `III –`, `IV –`, `V –`, `OBJETO:` ou `DECISÃO:` ficam inteiras em negrito (apenas no parecer; PA-08).
+- Linhas que começam com um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `I –`, `II –`, `III –`, `IV –`, `V –`, `OBJETO:` ou `DECISÃO:` ficam inteiras em negrito (apenas no parecer). Os numerais romanos só são reconhecidos com o travessão “–” (PA-08).
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (com diferenças entre Word, PDF e tela; PA-07).
 - O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele (PA-16).
 
@@ -198,7 +198,7 @@ O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas
 
 ### 6.1. `api.ts`
 
-Concentra as chamadas à API (`BASE_URL = https://notificacao-caj.vercel.app/api`, fixa no código; PA-16).
+Concentra as chamadas à API. As requisições passam por `apiFetch` (`http.ts`), que usa a URL base de `auth.ts` (`VITE_API_URL` ou, na falta dela, `https://notificacao-caj.vercel.app/api`), envia o token JWT e encerra a sessão quando a API responde 401.
 
 | Função | Rota | Retorno |
 | --- | --- | --- |
@@ -206,7 +206,7 @@ Concentra as chamadas à API (`BASE_URL = https://notificacao-caj.vercel.app/api
 | `exportarWordApi` / `exportarPdfApi` | `/exportar_word` e `/exportar_pdf` | `Blob` |
 | `exportarParecerWord` / `exportarParecerPDF` | `/exportar_parecer_word` e `/exportar_parecer_pdf` | `Blob` |
 
-Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. Em caso de erro HTTP, todas as funções lançam uma mensagem genérica e descartam o `detail` devolvido pela API (PA-15).
+Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. Em caso de erro HTTP, todas as funções chamam `throwApiError` (`http.ts`), que lança o `detail` devolvido pela API. Se a resposta não trouxer `detail`, usa uma mensagem padrão. Assim, uma chave do Gemini inválida aparece ao usuário com a mensagem real, e não como erro de comunicação. As telas incluem essa mensagem nos alertas de falha de download.
 
 ### 6.2. `notificacoes.ts`
 
@@ -221,7 +221,7 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 
 Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação) e as funções de exportação de parecer.
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Este arquivo repete `CATEGORY_COLORS`, a URL da API e as funções `exportarParecerWord/PDF` (PA-09, PA-10 e PA-11).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Este arquivo repete `CATEGORY_COLORS` e as funções `exportarParecerWord/PDF` (PA-09, PA-10 e PA-11).
 
 ### 6.4. `ouvidoria.ts`
 
@@ -293,7 +293,7 @@ Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transiçã
 - `tailwind.css` carrega o Tailwind 4 com `source(none)` e declara explicitamente os arquivos a varrer (`@source '../**/*.{js,ts,jsx,tsx}'`).
 - `theme.css` traz o tema padrão do shadcn/ui: variáveis de cor claras e escuras (`.dark`), o bloco `@theme inline` e estilos base de tipografia para `h1` a `h4`, `label`, `button` e `input`. O modo escuro não é ativado em lugar nenhum.
 - A identidade visual real está em cores fixas nas classes das telas: azul `#1a5fa8` (ações e destaques), `#154d8a` (hover), `#0b1e35` (títulos e botões escuros), `#071527` e `#1a3a5c` (barra lateral), `#eef6ff` (realces) e `#f0f4f8` (fundo da área de conteúdo).
-- A classe `animate-fadeIn`, usada no `Layout` e em vários blocos, não está definida em nenhum CSS recebido (PA-19).
+- A animação `fadeIn` (classe `animate-fadeIn`) está definida em `theme.css`.
 
 ## 9. Persistência de estado
 
@@ -340,7 +340,8 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 - Mantém duas tabelas (água e esgoto) de `ManualRow`: mês, consumo regular, consumo irregular, valor correto, serviço correto, valor cobrado e serviço cobrado. Os valores corretos são calculados fora do sistema e digitados.
 - `handleGeneratePeriod` cria uma linha por mês de um período (`MM/AAAA a MM/AAAA`), sem duplicar meses existentes. `addRow`, `removeRow` e `changeRow` editam linhas, aplicando máscaras (moeda, mês/ano, números). `applyFillRange` replica um valor numa faixa de linhas (arrastar como no Excel).
 - `calculateResults` calcula, por linha, total correto, total cobrado, diferença e o volume recuperado (consumo regular menos consumo irregular), e soma os totais.
-- `handleGenerateText` monta o laudo de água ou de esgoto com os dados complementares (nº do AI, data da retirada, maior consumo após a regularização e referência); campos vazios saem como marcadores entre colchetes. Detalhe do identificador das linhas: PA-01.
+- `handleGenerateText` monta o laudo de água ou de esgoto com os dados complementares (nº do AI, data da retirada, maior consumo após a regularização e referência); campos vazios saem como marcadores entre colchetes. O período do laudo (“de ... até ...”) usa o primeiro e o último mês válidos, ordenados por data, independentemente da ordem das linhas na tabela.
+- Os ids das linhas vêm de um contador do módulo. Como as linhas ficam no `sessionStorage`, `syncUid` ajusta o contador para começar depois do maior id salvo, evitando ids repetidos após recarregar a página.
 
 ### 10.4. `useControleAnalises`
 
@@ -476,6 +477,8 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | `la_cadastral` | – | Cliente atualizou o cadastro e pede cancelamento da multa |
 | `prorrogacao` | – | Cliente pede prazo para padronizar, antes da sanção |
 
+As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, corte, LA padronizada, LA cadastral e prorrogação. Ao trocar a resposta, o tipo volta para leitura.
+
 ### 13.3. Template por situação
 
 | Situação | Resultado |
@@ -488,10 +491,9 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | **Recurso**, corte, **parcial** | Confirma a violação do corte (com imagens), retira só a multa de não padronização e prorroga o prazo por 60 dias úteis |
 | **Recurso**, corte, **indeferir** | Ratifica a decisão anterior e mantém a sanção; orienta parcelamento por e-mail |
 | **Recurso**, hd, by-pass ou clandestina | Texto único de manutenção das penalidades, com campos de veredicto a completar |
-| **Recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
 | **Não é recurso**, leitura ou serviço | Parecer à Ouvidoria em cinco partes (I – Dos Fatos a V – Conclusão), com versão de revisão (deferir ou parcial) e de ratificação (indeferir) |
-| **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos equivalentes aos de recurso |
-| **Não é recurso**, corte, hd, by-pass ou clandestina | Sem template pronto (PA-03) |
+| **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
+| **Não é recurso**, corte | Sem template pronto: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]` (PA-03) |
 
 Se houve defesa prévia, a tela pede data e protocolo da defesa e do indeferimento, e o texto inclui o parágrafo padrão com a citação do Art. 144.
 
@@ -517,7 +519,7 @@ Observações:
 ## 15. Segurança e privacidade
 
 - **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
-- **Sem autenticação.** A API não exige login e aceita qualquer origem (CORS `*`). Quem conhecer a URL pode gerar documentos e usar a rota de IA com uma chave própria (PA-14).
+- **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). A API ainda aceita qualquer origem (CORS `*`, no Express e no `vercel.json`) (PA-14).
 - **Chave do Gemini.** É digitada pelo usuário, guardada no `sessionStorage` e enviada no corpo de cada requisição de geração. Não há chave no servidor.
 - **Documentos gerados.** Os arquivos não são gravados no servidor; são devolvidos na própria resposta e baixados no navegador.
 - **Dados no código.** A lista de funcionários está embutida no front-end e, portanto, visível a quem acessa a aplicação.
@@ -548,7 +550,7 @@ O Vite define o alias `@` para `src`.
 
 **Pontos de atenção para quem for rodar o projeto:**
 
-- O front-end chama sempre a API de produção (`BASE_URL` fixa em `api.ts` e em `defesas.ts`). Para testar o back-end local é preciso editar esses dois arquivos (PA-16).
+- Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
 - Não há script `start` no `package.json` do back-end, e o back-end não lê `GEMINI_API_KEY`, apesar de o README citar os dois.
 - Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente.
 
@@ -560,13 +562,11 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-01 | `useCalculadoraMulta` | O contador de ids (`uid`) volta a 1 a cada carga da página, mas as linhas ficam salvas no `sessionStorage`. Depois de recarregar, linhas novas podem repetir ids e editar ou remover uma linha afeta várias. Além disso, o laudo usa a primeira e a última linha da tabela como início e fim do período, o que falha se as linhas estiverem fora de ordem | Iniciar o contador a partir do maior id salvo; ordenar as linhas por mês antes de gerar o laudo |
-| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, os casos hidrômetro, by-pass e clandestina não têm template e geram **texto vazio** sem aviso; corte devolve o marcador `[COLE AQUI A VERSÃO...]` | Criar os templates ou bloquear a opção na tela |
-| PA-04 | Template de serviço, indeferimento, não recurso | O texto traz “bem civil da não padronização”, que parece ser “bem como”, e “Pelo Prestador de Serviços” com inicial maiúscula no meio da frase. Vai para documento oficial | Corrigir o texto |
+| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, a opção **Violação de Corte** não tem template: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`, que pode ir para o Word ou PDF se o operador não perceber. (Hidrômetro, by-pass e clandestina não aparecem nessa opção) | Criar o template ou retirar a opção de corte quando não for recurso |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
-| PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem marcadores `$$$$` e `XXXX`; categoria “Acesso” (maiúscula) em 20011 e 20012 não encontra cor em `CATEGORY_COLORS` | Conferir com a resolução vigente; manter uma fonte única de dados |
+| PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 | PA-11 | `defesas.ts` | *A confirmar:* o arquivo recebido tem linhas começando com ` -  ` antes de `text:` e dentro dos textos, depois dos `;`. Se estiverem no arquivo real, dão erro de sintaxe ou aparecem como hífens nos documentos | Verificar o arquivo (pode ser resíduo de cópia de um diff) |
-| PA-14 | API e front-end | API sem autenticação e com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Autenticação, origem restrita e, se possível, chave no servidor |
+| PA-14 | API e front-end | A API já exige login (JWT), mas continua com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Restringir a origem e, se possível, guardar a chave no servidor |
 
 ### 17.2. Prioridade média
 
@@ -575,10 +575,9 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
 | PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
 | PA-07 | `documentService`, `useProcessoOuvidoria` | O destaque vermelho é inconsistente: Word pinta `[EDIÇÃO PECULIAR]` e `<adicionar fato novo...>`; o PDF pinta só o segundo; a pré-visualização só o primeiro | Unificar a regra |
-| PA-08 | `documentService` | A regra de negrito de linha inteira usa o travessão (“–”) e cobre só os itens 01 a 03; do 04 em diante depende dos `**` do template | Ampliar a expressão regular |
+| PA-08 | `documentService` | A regra de negrito de linha inteira só reconhece os numerais romanos (`I` a `V`) seguidos do travessão “–”. Com hífen comum (“-”) ou do `VI` em diante, depende dos `**` do template | Aceitar também o hífen, se for o padrão desejado nos pareceres |
 | PA-12 | Persistência | O Controle grava `resultados` e `resultadosFiltrados` (duplicado) no `localStorage`; o lote do Redator fica no `sessionStorage`, ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
-| PA-15 | `api.ts` | A API devolve `{ detail }`, mas o front lança uma mensagem genérica. Uma chave de IA inválida aparece como erro de comunicação | Repassar o `detail` ao usuário |
-| PA-16 | Ambiente e deploy | URL da API fixa no código (sem variável de ambiente); o logo é lido por `fs.readFileSync` com caminho dinâmico e o `vercel.json` não declara `includeFiles` (*a confirmar* se o logo sai nos documentos em produção) | Usar `VITE_API_URL`; incluir o logo no build |
+| PA-16 | Deploy | O logo é lido por `fs.readFileSync` com caminho dinâmico e o `vercel.json` não declara `includeFiles` (*a confirmar* se o logo sai nos documentos em produção) | Incluir o logo no build |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -587,11 +586,22 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema |
 | --- | --- | --- |
-| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: URL da API, `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
+| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
 | PA-13 | `useRedatorNotificacao` | Lê diretamente a chave `@ControleAnalises:state` do `localStorage` e aceita vários nomes de campo alternativos: acoplamento entre duas telas por uma convenção de texto |
-| PA-19 | Interface | `animate-fadeIn` não definida; 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; descrição do `Layout` fala em “Judiciais” (os documentos são extrajudiciais); `index.html` com `lang="en"`, título “Sistema Desktop”, descrição genérica e sem ícone; tema escuro sem uso |
+| PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; descrição do `Layout` fala em “Judiciais” (os documentos são extrajudiciais); `index.html` com título “Sistema Desktop”, descrição genérica e sem ícone; tema escuro sem uso |
 | PA-21 | README | Diverge do código: lista 4 módulos (falta Análises Vencidas); descreve a calculadora de prazos como “global”, mas ela existe só em Retorno de Defesa e Ouvidoria; cita Date-fns e Axios (não usados); cita `npm start` e `GEMINI_API_KEY` (inexistentes) |
 | PA-22 | Vários | `funcionarioSelecionado` fixo em `null` no Redator (código morto); `kvStorage` abre uma nova conexão a cada operação; `useSessionStorage` não relê o valor se a chave mudar |
+
+### 17.4. Itens resolvidos
+
+| ID | Resolução |
+| --- | --- |
+| PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
+| PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
+| PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
+
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-16 e PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida e o `index.html` usa `lang="pt-BR"` (PA-19).
 
 ## 18. Glossário
 
