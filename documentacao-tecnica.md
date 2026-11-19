@@ -477,6 +477,8 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | `la_cadastral` | – | Cliente atualizou o cadastro e pede cancelamento da multa |
 | `prorrogacao` | – | Cliente pede prazo para padronizar, antes da sanção |
 
+As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, corte, LA padronizada, LA cadastral e prorrogação. Ao trocar a resposta, o tipo volta para leitura.
+
 ### 13.3. Template por situação
 
 | Situação | Resultado |
@@ -489,10 +491,9 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | **Recurso**, corte, **parcial** | Confirma a violação do corte (com imagens), retira só a multa de não padronização e prorroga o prazo por 60 dias úteis |
 | **Recurso**, corte, **indeferir** | Ratifica a decisão anterior e mantém a sanção; orienta parcelamento por e-mail |
 | **Recurso**, hd, by-pass ou clandestina | Texto único de manutenção das penalidades, com campos de veredicto a completar |
-| **Recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
 | **Não é recurso**, leitura ou serviço | Parecer à Ouvidoria em cinco partes (I – Dos Fatos a V – Conclusão), com versão de revisão (deferir ou parcial) e de ratificação (indeferir) |
-| **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos equivalentes aos de recurso |
-| **Não é recurso**, corte, hd, by-pass ou clandestina | Sem template pronto (PA-03) |
+| **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
+| **Não é recurso**, corte | Sem template pronto: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]` (PA-03) |
 
 Se houve defesa prévia, a tela pede data e protocolo da defesa e do indeferimento, e o texto inclui o parágrafo padrão com a citação do Art. 144.
 
@@ -561,7 +562,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, os casos hidrômetro, by-pass e clandestina não têm template e geram **texto vazio** sem aviso; corte devolve o marcador `[COLE AQUI A VERSÃO...]` | Criar os templates ou bloquear a opção na tela |
+| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, a opção **Violação de Corte** não tem template: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`, que pode ir para o Word ou PDF se o operador não perceber. (Hidrômetro, by-pass e clandestina não aparecem nessa opção) | Criar o template ou retirar a opção de corte quando não for recurso |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 | PA-11 | `defesas.ts` | *A confirmar:* o arquivo recebido tem linhas começando com ` -  ` antes de `text:` e dentro dos textos, depois dos `;`. Se estiverem no arquivo real, dão erro de sintaxe ou aparecem como hífens nos documentos | Verificar o arquivo (pode ser resíduo de cópia de um diff) |
