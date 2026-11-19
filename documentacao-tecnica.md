@@ -72,7 +72,7 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 | --- | --- |
 | React 18, TypeScript, Vite 6 | Base da SPA e build |
 | React Router 7 | Roteamento (`createHashRouter`, `Outlet`, `NavLink`) |
-| Tailwind CSS 4 (plugin do Vite) + `tw-animate-css` | Estilização por classes utilitárias |
+| Tailwind CSS 4 (plugin do Vite) | Estilização por classes utilitárias |
 | Lucide React | Ícones |
 | `xlsx` (SheetJS) | Leitura de planilhas no navegador |
 | `fetch` nativo | Comunicação com a API |
@@ -87,9 +87,9 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 | `pdfkit` | Geração de arquivos PDF |
 | Vercel (`@vercel/node`, `vercel.json`) | Deploy serverless |
 
-### 3.3. Dependências instaladas sem uso identificado
+### 3.3. Dependências
 
-O `package.json` do front-end vem de um template (o nome do pacote é `@figma/my-make-file`) e traz muitas bibliotecas que não aparecem em nenhum arquivo analisado: Material UI e Emotion, a maioria dos pacotes Radix, `react-hook-form`, `date-fns`, `recharts`, `react-dnd`, `react-slick`, `sonner`, `vaul`, `jspdf` e `jspdf-autotable`, entre outras. As datas são tratadas por `utils/dates.ts`, escrito à mão, e os PDFs são gerados no back-end. Veja PA-17.
+O `package.json` do front-end veio de um template do Figma Make. As bibliotecas do template que não eram usadas (Material UI, Emotion, Radix, `react-hook-form`, `date-fns`, `recharts`, `jspdf` etc.) foram removidas junto com a pasta `components/ui`, que era a única que as importava. As datas são tratadas por `utils/dates.ts`, escrito à mão, e os PDFs são gerados no back-end.
 
 ## 4. Estrutura do repositório
 
@@ -112,13 +112,11 @@ Notificacao-CAJ
       ├─ routes/routes.ts
       ├─ pages/                        5 telas + Pagina404
       ├─ hooks/                        6 hooks (um por tela + useSessionStorage)
-      ├─ components/                   Layout, shared/ (4), ouvidoria/ (1), ui/
+      ├─ components/                   Layout, shared/, ouvidoria/ (1)
       ├─ services/                     api, notificacoes, defesas, ouvidoria, tarifas
       ├─ utils/                        dates, masks, kvStorage, funcionarios
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
-
-A pasta `components/ui`  não é usada pelas telas descritas aqui.
 
 ## 5. Back-end (`backend-caj`)
 
@@ -292,7 +290,7 @@ Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transiçã
 ### 8.4. Estilos
 
 - `index.css` importa `tailwind.css` e `theme.css`.
-- `tailwind.css` carrega o Tailwind 4 com `source(none)` e declara explicitamente os arquivos a varrer (`@source '../**/*.{js,ts,jsx,tsx}'`), além do `tw-animate-css`.
+- `tailwind.css` carrega o Tailwind 4 com `source(none)` e declara explicitamente os arquivos a varrer (`@source '../**/*.{js,ts,jsx,tsx}'`).
 - `theme.css` traz o tema padrão do shadcn/ui: variáveis de cor claras e escuras (`.dark`), o bloco `@theme inline` e estilos base de tipografia para `h1` a `h4`, `label`, `button` e `input`. O modo escuro não é ativado em lugar nenhum.
 - A identidade visual real está em cores fixas nas classes das telas: azul `#1a5fa8` (ações e destaques), `#154d8a` (hover), `#0b1e35` (títulos e botões escuros), `#071527` e `#1a3a5c` (barra lateral), `#eef6ff` (realces) e `#f0f4f8` (fundo da área de conteúdo).
 - A classe `animate-fadeIn`, usada no `Layout` e em vários blocos, não está definida em nenhum CSS recebido (PA-19).
@@ -580,7 +578,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-08 | `documentService` | A regra de negrito de linha inteira usa o travessão (“–”) e cobre só os itens 01 a 03; do 04 em diante depende dos `**` do template | Ampliar a expressão regular |
 | PA-12 | Persistência | O Controle grava `resultados` e `resultadosFiltrados` (duplicado) no `localStorage`; o lote do Redator fica no `sessionStorage`, ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-15 | `api.ts` | A API devolve `{ detail }`, mas o front lança uma mensagem genérica. Uma chave de IA inválida aparece como erro de comunicação | Repassar o `detail` ao usuário |
-| PA-16 | Ambiente e deploy | URL da API fixa no código (sem variável de ambiente); o logo é lido por `fs.readFileSync` com caminho dinâmico e o `vercel.json` não declara `includeFiles` (*a confirmar* se o logo sai nos documentos em produção); no `package.json` do front, `react` e `react-dom` estão só como `peerDependencies` opcionais e `@types/react` é da versão 19 com React 18.3.1 | Usar `VITE_API_URL`; incluir o logo no build; revisar dependências |
+| PA-16 | Ambiente e deploy | URL da API fixa no código (sem variável de ambiente); o logo é lido por `fs.readFileSync` com caminho dinâmico e o `vercel.json` não declara `includeFiles` (*a confirmar* se o logo sai nos documentos em produção) | Usar `VITE_API_URL`; incluir o logo no build |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -591,7 +589,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- |
 | PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: URL da API, `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
 | PA-13 | `useRedatorNotificacao` | Lê diretamente a chave `@ControleAnalises:state` do `localStorage` e aceita vários nomes de campo alternativos: acoplamento entre duas telas por uma convenção de texto |
-| PA-17 | `package.json` do front-end | Dezenas de dependências de template sem uso identificado (Material UI, Emotion, Radix, `react-hook-form`, `date-fns`, `jspdf` etc.) |
 | PA-19 | Interface | `animate-fadeIn` não definida; 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; descrição do `Layout` fala em “Judiciais” (os documentos são extrajudiciais); `index.html` com `lang="en"`, título “Sistema Desktop”, descrição genérica e sem ícone; tema escuro sem uso |
 | PA-21 | README | Diverge do código: lista 4 módulos (falta Análises Vencidas); descreve a calculadora de prazos como “global”, mas ela existe só em Retorno de Defesa e Ouvidoria; cita Date-fns e Axios (não usados); cita `npm start` e `GEMINI_API_KEY` (inexistentes) |
 | PA-22 | Vários | `funcionarioSelecionado` fixo em `null` no Redator (código morto); `kvStorage` abre uma nova conexão a cada operação; `useSessionStorage` não relê o valor se a chave mudar |
