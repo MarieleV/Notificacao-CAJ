@@ -194,7 +194,7 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 - `**texto**` vira negrito.
 - Linhas que começam com um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `I –`, `II –`, `III –`, `IV –`, `V –`, `OBJETO:` ou `DECISÃO:` ficam inteiras em negrito (apenas no parecer). Os numerais romanos só são reconhecidos com o travessão “–” (PA-08).
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (com diferenças entre Word, PDF e tela; PA-07).
-- O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele (PA-16).
+- O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele. Na Vercel, a pasta `public` entra no pacote da função pelo `includeFiles` do `vercel.json` (PA-16).
 
 ### 5.5. Calculadora no back-end (`calculatorService.js`) – legado
 
@@ -661,7 +661,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-07 | `documentService`, `useProcessoOuvidoria` | O destaque vermelho é inconsistente: Word pinta `[EDIÇÃO PECULIAR]` e `<adicionar fato novo...>`; o PDF pinta só o segundo; a pré-visualização só o primeiro | Unificar a regra |
 | PA-08 | `documentService` | A regra de negrito de linha inteira só reconhece os numerais romanos (`I` a `V`) seguidos do travessão “–”. Com hífen comum (“-”) ou do `VI` em diante, depende dos `**` do template | Aceitar também o hífen, se for o padrão desejado nos pareceres |
 | PA-12 | Persistência | O Controle grava `resultados` e `resultadosFiltrados` (duplicado) no `localStorage`; os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
-| PA-16 | Deploy | O logo é lido por `fs.readFileSync` com caminho dinâmico e o `vercel.json` não declara `includeFiles` (*a confirmar* se o logo sai nos documentos em produção) | Incluir o logo no build |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -683,11 +682,12 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
 | PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o back-end ganhou o script `npm start`, que o README já citava (PA-21); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-16 e PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida e o `index.html` usa `lang="pt-BR"` (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o back-end ganhou o script `npm start`, que o README já citava (PA-21); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida e o `index.html` usa `lang="pt-BR"` (PA-19).
 
 ## 18. Glossário
 
