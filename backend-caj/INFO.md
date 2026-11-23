@@ -57,6 +57,7 @@ Desativações e mudanças de perfil valem na hora — o token do usuário deixa
 | `/api/auth/gemini` | GET | logado | `{ configurada, final }` — se a própria chave do Gemini está cadastrada (só os 4 últimos caracteres) |
 | `/api/auth/gemini` | PUT | logado | `{ chave }` — salva a própria chave do Gemini (cifrada no banco) |
 | `/api/auth/gemini` | DELETE | logado | Remove a própria chave do Gemini |
+| `/api/funcionarios` | GET | logado | Lista de funcionários das buscas do Redator e da Ouvidoria |
 | `/api/usuarios` | GET | admin | Lista usuários |
 | `/api/usuarios` | POST | admin | `{ usuario, nome, senha, perfil }` — cria usuário |
 | `/api/usuarios/:id` | PUT | admin | `{ nome?, perfil?, ativo? }` — edita usuário |
