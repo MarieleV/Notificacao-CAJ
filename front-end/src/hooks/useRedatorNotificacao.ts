@@ -133,7 +133,6 @@ export function useRedatorNotificacao() {
   const currentCasoIndex = casosResponsavel.findIndex(row => String(row[keyMatriculaResp] || row["Matrícula"] || "") === matricula);
   const isCurrentProcessed = processedMatriculas.includes(matricula);
 
-  const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
   // ── REGRAS DO 20012 (Falta de acesso para leitura) ────────────────────────
@@ -485,7 +484,7 @@ export function useRedatorNotificacao() {
     casosResponsavel, currentCasoIndex, totalCasos, navegarCaso, isCurrentProcessed,
     
     selectedItems, filteredCodes, filteredFuncionarios,
-    funcionarioSelecionado, esqueceuDeBuscar, camposObrigatoriosVazios,
+    esqueceuDeBuscar, camposObrigatoriosVazios,
 
     exigeMeses, precisaProtocolo, soEh20012,
     
