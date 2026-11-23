@@ -2,7 +2,7 @@
 import React, { Component, ErrorInfo, ReactNode, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Info, Key, Search, UserCheck, Eraser,
+  ChevronDown, X, FileText, Info, Search, UserCheck, Eraser,
   ChevronLeft, ChevronRight, RefreshCw
 } from "lucide-react";
 import {
@@ -60,7 +60,7 @@ function RedatorNotificacaoConteudo() {
         <FeedbackModal type={hook.fileModal.type} message={<span>{hook.fileModal.message}</span>} onClose={() => hook.setFileModal(null)} />
       )}
       
-      <Cabecalho apiKey={hook.apiKey} setApiKey={hook.setApiKey} limparTela={hook.limparTela} />
+      <Cabecalho limparTela={hook.limparTela} />
 
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
@@ -334,19 +334,13 @@ function RedatorNotificacaoConteudo() {
 // COMPONENTES VISUAIS (Dumb Components)
 // ============================================================================
 
-const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
+const Cabecalho = ({ limparTela }: any) => (
   <PageHeader
     icon={FileText}
     title={<span>Redigir Notificação Extrajudicial</span>}
     description={<span>Assistente de redação jurídica com inteligência artificial</span>}
     actions={
-      <>
-        <Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>
-        <div className="flex items-center h-10 bg-white border border-gray-300 rounded-md px-3 transition-colors hover:border-gray-400 focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/15">
-          <Key size={14} className="text-gray-400 mr-2 flex-shrink-0" />
-          <input type="password" aria-label="Chave da API Gemini" placeholder="Chave da API Gemini" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="bg-transparent border-none focus:outline-none text-sm text-ink placeholder:text-gray-400 w-48" />
-        </div>
-      </>
+      <Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>
     }
   />
 );
