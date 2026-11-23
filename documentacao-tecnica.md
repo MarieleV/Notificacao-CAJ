@@ -125,7 +125,7 @@ Notificacao-CAJ
       ├─ hooks/                        7 hooks (um por tela + useFiltroMatriculaLote e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, shared/, ouvidoria/
       ├─ services/                     api, auth, http, usuarios, notificacoes, defesas, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, funcionarios
+      ├─ utils/                        dates, masks, kvStorage, funcionarios, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -290,6 +290,14 @@ Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e
 
 Lista fixa de 29 funcionários (`matricula` numérica e `nome`) embutida no código, usada nos campos de busca de funcionário do Redator e da Ouvidoria (PA-14).
 
+### 7.5. `controleAnalises.ts`
+
+Regras do Controle de Análises compartilhadas entre a tela e as importações de casos:
+
+- `AnaliseProcessada` (tipo de cada linha da tabela), `CONTROLE_ANALISES_KEY` (`@ControleAnalises:state`);
+- `filtrarAnalises` e `ordenarAnalises`: os filtros e a ordenação da tabela (seção 12.4);
+- `lerCasosDoControleAnalises`: lê o estado salvo, recalcula a lista filtrada e ordenada a partir de `resultados`, dos filtros e da ordenação salvos e a devolve. Se o filtro não deixar nenhum caso, devolve todos os resultados; se não houver nada salvo, devolve `null`. É usada pelo Redator e pelo filtro de matrícula em lote (PA-13).
+
 ## 8. Navegação, layout e estilos
 
 ### 8.1. Roteamento
@@ -358,7 +366,7 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 | Retorno de Defesa | `sessionStorage` (`defesa_*`) | Etapa, código, nº da defesa, motivo, texto gerado, parâmetros da calculadora de prazos; filtro de matrícula (lote de casos, origem, responsável, matrícula e dados do cliente) | Modo preview/edição |
 | Tabela de Multas | `sessionStorage` (`calc_*`) | Linhas de água e esgoto, períodos, nº do AI, data da retirada, consumo base e referência; filtro de matrícula (mesmos campos da Defesa) | Textos dos laudos |
 | Ouvidoria | `sessionStorage` (`ouv_*`, mais de 40 chaves) | Fluxo, campos do processo, variáveis dos templates, opções da guia Sansys, calculadora de prazos | Etapa e **texto gerado** |
-| Análises Vencidas | `localStorage` (`@ControleAnalises:state`) | Nomes dos arquivos, resultados processados, resultados filtrados, filtros e ordenação | Planilhas brutas (só em memória) |
+| Análises Vencidas | `localStorage` (`@ControleAnalises:state`) | Nomes dos arquivos, resultados processados, filtros e ordenação | Planilhas brutas (só em memória); lista filtrada (recalculada a partir dos resultados e dos filtros) |
 | Sessão (todas as telas) | `localStorage` (`caj_auth_token`, `caj_auth_user`) | Token JWT e dados públicos do usuário logado (id, login, nome, perfil) | – |
 
 Consequências práticas: ao recarregar a página, o Controle de Análises mantém a tabela de resultados, mas exige novo upload das planilhas para reprocessar; a Ouvidoria mantém os campos preenchidos, mas o texto gerado se perde.
@@ -372,7 +380,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 ### 10.1. `useRedatorNotificacao`
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
-- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que lê `@ControleAnalises:state` do `localStorage` (prefere `resultadosFiltrados`, senão usa `resultados`) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
+- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
 - **Validações antes de gerar.** Pelo menos um código; chave do Gemini; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
 - **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API.
 - **Exportação.** Exige o nº do Auto de Infração, envia texto, dados do cliente e identificadores, baixa `Notificacao_<matrícula>.docx` ou `.pdf` e marca a matrícula como processada.
@@ -399,7 +407,8 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 - Recebe três planilhas: **OP00002** (obrigatória, as análises), **989 Cliente** (situação do serviço para o cliente) e **989 CAJ** (situação e códigos de encerramento da OS na CAJ). As colunas são localizadas por vários nomes possíveis.
 - `processarDados` descarta serviços cujo código não tem prazo cadastrado e calcula, para cada análise, dias úteis transcorridos, atraso, situação (No Prazo ou Vencida) e se está **padronizada** (regras na seção 12.4).
 - Filtra por busca global, códigos (separados por vírgula), funcionário, situação, status do cliente e situação da OS (múltipla escolha), e ordena por qualquer coluna (`requestSort`).
-- Grava resultados, filtros e ordenação no `localStorage` a cada alteração.
+- As regras de filtro e ordenação ficam em `utils/controleAnalises.ts` (seção 7.5).
+- Grava resultados, filtros e ordenação no `localStorage` quando algum deles muda. A lista filtrada não é gravada, porque pode ser recalculada.
 
 ### 10.5. `useProcessoOuvidoria`
 
@@ -419,7 +428,7 @@ O maior hook do sistema. Concentra:
 
 Hook reutilizável que leva para Retorno de Defesa e Tabela de Multas o mesmo trabalho em lote do Redator. Recebe um prefixo (`defesa` ou `calc`), e cada tela guarda o próprio filtro no `sessionStorage`.
 
-- **Importar do Controle de Análises:** lê `@ControleAnalises:state` do `localStorage` (aceita `resultadosFiltrados`, `filtrados` ou `dadosFiltrados`) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). Avisa por modal se não houver dados ou se a tabela estiver vazia.
+- **Importar do Controle de Análises:** usa `lerCasosDoControleAnalises` (seção 7.5), como o Redator, e converte cada item em Matrícula, Responsável, Código e Status (PA-13). Avisa por modal se não houver dados ou se a tabela estiver vazia.
 - **Lote por responsável:** lista os responsáveis, seleciona o primeiro caso do escolhido e navega entre os casos dele (`navegarCaso`, anterior e próximo).
 - **Busca do cliente:** procura a matrícula na base de clientes do IndexedDB, que só pode ser carregada no Redator. Se a base não foi carregada, o botão Buscar fica desabilitado e explica o motivo.
 - `limparFiltro` zera lote, responsável, matrícula e dados do cliente.
@@ -514,7 +523,7 @@ Análises de códigos fora dessa tabela são ignoradas.
 
 1. a OS está “encerrado - executado” na planilha da CAJ;
 2. o status do cliente **não** contém nenhum destes termos: para reprogramar, pendente, programado, postergada, suspenso;
-3. o status do cliente contém “cancelado” **ou** o código de encerramento da OS na CAJ está entre os aprovados: 14601, 14603, 14604, 14605, 14631, 14633, 14654, 14901, 14903 e 14931.
+3. o status do cliente contém “cancelado” **ou** o código de encerramento da OS na CAJ está entre os 19 aprovados: 14201, 14203, 14211, 14213, 14231, 14233, 14254, 14261, 14271, 14601, 14603, 14604, 14605, 14631, 14633, 14654, 14901, 14903 e 14931.
 
 Quando uma matrícula aparece em várias linhas, vale a primeira ocorrência na planilha do cliente; na da CAJ, tem preferência a linha “encerrado - executado”, e o código aprovado tem preferência sobre os demais.
 
@@ -660,7 +669,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
 | PA-07 | `documentService`, `useProcessoOuvidoria` | O destaque vermelho é inconsistente: Word pinta `[EDIÇÃO PECULIAR]` e `<adicionar fato novo...>`; o PDF pinta só o segundo; a pré-visualização só o primeiro | Unificar a regra |
 | PA-08 | `documentService` | A regra de negrito de linha inteira só reconhece os numerais romanos (`I` a `V`) seguidos do travessão “–”. Com hífen comum (“-”) ou do `VI` em diante, depende dos `**` do template | Aceitar também o hífen, se for o padrão desejado nos pareceres |
-| PA-12 | Persistência | O Controle grava `resultados` e `resultadosFiltrados` (duplicado) no `localStorage`; os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
+| PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -670,7 +679,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | ID | Onde | Problema |
 | --- | --- | --- |
 | PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
-| PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | Os dois hooks leem diretamente a chave `@ControleAnalises:state` do `localStorage` e aceitam vários nomes de campo alternativos, com código de importação repetido: acoplamento entre telas por uma convenção de texto |
+| PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
 | PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 | PA-22 | `kvStorage` | Abre uma nova conexão com o IndexedDB a cada operação |
 
@@ -687,7 +696,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
