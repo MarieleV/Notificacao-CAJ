@@ -109,7 +109,7 @@ export function Layout() {
           </div>
           {!isCollapsed && (
             <p className="text-navy-muted text-[11px] mt-3 leading-snug animate-fadeIn">
-              Gestão de Notificações Judiciais e Multas de Consumo de Água
+              Gestão de Notificações Extrajudiciais e Multas de Consumo de Água
             </p>
           )}
         </div>

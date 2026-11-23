@@ -50,7 +50,7 @@ export function Login() {
             </div>
             <h1 className="text-ink text-xl font-semibold">Acesso ao Sistema CAJ</h1>
             <p className="text-ink-muted text-xs mt-1 leading-relaxed">
-              Gestão de Notificações Judiciais e Multas de Consumo de Água
+              Gestão de Notificações Extrajudiciais e Multas de Consumo de Água
             </p>
           </div>
 

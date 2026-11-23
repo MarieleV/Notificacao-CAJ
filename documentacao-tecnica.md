@@ -635,7 +635,7 @@ O Vite define o alias `@` para `src`.
 **Pontos de atenção para quem for rodar o projeto:**
 
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
-- O back-end não lê `GEMINI_API_KEY`, apesar de o README pedir essa variável. A chave do Gemini é digitada na tela do Redator.
+- O back-end não lê `GEMINI_API_KEY`. A chave do Gemini é digitada na tela do Redator.
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
 - Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
 
@@ -671,8 +671,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- |
 | PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | Os dois hooks leem diretamente a chave `@ControleAnalises:state` do `localStorage` e aceitam vários nomes de campo alternativos, com código de importação repetido: acoplamento entre telas por uma convenção de texto |
-| PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; descrição do `Layout` e subtítulo do `Login` falam em “Judiciais” (os documentos são extrajudiciais); `index.html` com título “Sistema Desktop”, descrição genérica e sem ícone; tema escuro sem uso |
-| PA-21 | README | Diverge do código: lista 4 módulos (falta Análises Vencidas); não menciona login, gestão de usuários nem o banco; descreve a calculadora de prazos como “global”, mas ela existe só em Retorno de Defesa e Ouvidoria; cita Date-fns e Axios (não usados); pede `GEMINI_API_KEY` no `.env` (não é lida) e não cita `DATABASE_URL`, `JWT_SECRET` nem `npm run criar-admin` |
+| PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 | PA-22 | Vários | `funcionarioSelecionado` fixo em `null` no Redator (código morto); `kvStorage` abre uma nova conexão a cada operação; `useSessionStorage` não relê o valor se a chave mudar |
 
 ### 17.4. Itens resolvidos
@@ -682,12 +681,13 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é digitada na tela) |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
 | PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o back-end ganhou o script `npm start`, que o README já citava (PA-21); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida e o `index.html` usa `lang="pt-BR"` (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
