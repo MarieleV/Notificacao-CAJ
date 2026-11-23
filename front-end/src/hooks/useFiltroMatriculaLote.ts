@@ -6,9 +6,9 @@
 import { useEffect, useState } from "react";
 import { useSessionStorage } from "./useSessionStorage";
 import { kvGet } from "../utils/kvStorage";
+import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
 
 const BASE_CLIENTE_KEY = "baseCliente";
-const CONTROLE_ANALISES_KEY = "@ControleAnalises:state";
 
 export type FiltroModalType = "success" | "warning" | "error";
 
@@ -86,16 +86,11 @@ export function useFiltroMatriculaLote(prefixo: string) {
   // ── Ações ───────────────────────────────────────────────────────────────
   const importarDoControleAnalises = () => {
     try {
-      const savedStr = localStorage.getItem(CONTROLE_ANALISES_KEY);
-      if (!savedStr) {
+      // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
+      const casosParaImportar = lerCasosDoControleAnalises();
+      if (!casosParaImportar) {
         setModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
         return;
-      }
-
-      const savedState = JSON.parse(savedStr);
-      let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
-      if (casosParaImportar.length === 0) {
-        casosParaImportar = savedState.resultados || savedState.dadosOriginais || [];
       }
 
       if (casosParaImportar.length === 0) {

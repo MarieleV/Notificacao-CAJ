@@ -1,24 +1,18 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { getBusinessDaysDifference } from "../utils/dates";
+import {
+  AnaliseProcessada,
+  CONTROLE_ANALISES_KEY,
+  SortConfig,
+  filtrarAnalises,
+  ordenarAnalises,
+} from "../utils/controleAnalises";
+
+export type { AnaliseProcessada };
 
 export type FileModalType = "success" | "warning" | "error";
 export interface FileModalState { type: FileModalType; message: string; }
-
-export interface AnaliseProcessada {
-  id: string;
-  dataAbertura: string;
-  codigoServico: string;
-  matricula: string;
-  funcionario: string;
-  diasTranscorridos: number;
-  diasAtraso: number;
-  situacao: "No Prazo" | "Vencida";
-  statusCliente: string;
-  statusCAJ: string;
-  isPadronizado: boolean;
-  situacaoOS: string;
-}
 
 const PRAZOS_SERVICO: Record<string, number> = {
   "426": 90,
@@ -38,7 +32,7 @@ const CODIGOS_APROVADOS_CAJ = [
   "14901", "14903", "14931"
 ];
 
-const STORAGE_KEY = "@ControleAnalises:state";
+const STORAGE_KEY = CONTROLE_ANALISES_KEY;
 
 function loadSavedState() {
   try {
@@ -80,7 +74,7 @@ export function useControleAnalises() {
   const [filtroSituacaoOS, setFiltroSituacaoOS] = useState<string[]>(savedState.filtroSituacaoOS || []); 
   const [dropdownOSOpen, setDropdownOSOpen] = useState(false);
 
-  const [sortConfig, setSortConfig] = useState<{ key: keyof AnaliseProcessada | null, direction: 'asc' | 'desc' }>(
+  const [sortConfig, setSortConfig] = useState<SortConfig>(
     savedState.sortConfig || { key: null, direction: 'asc' }
   );
 
@@ -90,57 +84,22 @@ export function useControleAnalises() {
   // =======================================================================================
   // 1. CÁLCULO DOS FILTRADOS 
   // =======================================================================================
-  const filtrados = resultados.filter(r => {
-    const matchGlobal = r.matricula.includes(searchTerm) || 
-                        r.codigoServico.includes(searchTerm) || 
-                        r.funcionario.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchCodigo = filtroCodigo === "Todos" || r.codigoServico === filtroCodigo;
-    
-    const matchFuncionario = filtroFuncionario === "" || r.funcionario.toLowerCase().includes(filtroFuncionario.toLowerCase());
-    const matchSituacao = filtroSituacao === "Todas" || r.situacao === filtroSituacao;
-    const matchStatusCliente = filtroStatusCliente === "Todos" || r.statusCliente.toLowerCase() === filtroStatusCliente.toLowerCase();
-    
-    // Se o botão toggle estiver ativo, exige que r.isPadronizado seja true
-    const matchPadronizado = !filtroPadronizadoAtivo || r.isPadronizado;
-    
-    const matchSituacaoOS = filtroSituacaoOS.length === 0 || filtroSituacaoOS.some((opt: string) => r.situacaoOS.toLowerCase().includes(opt.toLowerCase()));
-
-    return matchGlobal && matchCodigo && matchFuncionario && matchSituacao && matchStatusCliente && matchPadronizado && matchSituacaoOS;
+  // As regras ficam em utils/controleAnalises.ts, para que as importações de casos
+  // (Redator, Defesa e Multas) recalculem a mesma lista a partir do que foi salvo.
+  const filtrados = filtrarAnalises(resultados, {
+    searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS,
   });
 
-  const resultadosFiltradosEOrdenados = [...filtrados].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    
-    let aValue: any = a[sortConfig.key];
-    let bValue: any = b[sortConfig.key];
-
-    if (sortConfig.key === "dataAbertura") {
-      const [dayA, monthA, yearA] = (aValue as string).split('/');
-      const [dayB, monthB, yearB] = (bValue as string).split('/');
-      aValue = new Date(`${yearA}-${monthA}-${dayA}`).getTime();
-      bValue = new Date(`${yearB}-${monthB}-${dayB}`).getTime();
-    } else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula" || sortConfig.key === "diasTranscorridos" || sortConfig.key === "diasAtraso") {
-      aValue = Number(String(aValue).replace(/\D/g, ''));
-      bValue = Number(String(bValue).replace(/\D/g, ''));
-    } else if (sortConfig.key === "isPadronizado") {
-      aValue = aValue ? 1 : 0;
-      bValue = bValue ? 1 : 0;
-    }
-
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const resultadosFiltradosEOrdenados = ordenarAnalises(filtrados, sortConfig);
 
   // =======================================================================================
   // 2. SALVAMENTO NO LOCALSTORAGE
   // =======================================================================================
+  // A lista filtrada não é gravada: ela é recalculada a partir de `resultados` e dos filtros (PA-12).
   useEffect(() => {
     const stateToSave = {
       fileNameOP, fileName989Cliente, fileName989CAJ,
       resultados,
-      resultadosFiltrados: resultadosFiltradosEOrdenados,
       searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS,
       sortConfig
     };
@@ -149,7 +108,7 @@ export function useControleAnalises() {
     } catch (error) {
       console.warn("Aviso: Limite de armazenamento local atingido.", error);
     }
-  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, resultadosFiltradosEOrdenados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS, sortConfig]);
+  }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS, sortConfig]);
 
   // FUNÇÕES DE AÇÃO
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, tipo: "OP" | "989_Cliente" | "989_CAJ") => {
