@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { useSessionStorage } from "./useSessionStorage"; 
-import { FUNCIONARIOS } from "../utils/funcionarios";
+import { useFuncionarios } from "./useFuncionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
@@ -129,6 +129,8 @@ export function useRedatorNotificacao() {
       item.category.toLowerCase().includes(searchLower)
     );
   });
+
+  const { funcionarios: FUNCIONARIOS, erroFuncionarios } = useFuncionarios();
 
   const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
     const term = funcionarioBusca.toLowerCase().trim();
@@ -481,7 +483,7 @@ export function useRedatorNotificacao() {
   }
 
   return {
-    chaveGeminiCadastrada,
+    chaveGeminiCadastrada, erroFuncionarios,
     dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,

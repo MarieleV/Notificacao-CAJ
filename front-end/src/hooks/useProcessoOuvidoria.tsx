@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSessionStorage } from "./useSessionStorage";
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../utils/dates";
 import { formatName } from "../utils/masks";
-import { FUNCIONARIOS } from "../utils/funcionarios";
+import { useFuncionarios } from "./useFuncionarios";
 import { DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
 import { exportarParecerPDF, exportarParecerWord } from "../services/api";
 
@@ -101,6 +101,8 @@ export function useProcessoOuvidoria() {
 
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
+
+  const { funcionarios: FUNCIONARIOS, erroFuncionarios } = useFuncionarios();
 
   const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
     const term = funcionarioBusca.toLowerCase().trim();
@@ -644,7 +646,7 @@ export function useProcessoOuvidoria() {
     aplicaIN83, setAplicaIN83, temRestituicao, setTemRestituicao, statusMulta426, setStatusMulta426,
     tipoIndeferido, setTipoIndeferido, protContatoAtivo, setProtContatoAtivo, faturaAlterada, setFaturaAlterada,
     calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataInicial, setCalcDataInicial, calcDataFinal,
-    diasUteisDif, isForaDoPrazo, filteredFuncionarios, funcionarioSelecionado,
+    diasUteisDif, isForaDoPrazo, filteredFuncionarios, funcionarioSelecionado, erroFuncionarios,
     isLeitura, isServico, isCorte, isHd, isBypass, isClandestina, isPadronizada, isCadastral, isProrrogacao,
     showSessao3, hasDecisaoButtons, hasDefesaToggle, numSessao3, numSessao4, numSessao5,
     showDataGeracaoAI, showMesesSemAcesso, showDataConstatacao, showProtServico, showRecebedorAR,

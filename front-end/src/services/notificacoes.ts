@@ -1,5 +1,3 @@
-import { Funcionario, FUNCIONARIOS } from "../utils/funcionarios";
-
 export interface InfractionCode {
   code: string;
   title: string;
