@@ -7,6 +7,7 @@ const calculatorController = require("../controllers/calculatorController");
 const documentController = require("../controllers/documentController");
 const authController = require("../controllers/authController");
 const userController = require("../controllers/userController");
+const funcionarioController = require("../controllers/funcionarioController");
 const { requireAuth, requireAdmin } = require("../middlewares/authMiddleware");
 
 // Rotas públicas de autenticação
@@ -29,6 +30,9 @@ router.post("/usuarios", requireAdmin, userController.create);
 router.put("/usuarios/:id", requireAdmin, userController.update);
 router.put("/usuarios/:id/senha", requireAdmin, userController.resetSenha);
 router.delete("/usuarios/:id", requireAdmin, userController.remove);
+
+// Funcionários (buscas do Redator e da Ouvidoria; só para usuários logados)
+router.get("/funcionarios", funcionarioController.list);
 
 // Rotas da IA
 router.post("/gerar", aiController.generateNotification);

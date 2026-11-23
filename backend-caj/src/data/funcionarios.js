@@ -1,9 +1,8 @@
-export interface Funcionario {
-  matricula: number;
-  nome: string;
-}
-
-export const FUNCIONARIOS: Funcionario[] = [
+// src/data/funcionarios.js
+// Funcionários que aparecem na busca de funcionário do Redator e da Ouvidoria.
+// Ficam no servidor e só são entregues a usuários logados (GET /api/funcionarios; PA-14).
+// Para incluir ou remover alguém, edite esta lista e publique o back-end.
+const FUNCIONARIOS = [
   { matricula: 769, nome: "Adriana Schons" },
   { matricula: 864, nome: "Alfredino Schaldag" },
   { matricula: 674, nome: "Anderson Vieira Marcos" },
@@ -34,3 +33,5 @@ export const FUNCIONARIOS: Funcionario[] = [
   { matricula: 314, nome: "Valter Carlos Estephanes" },
   { matricula: 960, nome: "Vilmar Vieira De Meneses" },
 ];
+
+module.exports = { FUNCIONARIOS };

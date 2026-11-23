@@ -532,7 +532,8 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
             <span className="text-[11px] font-mono font-semibold text-brand"><span>Mat. </span><span>{f.matricula}</span></span>
           </div>
         ))}
-        {hook.filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-xs text-ink-muted">Nenhum funcionário encontrado. O texto digitado será usado como está.</div>}
+        {hook.erroFuncionarios && <div className="px-3 py-2 text-xs text-danger">{hook.erroFuncionarios}</div>}
+        {!hook.erroFuncionarios && hook.filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-xs text-ink-muted">Nenhum funcionário encontrado. O texto digitado será usado como está.</div>}
       </div>
     )}
   </div>

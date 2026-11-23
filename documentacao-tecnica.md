@@ -59,7 +59,7 @@ No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil, st
 | `localStorage` | Sem prazo de expiração | Estado do Controle de Análises (chave `@ControleAnalises:state`); token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
 | IndexedDB (`redator-db`) | Sem prazo de expiração | Base de dados de clientes carregada no Redator |
 
-A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e PA-14).
+A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12).
 
 ### 2.2. Decisões de arquitetura
 
@@ -110,9 +110,10 @@ Notificacao-CAJ
 │  │  ├─ index.js                      entrada do Express
 │  │  ├─ routes/indexRoutes.js         rotas /api/*
 │  │  ├─ middlewares/authMiddleware.js requireAuth e requireAdmin
-│  │  ├─ controllers/                  ai, auth, calculator, document, user
+│  │  ├─ controllers/                  ai, auth, calculator, document, funcionario, user
 │  │  ├─ services/                     ai, auth, calculator, document, user
 │  │  ├─ db/                           pool.js (conexão) e schema.sql (tabela usuarios)
+│  │  ├─ data/funcionarios.js          lista de funcionários (entregue só a usuários logados)
 │  │  └─ utils/                      formatters.js e crypto.js (cifra a chave do Gemini)
 │  ├─ .env.example · vercel.json · package.json
 └─ front-end
@@ -123,10 +124,10 @@ Notificacao-CAJ
       ├─ routes/routes.ts
       ├─ contexts/AuthContext.tsx      sessão do usuário logado
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
-      ├─ hooks/                        7 hooks (um por tela + useFiltroMatriculaLote e useSessionStorage)
+      ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
-      ├─ services/                     api, auth, http, usuarios, notificacoes, defesas, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, funcionarios, controleAnalises
+      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, ouvidoria, tarifas
+      ├─ utils/                        dates, masks, kvStorage, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -143,6 +144,7 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 | `POST /api/auth/login` | `authController.login` | Tela de login (pública) |
 | `GET /api/auth/me` | `authController.me` | Dados do usuário do token |
 | `PUT /api/auth/senha` | `authController.trocarSenha` | Troca da própria senha (barra lateral) |
+| `GET /api/funcionarios` | `funcionarioController.list` | Buscas de funcionário do Redator e da Ouvidoria (usuário logado) |
 | `GET`, `PUT`, `DELETE /api/auth/gemini` | `authController.geminiStatus`, `salvarGemini` e `removerGemini` | Situação, cadastro e remoção da própria chave do Gemini (barra lateral) |
 | `GET`, `POST /api/usuarios` | `userController.list` e `create` | Gestão de Usuários (admin) |
 | `PUT`, `DELETE /api/usuarios/:id` | `userController.update` e `remove` | Gestão de Usuários (admin) |
@@ -290,9 +292,9 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 
 Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
 
-### 7.4. `funcionarios.ts`
+### 7.4. Lista de funcionários (`services/funcionarios.ts` e `useFuncionarios`)
 
-Lista fixa de 29 funcionários (`matricula` numérica e `nome`) embutida no código, usada nos campos de busca de funcionário do Redator e da Ouvidoria (PA-14).
+A lista de 29 funcionários (`matricula` numérica e `nome`) fica no back-end, em `src/data/funcionarios.js`, e é entregue por `GET /api/funcionarios` só a usuários logados. No front-end, `listarFuncionarios` (`services/funcionarios.ts`) busca a lista uma vez por carregamento da página e a reaproveita; se a busca falhar, tenta de novo na próxima vez. O hook `useFuncionarios` entrega `funcionarios` e `erroFuncionarios` às buscas de funcionário do Redator e da Ouvidoria, que mostram a mensagem de erro no lugar da lista se ela não carregar. Para incluir ou remover alguém, edite `src/data/funcionarios.js` e publique o back-end.
 
 ### 7.5. `controleAnalises.ts`
 
@@ -375,7 +377,7 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 Consequências práticas: ao recarregar a página, o Controle de Análises mantém a tabela de resultados, mas exige novo upload das planilhas para reprocessar; a Ouvidoria mantém os campos preenchidos, mas o texto gerado se perde.
 
-Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12 e PA-14.
+Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12.
 
 ## 10. Hooks (`src/hooks`)
 
@@ -616,7 +618,7 @@ Observações:
 - **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `ENCRYPTION_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
 - **Chave do Gemini.** Cada usuário cadastra a própria em “Minha chave do Gemini”. Ela vai uma vez ao servidor, é guardada cifrada no banco (AES-256-GCM com `ENCRYPTION_KEY`) e nunca volta ao navegador. O Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`. Quem tiver acesso ao banco sem a `ENCRYPTION_KEY` não consegue ler as chaves.
 - **Documentos gerados.** Os arquivos não são gravados no servidor; são devolvidos na própria resposta e baixados no navegador.
-- **Dados no código.** A lista de funcionários está embutida no front-end e, portanto, visível a quem acessa a aplicação.
+- **Lista de funcionários.** Fica no back-end e só é entregue a usuários logados (`GET /api/funcionarios`). Não aparece no JavaScript publicado do front-end.
 - **Repositório.** O `.env` não deve ser versionado, mesmo vazio. Confirme que a divulgação pública do projeto está autorizada pela CAJ e que o link público não expõe dados internos.
 
 ## 16. Execução local e deploy
@@ -663,7 +665,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- | --- |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
-| PA-14 | `funcionarios.ts` | A lista de funcionários (nomes e matrículas) continua embutida no código do front-end, visível a quem acessa a aplicação | Servir a lista pela API, que já exige login |
 
 ### 17.2. Prioridade média
 
@@ -693,6 +694,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
 | PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
@@ -701,7 +703,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login, a chave do Gemini deixou de ficar no navegador e passou a ser cadastrada por usuário, cifrada no banco, e o CORS passou a aceitar só as origens de `CORS_ORIGINS`, sem os cabeçalhos `*` do `vercel.json` (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
