@@ -1,6 +1,7 @@
 // src/services/userService.js
 const bcrypt = require("bcryptjs");
 const db = require("../db/pool");
+const { cifrar, decifrar } = require("../utils/crypto");
 
 const BCRYPT_ROUNDS = 10;
 const PERFIS = ["admin", "usuario"];
@@ -137,6 +138,57 @@ async function remove(id, atorId) {
   if (!rowCount) throw new UserError(404, "Usuário não encontrado.");
 }
 
+// ── Chave do Gemini do próprio usuário ────────────────────────────────────────
+// Guardada cifrada (AES-256-GCM). A API nunca devolve a chave, só se existe e o final dela.
+const GEMINI_MIN = 20;
+const GEMINI_MAX = 200;
+
+async function getGeminiStatus(id) {
+  const { rows } = await db.query("SELECT gemini_api_key_enc FROM usuarios WHERE id = $1", [id]);
+  if (!rows[0]) throw new UserError(404, "Usuário não encontrado.");
+  const enc = rows[0].gemini_api_key_enc;
+  if (!enc) return { configurada: false, final: null };
+  try {
+    return { configurada: true, final: decifrar(enc).slice(-4) };
+  } catch {
+    // Chave mestra trocada ou dado corrompido: trata como não cadastrada.
+    return { configurada: false, final: null, ilegivel: true };
+  }
+}
+
+async function setGeminiKey(id, chave) {
+  const valor = String(chave || "").trim();
+  if (valor.length < GEMINI_MIN || valor.length > GEMINI_MAX || /\s/.test(valor)) {
+    throw new UserError(400, "Chave do Gemini inválida. Copie a chave completa do Google AI Studio.");
+  }
+  const { rowCount } = await db.query(
+    "UPDATE usuarios SET gemini_api_key_enc = $1, atualizado_em = NOW() WHERE id = $2",
+    [cifrar(valor), id]
+  );
+  if (!rowCount) throw new UserError(404, "Usuário não encontrado.");
+  return { configurada: true, final: valor.slice(-4) };
+}
+
+async function removeGeminiKey(id) {
+  const { rowCount } = await db.query(
+    "UPDATE usuarios SET gemini_api_key_enc = NULL, atualizado_em = NOW() WHERE id = $1",
+    [id]
+  );
+  if (!rowCount) throw new UserError(404, "Usuário não encontrado.");
+}
+
+/** Devolve a chave decifrada para uso interno do servidor (nunca enviar ao cliente). */
+async function getGeminiKey(id) {
+  const { rows } = await db.query("SELECT gemini_api_key_enc FROM usuarios WHERE id = $1", [id]);
+  const enc = rows[0]?.gemini_api_key_enc;
+  if (!enc) return null;
+  try {
+    return decifrar(enc);
+  } catch {
+    throw new UserError(400, "Não foi possível ler a sua chave do Gemini salva. Cadastre-a novamente em “Minha chave do Gemini”.");
+  }
+}
+
 module.exports = {
   UserError,
   findByUsuarioComSenha,
@@ -147,4 +199,8 @@ module.exports = {
   setSenha,
   trocarPropriaSenha,
   remove,
+  getGeminiStatus,
+  setGeminiKey,
+  removeGeminiKey,
+  getGeminiKey,
 };

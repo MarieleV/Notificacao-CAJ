@@ -39,4 +39,38 @@ const trocarSenha = async (req, res) => {
   }
 };
 
-module.exports = { login, me, trocarSenha };
+// ── Chave do Gemini do próprio usuário (nunca devolve a chave, só o final) ─────
+const tratarErroGemini = (res, error) => {
+  if (error instanceof userService.UserError) {
+    return res.status(error.status).json({ detail: error.message });
+  }
+  console.error("Erro na chave do Gemini:", error.message);
+  res.status(500).json({ detail: "Erro interno ao tratar a chave do Gemini." });
+};
+
+const geminiStatus = async (req, res) => {
+  try {
+    res.json(await userService.getGeminiStatus(req.user.id));
+  } catch (error) {
+    tratarErroGemini(res, error);
+  }
+};
+
+const salvarGemini = async (req, res) => {
+  try {
+    res.json(await userService.setGeminiKey(req.user.id, (req.body || {}).chave));
+  } catch (error) {
+    tratarErroGemini(res, error);
+  }
+};
+
+const removerGemini = async (req, res) => {
+  try {
+    await userService.removeGeminiKey(req.user.id);
+    res.status(204).end();
+  } catch (error) {
+    tratarErroGemini(res, error);
+  }
+};
+
+module.exports = { login, me, trocarSenha, geminiStatus, salvarGemini, removerGemini };

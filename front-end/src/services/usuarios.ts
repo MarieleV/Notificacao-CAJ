@@ -70,3 +70,31 @@ export async function excluirUsuario(id: number): Promise<void> {
 export async function trocarMinhaSenha(senhaAtual: string, novaSenha: string): Promise<void> {
   await request("/auth/senha", "PUT", { senhaAtual, novaSenha });
 }
+
+// ── Chave do Gemini do usuário logado ─────────────────────────────────────────
+// A chave fica cifrada no banco. A API nunca a devolve: só informa se existe e os 4 últimos caracteres.
+
+export interface StatusChaveGemini {
+  configurada: boolean;
+  final: string | null;
+  /** true quando há uma chave salva que o servidor não consegue mais ler (cadastre de novo). */
+  ilegivel?: boolean;
+}
+
+/** Evento disparado quando a chave do usuário é salva ou removida, para as telas atualizarem o aviso. */
+export const GEMINI_CHAVE_EVENT = "caj:gemini-chave-alterada";
+
+export async function obterStatusChaveGemini(): Promise<StatusChaveGemini> {
+  return request<StatusChaveGemini>("/auth/gemini", "GET");
+}
+
+export async function salvarChaveGemini(chave: string): Promise<StatusChaveGemini> {
+  const status = await request<StatusChaveGemini>("/auth/gemini", "PUT", { chave });
+  window.dispatchEvent(new Event(GEMINI_CHAVE_EVENT));
+  return status;
+}
+
+export async function removerChaveGemini(): Promise<void> {
+  await request("/auth/gemini", "DELETE");
+  window.dispatchEvent(new Event(GEMINI_CHAVE_EVENT));
+}

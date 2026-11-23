@@ -65,6 +65,12 @@ function RedatorNotificacaoConteudo() {
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
 
+          {hook.chaveGeminiCadastrada === false && (
+            <Alert tone="warning">
+              Você ainda não cadastrou sua chave do Gemini. Cadastre em <b>Minha chave do Gemini</b> (ícone <Sparkles size={13} className="inline -mt-0.5" /> no rodapé da barra lateral) para gerar notificações com IA.
+            </Alert>
+          )}
+
           {/* ================= BLOCO 1: CÓDIGOS ================= */}
           <SectionBlock number={1} title="Seleção de Códigos de Infração" description="Selecione um ou mais códigos referentes ao caso do cliente">
             <MenuDropdownCodigos hook={hook} />

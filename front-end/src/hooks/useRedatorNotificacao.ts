@@ -7,6 +7,7 @@ import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
 import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
+import { GEMINI_CHAVE_EVENT, obterStatusChaveGemini } from "../services/usuarios";
 
 const BASE_CLIENTE_KEY = "baseCliente";
 let baseClienteCache: any[] = [];
@@ -31,9 +32,26 @@ export function useRedatorNotificacao() {
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  // A chave do Gemini fica no servidor (PA-14). Remove a que versões antigas guardavam na aba.
+  // A chave do Gemini é de cada usuário e fica cifrada no banco (cadastrada na barra lateral).
+  // Remove a que versões antigas guardavam nesta aba.
   useEffect(() => {
     try { window.sessionStorage.removeItem("redator_apiKey"); } catch { /* armazenamento indisponível */ }
+  }, []);
+
+  // Só para avisar na tela se o usuário ainda não cadastrou a chave (null = ainda consultando).
+  const [chaveGeminiCadastrada, setChaveGeminiCadastrada] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelado = false;
+    const consultar = () =>
+      obterStatusChaveGemini()
+        .then((s) => !cancelado && setChaveGeminiCadastrada(s.configurada))
+        .catch(() => !cancelado && setChaveGeminiCadastrada(null));
+    consultar();
+    window.addEventListener(GEMINI_CHAVE_EVENT, consultar);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(GEMINI_CHAVE_EVENT, consultar);
+    };
   }, []);
   const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
   const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
@@ -463,6 +481,7 @@ export function useRedatorNotificacao() {
   }
 
   return {
+    chaveGeminiCadastrada,
     dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,

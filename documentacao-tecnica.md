@@ -50,7 +50,7 @@ Navegador (SPA React)  ──fetch / JSON + JWT──►  API Express (Vercel)  
 
 ### 2.1. Onde cada dado fica
 
-No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil e status). Todo o estado de trabalho fica no navegador:
+No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil, status e a chave do Gemini de cada usuário, cifrada). Todo o estado de trabalho fica no navegador:
 
 | Armazenamento | Duração | O que guarda |
 | --- | --- | --- |
@@ -65,7 +65,7 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 
 - **Roteamento por hash** (`createHashRouter`): as URLs têm a forma `/#/multas`, o que dispensa regras de reescrita no servidor de hospedagem.
 - **Lógica separada da interface:** cada tela tem um hook dedicado em `hooks/` com estado, regras e ações; o arquivo da tela só renderiza.
-- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente). A chave do Gemini fica no servidor. O banco é consultado só para autenticar e gerir usuários.
+- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente). O banco é consultado só para autenticar, gerir usuários e ler a chave do Gemini do usuário logado.
 - **Textos montados no front-end:** os pareceres da Ouvidoria e das defesas são templates em TypeScript; a IA só é usada na tela de notificações.
 
 ## 3. Stack tecnológico
@@ -142,6 +142,7 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 | `POST /api/auth/login` | `authController.login` | Tela de login (pública) |
 | `GET /api/auth/me` | `authController.me` | Dados do usuário do token |
 | `PUT /api/auth/senha` | `authController.trocarSenha` | Troca da própria senha (barra lateral) |
+| `GET`, `PUT`, `DELETE /api/auth/gemini` | `authController.geminiStatus`, `salvarGemini` e `removerGemini` | Situação, cadastro e remoção da própria chave do Gemini (barra lateral) |
 | `GET`, `POST /api/usuarios` | `userController.list` e `create` | Gestão de Usuários (admin) |
 | `PUT`, `DELETE /api/usuarios/:id` | `userController.update` e `remove` | Gestão de Usuários (admin) |
 | `PUT /api/usuarios/:id/senha` | `userController.resetSenha` | Gestão de Usuários (admin) |
@@ -162,7 +163,7 @@ Os controllers só validam a entrada e traduzem o resultado em resposta HTTP. Er
 
 ### 5.3. Serviço de IA (`aiService.js`)
 
-Usa o modelo **gemini-2.5-flash**. A chave de API vem da variável de ambiente `GEMINI_API_KEY` do servidor; o navegador não recebe nem envia a chave. Sem ela, a geração responde com a mensagem “Geração com IA indisponível: a chave do Gemini (GEMINI_API_KEY) não está configurada no servidor.” O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
+Usa o modelo **gemini-2.5-flash** com a chave do **próprio usuário logado**. O `aiController` lê a chave cifrada do banco (`userService.getGeminiKey`) e a decifra só no servidor; o navegador não envia a chave na geração. Sem chave cadastrada, a geração responde 400 com “Cadastre sua chave do Gemini em “Minha chave do Gemini”, no rodapé da barra lateral.”. O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
 
 O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as infrações selecionadas num formato obrigatório, sem saudações:
 
@@ -216,11 +217,12 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 - **`requireAuth`.** Exige `Authorization: Bearer <token>`, valida o token e consulta o usuário no banco a cada requisição. Assim, desativar um usuário ou mudar o perfil vale na hora. Responde 401 com `detail` (“Token de acesso ausente.”, “Sessão expirada...”, “Token inválido.”, “Usuário inativo ou inexistente.”).
 - **`requireAdmin`.** Responde 403 para quem não tem perfil `admin`.
 - **Regras de usuários (`userService`).** Login de 3 a 50 caracteres (letras minúsculas, números, ponto, hífen ou sublinhado), guardado em minúsculas; nome de 2 a 120 caracteres; senha de no mínimo 8 caracteres. Login repetido devolve 409. O admin não pode rebaixar, desativar nem excluir a própria conta. A troca da própria senha exige a senha atual.
+- **Chave do Gemini por usuário.** Fica na coluna `gemini_api_key_enc`, cifrada com AES-256-GCM (`utils/crypto.js`) pela chave mestra `ENCRYPTION_KEY` (64 caracteres hexadecimais) do servidor. O formato é `v1:<iv>:<tag>:<conteúdo>`, e o GCM detecta qualquer alteração do valor. A API só informa se a chave existe e os 4 últimos caracteres; nunca devolve a chave. Ao salvar, exige de 20 a 200 caracteres, sem espaços. Se a `ENCRYPTION_KEY` for trocada, as chaves salvas deixam de ser lidas: a tela mostra “Não cadastrada” e o usuário precisa cadastrar de novo.
 - **Primeiro administrador.** `npm run criar-admin -- <usuario> "<Nome>" "<senha>"` executa o `schema.sql` e cria o admin. Se o login já existir, ele é promovido a admin, reativado e recebe a nova senha.
 
 ### 5.8. Deploy
 
-O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GEMINI_API_KEY`, `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
+O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
 ## 6. Camada de serviços do front-end (`src/services`)
 
@@ -228,7 +230,7 @@ O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas
 
 - `auth.ts` define `API_BASE_URL` (`VITE_API_URL` ou, na falta dela, `https://notificacao-caj.vercel.app/api`) e cuida da sessão: `loginApi` chama `/auth/login` e grava o token e o usuário no `localStorage`; `getToken` descarta o token vencido (lê o `exp` do JWT, sem validar a assinatura, que é papel do back-end); `clearSession` apaga a sessão e dispara o evento `caj:auth-logout`.
 - `http.ts` tem `apiFetch` (prefixa a URL, envia `Authorization: Bearer` e encerra a sessão se a API responder 401) e `throwApiError` (lança o `detail` devolvido pela API).
-- `usuarios.ts` chama as rotas de gestão de usuários (`listarUsuarios`, `criarUsuario`, `atualizarUsuario`, `redefinirSenhaUsuario`, `excluirUsuario`) e a troca da própria senha (`trocarMinhaSenha`).
+- `usuarios.ts` chama as rotas de gestão de usuários (`listarUsuarios`, `criarUsuario`, `atualizarUsuario`, `redefinirSenhaUsuario`, `excluirUsuario`), a troca da própria senha (`trocarMinhaSenha`) e a chave do Gemini do usuário (`obterStatusChaveGemini`, `salvarChaveGemini`, `removerChaveGemini`). Salvar ou remover a chave dispara o evento `caj:gemini-chave-alterada`.
 
 ### 6.1. `api.ts`
 
@@ -323,7 +325,7 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 
 ### 8.2. Layout (`components/Layout.tsx`)
 
-Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transição), com logo, descrição do sistema e cinco itens de menu em **Módulos**. Para administradores, aparece também a seção **Administração**, com o item **Usuários** (subtítulo “Cadastro e Acessos”). O rodapé mostra o nome do usuário logado e o perfil (“Administrador” ou “Dep. Atendimento”), além de dois botões: **Alterar minha senha** (abre o `AlterarSenhaModal`) e **Sair**. O conteúdo da rota aparece no `<Outlet />`, com rolagem própria. Quando recolhida, os itens mostram só o ícone e o nome aparece como dica ao passar o mouse.
+Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transição), com logo, descrição do sistema e cinco itens de menu em **Módulos**. Para administradores, aparece também a seção **Administração**, com o item **Usuários** (subtítulo “Cadastro e Acessos”). O rodapé mostra o nome do usuário logado e o perfil (“Administrador” ou “Dep. Atendimento”), além de três botões: **Minha chave do Gemini** (abre o `ChaveGeminiModal`), **Alterar minha senha** (abre o `AlterarSenhaModal`) e **Sair**. O conteúdo da rota aparece no `<Outlet />`, com rolagem própria. Quando recolhida, os itens mostram só o ícone e o nome aparece como dica ao passar o mouse.
 
 | Rótulo no menu | Subtítulo | Título da tela |
 | --- | --- | --- |
@@ -454,6 +456,7 @@ Os três seletores de data fecham ao clicar fora e unificaram implementações q
 
 - `ProtectedRoute` e `AdminRoute`: guardas de rota (seção 8.1).
 - `AlterarSenhaModal`: troca da própria senha (senha atual, nova senha com no mínimo 8 caracteres e confirmação).
+- `ChaveGeminiModal`: “Minha chave do Gemini”. Mostra se a chave está cadastrada (com os 4 últimos caracteres), recebe uma nova chave (que substitui a atual) e permite removê-la. A chave não fica salva no navegador.
 
 ### 11.2. Ouvidoria (`components/ouvidoria`)
 
@@ -605,8 +608,8 @@ Observações:
 
 - **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
 - **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API só aceita chamadas do navegador vindas das origens permitidas (`CORS_ORIGINS`).
-- **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `GEMINI_API_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
-- **Chave do Gemini.** Fica só no servidor (`GEMINI_API_KEY`). A tela não pede nem guarda a chave, e o Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`.
+- **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `ENCRYPTION_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
+- **Chave do Gemini.** Cada usuário cadastra a própria em “Minha chave do Gemini”. Ela vai uma vez ao servidor, é guardada cifrada no banco (AES-256-GCM com `ENCRYPTION_KEY`) e nunca volta ao navegador. O Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`. Quem tiver acesso ao banco sem a `ENCRYPTION_KEY` não consegue ler as chaves.
 - **Documentos gerados.** Os arquivos não são gravados no servidor; são devolvidos na própria resposta e baixados no navegador.
 - **Dados no código.** A lista de funcionários está embutida no front-end e, portanto, visível a quem acessa a aplicação.
 - **Repositório.** O `.env` não deve ser versionado, mesmo vazio. Confirme que a divulgação pública do projeto está autorizada pela CAJ e que o link público não expõe dados internos.
@@ -620,7 +623,7 @@ Observações:
 ```bash
 cd backend-caj
 npm install
-cp .env.example .env   # preencher DATABASE_URL, JWT_SECRET e GEMINI_API_KEY
+cp .env.example .env   # preencher DATABASE_URL, JWT_SECRET e ENCRYPTION_KEY
 npm run criar-admin -- admin "Nome do Administrador" "SenhaForte123"   # só na primeira vez
 npm run dev            # com recarga automática; ou npm start
 ```
@@ -641,7 +644,7 @@ O Vite define o alias `@` para `src`.
 **Pontos de atenção para quem for rodar o projeto:**
 
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
-- Sem `GEMINI_API_KEY`, a geração de notificações com IA não funciona (só o código 20012 sozinho, que não usa IA).
+- Sem `ENCRYPTION_KEY`, ninguém consegue salvar a chave do Gemini. Em bancos criados antes desta versão, rode no SQL Editor do Supabase: `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT;`
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
 - Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
 
@@ -687,13 +690,13 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
-| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é digitada na tela) |
+| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
 | PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login, a chave do Gemini foi para o servidor (`GEMINI_API_KEY`) e o CORS passou a aceitar só as origens de `CORS_ORIGINS`, sem os cabeçalhos `*` do `vercel.json` (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login, a chave do Gemini deixou de ficar no navegador e passou a ser cadastrada por usuário, cifrada no banco, e o CORS passou a aceitar só as origens de `CORS_ORIGINS`, sem os cabeçalhos `*` do `vercel.json` (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
