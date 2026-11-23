@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
   atualizado_em TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Chave do Gemini de cada usuário, cifrada com AES-256-GCM (ENCRYPTION_KEY do servidor).
+-- Em bancos já existentes, rode esta linha no SQL Editor do Supabase.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT;
+
 -- O backend acessa o banco direto (conexão Postgres), não pela API pública do Supabase.
 -- Ativar RLS sem políticas bloqueia o acesso à tabela pela API REST/anon key do Supabase.
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;

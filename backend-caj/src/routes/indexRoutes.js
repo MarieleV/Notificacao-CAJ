@@ -18,6 +18,11 @@ router.use(requireAuth);
 router.get("/auth/me", authController.me);
 router.put("/auth/senha", authController.trocarSenha);
 
+// Chave do Gemini do próprio usuário (guardada cifrada no banco)
+router.get("/auth/gemini", authController.geminiStatus);
+router.put("/auth/gemini", authController.salvarGemini);
+router.delete("/auth/gemini", authController.removerGemini);
+
 // Gestão de usuários (somente admin)
 router.get("/usuarios", requireAdmin, userController.list);
 router.post("/usuarios", requireAdmin, userController.create);
