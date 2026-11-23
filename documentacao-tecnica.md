@@ -92,6 +92,7 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 | `pg` | Conexão com o Postgres (Supabase) |
 | `jsonwebtoken` e `bcryptjs` | Tokens de acesso (JWT) e hash de senhas |
 | `dotenv` | Leitura do `.env` em execução local |
+| `crypto` (nativo do Node.js) | Cifra AES-256-GCM da chave do Gemini de cada usuário |
 | Vercel (`@vercel/node`, `vercel.json`) | Deploy serverless |
 
 ### 3.3. Dependências
@@ -112,7 +113,7 @@ Notificacao-CAJ
 │  │  ├─ controllers/                  ai, auth, calculator, document, user
 │  │  ├─ services/                     ai, auth, calculator, document, user
 │  │  ├─ db/                           pool.js (conexão) e schema.sql (tabela usuarios)
-│  │  └─ utils/formatters.js
+│  │  └─ utils/                      formatters.js e crypto.js (cifra a chave do Gemini)
 │  ├─ .env.example · vercel.json · package.json
 └─ front-end
    ├─ index.html · vite.config.ts · package.json · .env.example
@@ -123,7 +124,7 @@ Notificacao-CAJ
       ├─ contexts/AuthContext.tsx      sessão do usuário logado
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
       ├─ hooks/                        7 hooks (um por tela + useFiltroMatriculaLote e useSessionStorage)
-      ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, shared/, ouvidoria/
+      ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
       ├─ services/                     api, auth, http, usuarios, notificacoes, defesas, ouvidoria, tarifas
       ├─ utils/                        dates, masks, kvStorage, funcionarios, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
@@ -201,7 +202,7 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 
 Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas de água e de esgoto e o fator K1. Para cada mês calcula o valor da água faixa a faixa, soma a tarifa de serviço e compara com o valor cobrado. O esgoto é 80% do valor correto da água multiplicado pelo fator K1. Devolve linhas, totais e dois textos de laudo. **Nenhuma tela chama essa rota hoje**; a tela de multas calcula tudo no navegador (seção 12.3). Ver PA-02.
 
-### 5.6. Utilitários (`formatters.js`)
+### 5.6. Utilitários (`formatters.js` e `crypto.js`)
 
 | Função | O que faz |
 | --- | --- |
@@ -209,6 +210,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 | `parseMonthYear` | Converte `MM/AAAA` em um inteiro (ano × 12 + mês) para comparação |
 | `isWithinRange` | Verifica se um mês está dentro de um intervalo; fim vazio significa vigência em aberto |
 | `formatBRL` | Formata número como `R$ 1.234,56` |
+| `cifrar` / `decifrar` (`crypto.js`) | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
 
 ### 5.7. Autenticação e usuários
 
@@ -383,8 +385,9 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
 - **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
+- **Chave do Gemini.** Ao abrir a tela, consulta se o usuário tem chave cadastrada (`obterStatusChaveGemini`) e devolve `chaveGeminiCadastrada` (`true`, `false` ou `null` enquanto consulta). Volta a consultar quando a chave é salva ou removida (evento `caj:gemini-chave-alterada`). Também apaga a `redator_apiKey` que versões antigas guardavam no `sessionStorage`.
 - **Validações antes de gerar.** Pelo menos um código; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
-- **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API.
+- **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API. A chave do Gemini não vai na requisição: o servidor usa a do usuário logado.
 - **Exportação.** Exige o nº do Auto de Infração, envia texto, dados do cliente e identificadores, baixa `Notificacao_<matrícula>.docx` ou `.pdf` e marca a matrícula como processada.
 
 ### 10.2. `useRespostaDefesa`
@@ -477,6 +480,8 @@ As telas de trabalho têm o mesmo esqueleto: cabeçalho (`PageHeader`) com títu
 Cartão centralizado, fora da barra lateral, com logo, campos **Usuário** e **Senha** (com botão para mostrar a senha) e o botão **Entrar**. Mostra a mensagem de erro devolvida pela API. Depois do login, volta para a página que o usuário tentou abrir; quem já está logado é levado direto para ela.
 
 ### 12.1. Redigir Notificação (`RedatorNotificacao`)
+
+Se o usuário ainda não cadastrou a chave do Gemini, um aviso no topo indica onde cadastrar: **Minha chave do Gemini**, no ícone ✨ do rodapé da barra lateral. Sem chave, a geração com IA responde com essa mesma orientação; o código 20012 sozinho, que não usa IA, gera normalmente.
 
 1. **Seleção de Códigos de Infração.** Lista suspensa com busca por código, título ou categoria, seleção múltipla, etiquetas coloridas por categoria e botão **Confirmar Seleção**. Os códigos escolhidos aparecem como etiquetas removíveis. Um seletor alterna entre **Apenas Multa** e **Multa + Padronização**.
 2. **Dados da Notificação.** Dois cartões de carga: **Base de Dados do Cliente** (planilha para busca por matrícula) e **Análises Vencidas** (importa do Controle de Análises ou carrega uma planilha). Com um lote carregado, o operador escolhe o responsável e navega entre os casos dele (anterior e próximo, com contagem). Em seguida preenche: matrícula (botão **Buscar**, que preenche nome, endereço, bairro, CEP, localização, categoria e hidrômetro), data da constatação (máscara `DD/MM/AAAA`), protocolo, funcionário (lista pesquisavel, grava “Nome (Mat. N)”), equipe e, só para o código 20012, os meses sem acesso. O botão **Gerar** só libera com os campos obrigatórios preenchidos.
