@@ -347,7 +347,7 @@ Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transiçã
 
 ### 9.1. `useSessionStorage`
 
-Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Falhas de leitura ou gravação geram apenas um aviso no console. Cada tela usa um prefixo de chave próprio.
+Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Se a chave mudar, relê o valor salvo na nova chave, e cada valor é gravado sempre na chave a que pertence. Falhas de leitura ou gravação geram apenas um aviso no console. Cada tela usa um prefixo de chave próprio.
 
 ### 9.2. O que cada tela guarda e onde
 
@@ -672,7 +672,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | Os dois hooks leem diretamente a chave `@ControleAnalises:state` do `localStorage` e aceitam vários nomes de campo alternativos, com código de importação repetido: acoplamento entre telas por uma convenção de texto |
 | PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
-| PA-22 | Vários | `funcionarioSelecionado` fixo em `null` no Redator (código morto); `kvStorage` abre uma nova conexão a cada operação; `useSessionStorage` não relê o valor se a chave mudar |
+| PA-22 | `kvStorage` | Abre uma nova conexão com o IndexedDB a cada operação |
 
 ### 17.4. Itens resolvidos
 
@@ -687,7 +687,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
