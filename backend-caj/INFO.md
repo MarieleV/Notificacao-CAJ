@@ -24,7 +24,7 @@ Os usuários ficam na tabela `usuarios` de um banco Postgres no **Supabase**.
 
 1. Crie um projeto em [supabase.com](https://supabase.com) e copie a connection string em
    *Project Settings → Database → Connection string → **Transaction pooler*** (porta 6543).
-2. Copie `.env.example` para `.env` e preencha `DATABASE_URL`, `JWT_SECRET` e `GEMINI_API_KEY` (chave do Google AI Studio). `CORS_ORIGINS` é opcional. Para gerar o `JWT_SECRET`:
+2. Copie `.env.example` para `.env` e preencha `DATABASE_URL`, `JWT_SECRET` e `ENCRYPTION_KEY` (chave mestra que cifra a chave do Gemini de cada usuário; gere com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). `CORS_ORIGINS` é opcional. Para gerar o `JWT_SECRET`:
    ```bash
    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
    ```
@@ -33,7 +33,7 @@ Os usuários ficam na tabela `usuarios` de um banco Postgres no **Supabase**.
    npm run criar-admin -- admin "Nome do Administrador" "SenhaForte123"
    ```
    (Se o usuário já existir, ele é promovido a admin, reativado e tem a senha redefinida — útil caso o admin perca o acesso.)
-4. Na Vercel, cadastre `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `GEMINI_API_KEY` em *Settings → Environment Variables*. Cadastre também `CORS_ORIGINS` se o front-end for publicado em outra URL além de `https://notificacao-caj-7ncb.vercel.app`.
+4. Na Vercel, cadastre `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `ENCRYPTION_KEY` em *Settings → Environment Variables*. Cadastre também `CORS_ORIGINS` se o front-end for publicado em outra URL além de `https://notificacao-caj-7ncb.vercel.app`.
 
 Depois disso, o admin entra no sistema e cadastra os demais usuários pela tela **Usuários** (menu Administração).
 
@@ -41,7 +41,7 @@ Depois disso, o admin entra no sistema e cadastra os demais usuários pela tela 
 
 | Perfil | Pode |
 |--------|------|
-| `usuario` | Usar todos os módulos e trocar a própria senha |
+| `usuario` | Usar todos os módulos, trocar a própria senha e cadastrar a própria chave do Gemini |
 | `admin` | Tudo acima + criar, editar, desativar, excluir usuários e redefinir senhas |
 
 Um admin não pode rebaixar, desativar ou excluir a própria conta (garante que sempre exista um admin ativo).
@@ -54,6 +54,9 @@ Desativações e mudanças de perfil valem na hora — o token do usuário deixa
 | `/api/auth/login` | POST | público | `{ usuario, senha }` → `{ token, usuario }` |
 | `/api/auth/me` | GET | logado | Dados do usuário do token |
 | `/api/auth/senha` | PUT | logado | `{ senhaAtual, novaSenha }` — troca a própria senha |
+| `/api/auth/gemini` | GET | logado | `{ configurada, final }` — se a própria chave do Gemini está cadastrada (só os 4 últimos caracteres) |
+| `/api/auth/gemini` | PUT | logado | `{ chave }` — salva a própria chave do Gemini (cifrada no banco) |
+| `/api/auth/gemini` | DELETE | logado | Remove a própria chave do Gemini |
 | `/api/usuarios` | GET | admin | Lista usuários |
 | `/api/usuarios` | POST | admin | `{ usuario, nome, senha, perfil }` — cria usuário |
 | `/api/usuarios/:id` | PUT | admin | `{ nome?, perfil?, ativo? }` — edita usuário |
