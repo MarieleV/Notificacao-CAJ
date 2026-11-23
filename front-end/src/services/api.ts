@@ -4,7 +4,6 @@ import { apiFetch, throwApiError } from "./http";
 
 // tipos de dados que vamos enviar 
 export interface GerarNotificacaoPayload {
-  api_key: string;
   textos_base: string[];
   dataConstatacao: string;
   protocolo: string;

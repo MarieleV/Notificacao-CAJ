@@ -212,7 +212,11 @@ PORT=3000
 JWT_SECRET=um-segredo-aleatorio-com-pelo-menos-32-caracteres
 JWT_EXPIRES_IN=8h
 DATABASE_URL=postgresql://usuario:senha@host:6543/postgres
+GEMINI_API_KEY=sua_chave_do_gemini
+CORS_ORIGINS=
 ```
+
+`CORS_ORIGINS` aceita URLs separadas por vírgula. Se ficar vazia, a API aceita o front-end publicado e o `http://localhost:5173`.
 
 Para gerar um `JWT_SECRET`:
 
@@ -258,10 +262,10 @@ npm run dev
 A aplicação fica disponível em `http://localhost:5173`. Entre com o administrador criado no passo 2.
 
 > [!NOTE]
-> A chave do Gemini não vai no `.env`: cada usuário a informa no topo da tela **Redigir Notificação**, e ela fica guardada só enquanto a aba estiver aberta.
+> A chave do Gemini fica só no servidor (`GEMINI_API_KEY`). Os usuários não precisam informá-la na tela.
 
 > [!WARNING]
-> Nunca versione os arquivos `.env`. `DATABASE_URL` e `JWT_SECRET` devem ficar apenas no `.env` local e nas variáveis de ambiente da Vercel.
+> Nunca versione os arquivos `.env`. `DATABASE_URL`, `JWT_SECRET` e `GEMINI_API_KEY` devem ficar apenas no `.env` local e nas variáveis de ambiente da Vercel.
 
 <p align="center">
   <a href="https://github.com/MarieleV">

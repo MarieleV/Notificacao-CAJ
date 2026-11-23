@@ -31,7 +31,10 @@ export function useRedatorNotificacao() {
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  const [apiKey, setApiKey] = useSessionStorage("redator_apiKey", "");
+  // A chave do Gemini fica no servidor (PA-14). Remove a que versões antigas guardavam na aba.
+  useEffect(() => {
+    try { window.sessionStorage.removeItem("redator_apiKey"); } catch { /* armazenamento indisponível */ }
+  }, []);
   const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
   const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
   
@@ -349,7 +352,6 @@ export function useRedatorNotificacao() {
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
-    if (!apiKey.trim()) return alert("Insira sua Chave de API do Gemini.");
     if (camposObrigatoriosVazios) return alert("Preencha todos os Dados obrigatórios da Notificação.");
     if (esqueceuDeBuscar && excelData.length > 0) return alert("Você alterou a matrícula, clique em 'Buscar' antes de gerar.");
 
@@ -383,7 +385,6 @@ export function useRedatorNotificacao() {
 
     try {
       const data = await gerarNotificacaoApi({
-        api_key: apiKey.trim(), 
         textos_base: textosBase,
         dataConstatacao: dataConstatacao.trim(), 
         protocolo: protocoloEfetivo,            
@@ -462,7 +463,7 @@ export function useRedatorNotificacao() {
   }
 
   return {
-    apiKey, setApiKey, dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
+    dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,
     excelData, baseHydrated, fileLoading, fileModal, setFileModal, fileName,

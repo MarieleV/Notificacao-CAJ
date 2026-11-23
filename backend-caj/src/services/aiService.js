@@ -37,7 +37,7 @@ const preencherCampo = (texto, rotulo, valor) =>
     (_, r) => `${r} ${valor}`
   );
 
-const generateNotificationText = async (apiKey, baseTexts, metadata = {}) => {
+const generateNotificationText = async (baseTexts, metadata = {}) => {
   const textos = Array.isArray(baseTexts) ? baseTexts.filter(Boolean) : [];
   if (textos.length === 0) throw new Error("Nenhum texto base recebido.");
 
@@ -58,8 +58,11 @@ const generateNotificationText = async (apiKey, baseTexts, metadata = {}) => {
   }
 
   // ── CASO 2: demais códigos e combinações (inclui 20012 + outros) ─────────
-  const apiKeyLimpa = String(apiKey || "").trim();
-  if (!apiKeyLimpa) throw new Error("Chave de API do Gemini não informada.");
+  // A chave fica só no servidor (variável de ambiente), nunca no navegador (PA-14).
+  const apiKeyLimpa = String(process.env.GEMINI_API_KEY || "").trim();
+  if (!apiKeyLimpa) {
+    throw new Error("Geração com IA indisponível: a chave do Gemini (GEMINI_API_KEY) não está configurada no servidor.");
+  }
 
   const genAI = new GoogleGenerativeAI(apiKeyLimpa);
   const model = genAI.getGenerativeModel({

@@ -55,7 +55,7 @@ No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil e s
 | Armazenamento | Duração | O que guarda |
 | --- | --- | --- |
 | Memória (RAM) | Até recarregar a página | Planilhas brutas do Controle de Análises; textos temporários da calculadora |
-| `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, chave do Gemini, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
+| `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
 | `localStorage` | Sem prazo de expiração | Estado do Controle de Análises (chave `@ControleAnalises:state`); token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
 | IndexedDB (`redator-db`) | Sem prazo de expiração | Base de dados de clientes carregada no Redator |
 
@@ -65,7 +65,7 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 
 - **Roteamento por hash** (`createHashRouter`): as URLs têm a forma `/#/multas`, o que dispensa regras de reescrita no servidor de hospedagem.
 - **Lógica separada da interface:** cada tela tem um hook dedicado em `hooks/` com estado, regras e ações; o arquivo da tela só renderiza.
-- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente, chave da IA). O banco é consultado só para autenticar e gerir usuários.
+- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente). A chave do Gemini fica no servidor. O banco é consultado só para autenticar e gerir usuários.
 - **Textos montados no front-end:** os pareceres da Ouvidoria e das defesas são templates em TypeScript; a IA só é usada na tela de notificações.
 
 ## 3. Stack tecnológico
@@ -133,7 +133,7 @@ Notificacao-CAJ
 
 ### 5.1. Entrada e rotas
 
-`src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS para qualquer origem (`*`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
+`src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS só para as origens permitidas (`CORS_ORIGINS`, URLs separadas por vírgula; se vazia, o front-end publicado `https://notificacao-caj-7ncb.vercel.app` e o ambiente local `http://localhost:5173`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
 
 Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.7).
 
@@ -156,13 +156,13 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 
 Os controllers só validam a entrada e traduzem o resultado em resposta HTTP. Erros saem como `{ detail: mensagem }` com status 400 (entrada inválida) ou 500 (falha interna).
 
-- `generateNotification`: exige `api_key` e `textos_base` (lista). Repassa `dataConstatacao`, `protocolo`, `funcionario` e `equipe` ao serviço de IA.
+- `generateNotification`: exige `textos_base` (lista). Repassa `dataConstatacao`, `protocolo`, `funcionario` e `equipe` ao serviço de IA.
 - Exportação de parecer: exige `texto_final`; usa `tipoCaso` apenas no nome do arquivo do cabeçalho `Content-Disposition`. Os demais campos enviados pelas telas (`protocolo`, `numeroProcesso`, `decisao` etc.) são ignorados. Por isso as telas de Ouvidoria e de Defesa podem enviar payloads diferentes para as mesmas rotas.
 - Exportação de Auto de Infração: exige `texto_final` e repassa o corpo inteiro ao serviço.
 
 ### 5.3. Serviço de IA (`aiService.js`)
 
-Usa o modelo **gemini-2.5-flash**. A chave de API não vem de variável de ambiente: é a chave que o próprio usuário digita na tela, enviada no corpo da requisição.
+Usa o modelo **gemini-2.5-flash**. A chave de API vem da variável de ambiente `GEMINI_API_KEY` do servidor; o navegador não recebe nem envia a chave. Sem ela, a geração responde com a mensagem “Geração com IA indisponível: a chave do Gemini (GEMINI_API_KEY) não está configurada no servidor.” O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
 
 O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as infrações selecionadas num formato obrigatório, sem saudações:
 
@@ -220,7 +220,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 
 ### 5.8. Deploy
 
-O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e repete os cabeçalhos de CORS (que o Express também aplica). O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
+O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GEMINI_API_KEY`, `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
 ## 6. Camada de serviços do front-end (`src/services`)
 
@@ -361,7 +361,7 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 | Tela | Armazenamento | Conteúdo | Não persiste |
 | --- | --- | --- | --- |
-| Redator | `sessionStorage` (`redator_*`) | Chave do Gemini, etapa, texto gerado, códigos, variante, dados do formulário, lote de casos (`excelDataResp`) | Estados visuais (menus abertos, carregando) |
+| Redator | `sessionStorage` (`redator_*`) | Etapa, texto gerado, códigos, variante, dados do formulário, lote de casos (`excelDataResp`) | Estados visuais (menus abertos, carregando) |
 | Redator | IndexedDB (`baseCliente`) | Base de dados de clientes carregada da planilha | – |
 | Retorno de Defesa | `sessionStorage` (`defesa_*`) | Etapa, código, nº da defesa, motivo, texto gerado, parâmetros da calculadora de prazos; filtro de matrícula (lote de casos, origem, responsável, matrícula e dados do cliente) | Modo preview/edição |
 | Tabela de Multas | `sessionStorage` (`calc_*`) | Linhas de água e esgoto, períodos, nº do AI, data da retirada, consumo base e referência; filtro de matrícula (mesmos campos da Defesa) | Textos dos laudos |
@@ -381,7 +381,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
 - **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
-- **Validações antes de gerar.** Pelo menos um código; chave do Gemini; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
+- **Validações antes de gerar.** Pelo menos um código; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
 - **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API.
 - **Exportação.** Exige o nº do Auto de Infração, envia texto, dados do cliente e identificadores, baixa `Notificacao_<matrícula>.docx` ou `.pdf` e marca a matrícula como processada.
 
@@ -474,8 +474,6 @@ As telas de trabalho têm o mesmo esqueleto: cabeçalho (`PageHeader`) com títu
 Cartão centralizado, fora da barra lateral, com logo, campos **Usuário** e **Senha** (com botão para mostrar a senha) e o botão **Entrar**. Mostra a mensagem de erro devolvida pela API. Depois do login, volta para a página que o usuário tentou abrir; quem já está logado é levado direto para ela.
 
 ### 12.1. Redigir Notificação (`RedatorNotificacao`)
-
-No topo, um campo de senha recebe a **chave do Gemini** (guardada no `sessionStorage`).
 
 1. **Seleção de Códigos de Infração.** Lista suspensa com busca por código, título ou categoria, seleção múltipla, etiquetas coloridas por categoria e botão **Confirmar Seleção**. Os códigos escolhidos aparecem como etiquetas removíveis. Um seletor alterna entre **Apenas Multa** e **Multa + Padronização**.
 2. **Dados da Notificação.** Dois cartões de carga: **Base de Dados do Cliente** (planilha para busca por matrícula) e **Análises Vencidas** (importa do Controle de Análises ou carrega uma planilha). Com um lote carregado, o operador escolhe o responsável e navega entre os casos dele (anterior e próximo, com contagem). Em seguida preenche: matrícula (botão **Buscar**, que preenche nome, endereço, bairro, CEP, localização, categoria e hidrômetro), data da constatação (máscara `DD/MM/AAAA`), protocolo, funcionário (lista pesquisavel, grava “Nome (Mat. N)”), equipe e, só para o código 20012, os meses sem acesso. O botão **Gerar** só libera com os campos obrigatórios preenchidos.
@@ -606,9 +604,9 @@ Observações:
 ## 15. Segurança e privacidade
 
 - **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
-- **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API ainda aceita qualquer origem (CORS `*`, no Express e no `vercel.json`) (PA-14).
-- **Segredos do servidor.** `JWT_SECRET` e `DATABASE_URL` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
-- **Chave do Gemini.** É digitada pelo usuário, guardada no `sessionStorage` e enviada no corpo de cada requisição de geração. Não há chave no servidor.
+- **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API só aceita chamadas do navegador vindas das origens permitidas (`CORS_ORIGINS`).
+- **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `GEMINI_API_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
+- **Chave do Gemini.** Fica só no servidor (`GEMINI_API_KEY`). A tela não pede nem guarda a chave, e o Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`.
 - **Documentos gerados.** Os arquivos não são gravados no servidor; são devolvidos na própria resposta e baixados no navegador.
 - **Dados no código.** A lista de funcionários está embutida no front-end e, portanto, visível a quem acessa a aplicação.
 - **Repositório.** O `.env` não deve ser versionado, mesmo vazio. Confirme que a divulgação pública do projeto está autorizada pela CAJ e que o link público não expõe dados internos.
@@ -622,7 +620,7 @@ Observações:
 ```bash
 cd backend-caj
 npm install
-cp .env.example .env   # preencher DATABASE_URL e JWT_SECRET
+cp .env.example .env   # preencher DATABASE_URL, JWT_SECRET e GEMINI_API_KEY
 npm run criar-admin -- admin "Nome do Administrador" "SenhaForte123"   # só na primeira vez
 npm run dev            # com recarga automática; ou npm start
 ```
@@ -643,7 +641,7 @@ O Vite define o alias `@` para `src`.
 **Pontos de atenção para quem for rodar o projeto:**
 
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
-- O back-end não lê `GEMINI_API_KEY`. A chave do Gemini é digitada na tela do Redator.
+- Sem `GEMINI_API_KEY`, a geração de notificações com IA não funciona (só o código 20012 sozinho, que não usa IA).
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
 - Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
 
@@ -657,7 +655,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- | --- |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
-| PA-14 | API e front-end | A API já exige login (JWT), mas continua com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Restringir a origem e, se possível, guardar a chave no servidor |
+| PA-14 | `funcionarios.ts` | A lista de funcionários (nomes e matrículas) continua embutida no código do front-end, visível a quem acessa a aplicação | Servir a lista pela API, que já exige login |
 
 ### 17.2. Prioridade média
 
@@ -695,7 +693,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login, a chave do Gemini foi para o servidor (`GEMINI_API_KEY`) e o CORS passou a aceitar só as origens de `CORS_ORIGINS`, sem os cabeçalhos `*` do `vercel.json` (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
 
 ## 18. Glossário
 
