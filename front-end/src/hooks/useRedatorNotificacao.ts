@@ -6,6 +6,7 @@ import { FUNCIONARIOS } from "../utils/funcionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
+import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
 
 const BASE_CLIENTE_KEY = "baseCliente";
 let baseClienteCache: any[] = [];
@@ -133,7 +134,6 @@ export function useRedatorNotificacao() {
   const currentCasoIndex = casosResponsavel.findIndex(row => String(row[keyMatriculaResp] || row["Matrícula"] || "") === matricula);
   const isCurrentProcessed = processedMatriculas.includes(matricula);
 
-  const funcionarioSelecionado = null; 
   const esqueceuDeBuscar = matricula.trim() !== "" && matricula !== matriculaBuscada;
   
   // ── REGRAS DO 20012 (Falta de acesso para leitura) ────────────────────────
@@ -243,17 +243,11 @@ export function useRedatorNotificacao() {
 
   const importarDoControleAnalises = () => {
     try {
-      const savedStr = localStorage.getItem("@ControleAnalises:state");
-      if (!savedStr) {
+      // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
+      const casosParaImportar = lerCasosDoControleAnalises();
+      if (!casosParaImportar) {
         setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
         return;
-      }
-      
-      const savedState = JSON.parse(savedStr);
-      let casosParaImportar = savedState.resultadosFiltrados || savedState.filtrados || savedState.dadosFiltrados || [];
-      
-      if (casosParaImportar.length === 0) {
-          casosParaImportar = savedState.resultados || savedState.dadosOriginais || [];
       }
 
       if (casosParaImportar.length === 0) {
@@ -485,7 +479,7 @@ export function useRedatorNotificacao() {
     casosResponsavel, currentCasoIndex, totalCasos, navegarCaso, isCurrentProcessed,
     
     selectedItems, filteredCodes, filteredFuncionarios,
-    funcionarioSelecionado, esqueceuDeBuscar, camposObrigatoriosVazios,
+    esqueceuDeBuscar, camposObrigatoriosVazios,
 
     exigeMeses, precisaProtocolo, soEh20012,
     
