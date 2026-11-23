@@ -248,7 +248,7 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 
 - `clauseMulta`: descrição do fato, dispositivo legal (quase todos no Art. 144 da Resolução 019/2019) e penalidade de multa.
 - `clauseMultaCP`: a mesma cláusula acrescida da **padronização obrigatória** da ligação em 90 dias úteis (Art. 144, § 3º), com a advertência de multa adicional por não padronização.
-- Os códigos incluem `20400` a `20418`, uma variante `20402 HD`, os códigos de acesso `20011` (serviços) e `20012` (leitura, com o marcador `[INFORMAR MESES SEM ACESSO]`), `20013` (notificação de atualização cadastral) e `20419` (recusa de atualização cadastral; ver PA-24).
+- Os códigos incluem `20400` a `20418`, uma variante `20402 HD`, os códigos de acesso `20011` (serviços) e `20012` (leitura, com o marcador `[INFORMAR MESES SEM ACESSO]`), `20013` (notificação de atualização cadastral) e `20419` (recusa de atualização cadastral).
 - `CATEGORY_COLORS` associa cada categoria a uma cor de etiqueta: fraude (vermelho), infraestrutura (laranja), uso (verde), acesso (azul) e cadastral (roxo).
 
 ### 6.3. `defesas.ts`
@@ -651,7 +651,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 | PA-14 | API e front-end | A API já exige login (JWT), mas continua com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Restringir a origem e, se possível, guardar a chave no servidor |
-| PA-24 | `notificacoes.ts` | No código 20419, as cláusulas `clauseMulta` e `clauseMultaCP` citam “Resolução 19/**2029**, alterada pela Resolução 55/2026 – ARIS”. O ano certo da resolução é 2019, e esse texto vai para o Auto de Infração | Trocar por “19/2019” e conferir a referência à Resolução 55/2026 |
 
 ### 17.2. Prioridade média
 
@@ -684,6 +683,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
 
