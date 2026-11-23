@@ -659,6 +659,8 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
+**Situação em novembro/2026:** 10 itens resolvidos (PA-01, 03, 04, 07, 11, 14, 15, 16, 21 e 24) e 13 abertos. Dos abertos, 6 já foram resolvidos em parte (PA-08, 09, 10, 12, 19 e 22; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
@@ -682,7 +684,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema |
 | --- | --- | --- |
-| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
+| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS` (em `defesas.ts` e `notificacoes.ts`), as funções `exportarParecerWord/PDF` e os tipos de payload `ExportPayload` e `ExportarParecerPayload` (em `api.ts` e `defesas.ts`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
 | PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 | PA-22 | `kvStorage` | Abre uma nova conexão com o IndexedDB a cada operação |
@@ -692,18 +694,28 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | ID | Resolução |
 | --- | --- |
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
-| PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
-| PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
-| PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
+| PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
-| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
-| PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
-| PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
-| PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
+| PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
+| PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
+| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `ENCRYPTION_KEY`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
+| PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+### 17.5. Itens resolvidos em parte
+
+Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
+
+| ID | O que já foi feito | O que falta |
+| --- | --- | --- |
+| PA-08 | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03 | Aceitar o hífen comum além do travessão nos numerais romanos, se for o padrão desejado |
+| PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts` | Remover as duplicações de `CATEGORY_COLORS`, das funções de exportar parecer e dos tipos de payload |
+| PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
+| PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
+| PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” | Página 404 dentro do `Layout`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
+| PA-22 | O `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova | `kvStorage` abre uma nova conexão com o IndexedDB a cada operação |
 
 ## 18. Glossário
 
