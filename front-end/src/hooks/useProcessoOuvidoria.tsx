@@ -7,6 +7,11 @@ import { FUNCIONARIOS } from "../utils/funcionarios";
 import { DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
 import { exportarParecerPDF, exportarParecerWord } from "../services/api";
 
+// Marcadores de revisão que saem em vermelho. É a mesma lista usada no Word e no PDF
+// (RED_MARKERS em backend-caj/src/services/documentService.js); mantenha as duas iguais (PA-07).
+const RED_MARKERS = ["[EDIÇÃO PECULIAR]", "<adicionar fato novo ao processo>"];
+const isRedMarker = (part: string) => RED_MARKERS.includes(part);
+
 export function useProcessoOuvidoria() {
   // --- ESTADOS VISUAIS DA TELA ---
   const [copied, setCopied] = useState(false);
@@ -493,16 +498,16 @@ export function useProcessoOuvidoria() {
         <p key={lineIdx} className="min-h-[1em]">
           {parts.map((part, partIdx) => {
             const isBold = partIdx % 2 !== 0;
-            const isRed = part === "[EDIÇÃO PECULIAR]";
+            const redClass = isRedMarker(part) ? "text-red-600" : "";
 
             if (isBold) {
               return (
-                <strong key={partIdx} className={isRed ? "text-red-600" : ""}>
+                <strong key={partIdx} className={redClass}>
                   {part}
                 </strong>
               );
             }
-            return <span key={partIdx}>{part}</span>;
+            return <span key={partIdx} className={redClass}>{part}</span>;
           })}
         </p>
       );

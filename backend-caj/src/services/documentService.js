@@ -11,6 +11,11 @@ const PDFDocument = require("pdfkit");
 // Itens numerados com dois dígitos (01., 02., ..., 04. RATIFICAR etc.) ficam inteiros em negrito.
 const fullLineBoldRegex = /^(\d{2}\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
 
+// Marcadores de revisão que saem em vermelho, com a mesma regra no Word e no PDF.
+// A pré-visualização da Ouvidoria (front-end) usa a mesma lista (PA-07).
+const RED_MARKERS = ["[EDIÇÃO PECULIAR]", "<adicionar fato novo ao processo>"];
+const isRedMarker = (part) => RED_MARKERS.includes(part);
+
 // ==============================================================================
 // FUNÇÕES UTILITÁRIAS INTERNAS
 // ==============================================================================
@@ -27,8 +32,8 @@ const formatTextToDocx = (text) => {
       // Índices ímpares são as palavras que estavam dentro dos **
       const isPartBold = isBoldLine || (index % 2 !== 0);
       
-      // NOVA REGRA: Se a parte for a frase de alerta, pinta de vermelho!
-      const isRed = part === "[EDIÇÃO PECULIAR]" || part === "<adicionar fato novo ao processo>";
+      // Marcadores de revisão saem em vermelho
+      const isRed = isRedMarker(part);
 
       return new TextRun({ 
         text: part, 
@@ -101,7 +106,7 @@ const buildParecerPdf = (textoFinal) => {
         const validParts = parts.map((part, index) => ({
           text: part,
           bold: isBoldLine || (index % 2 !== 0),
-          isRed: part === "<adicionar fato novo ao processo>" // Identifica se é a frase de alerta
+          isRed: isRedMarker(part) // Marcadores de revisão saem em vermelho
         })).filter(p => p.text !== "");
 
         // Desenha os pedaços na mesma linha (continued: true)
@@ -110,7 +115,7 @@ const buildParecerPdf = (textoFinal) => {
           
           doc.font(partObj.bold ? "Helvetica-Bold" : "Helvetica")
              .fontSize(11)
-             .fillColor(partObj.isRed ? "red" : "black"); // Aplica cor vermelha se for o alerta
+             .fillColor(partObj.isRed ? "#FF0000" : "black"); // Mesmo vermelho do Word
 
           // O Segredo do PDFKit: O alinhamento só deve ser declarado no 1º fragmento de texto
           const options = {
