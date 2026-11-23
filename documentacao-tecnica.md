@@ -565,7 +565,7 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | `la_cadastral` | – | Cliente atualizou o cadastro e pede cancelamento da multa |
 | `prorrogacao` | – | Cliente pede prazo para padronizar, antes da sanção |
 
-As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, corte, LA padronizada, LA cadastral e prorrogação. Ao trocar a resposta, o tipo volta para leitura.
+As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, LA padronizada, LA cadastral e prorrogação. Violação de corte só existe para recurso, porque não há template para “Não é recurso”. Ao trocar a resposta, o tipo volta para leitura. Se a sessão tiver guardado “Não é recurso” com corte, a tela também volta para leitura.
 
 ### 13.3. Template por situação
 
@@ -581,7 +581,6 @@ As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É re
 | **Recurso**, hd, by-pass ou clandestina | Texto único de manutenção das penalidades, com campos de veredicto a completar |
 | **Não é recurso**, leitura ou serviço | Parecer à Ouvidoria em cinco partes (I – Dos Fatos a V – Conclusão), com versão de revisão (deferir ou parcial) e de ratificação (indeferir) |
 | **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
-| **Não é recurso**, corte | Sem template pronto: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]` (PA-03) |
 
 Se houve defesa prévia, a tela pede data e protocolo da defesa e do indeferimento, e o texto inclui o parágrafo padrão com a citação do Art. 144.
 
@@ -656,7 +655,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, a opção **Violação de Corte** não tem template: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`, que pode ir para o Word ou PDF se o operador não perceber. (Hidrômetro, by-pass e clandestina não aparecem nessa opção) | Criar o template ou retirar a opção de corte quando não for recurso |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 | PA-14 | API e front-end | A API já exige login (JWT), mas continua com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Restringir a origem e, se possível, guardar a chave no servidor |
@@ -689,6 +687,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
 | PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é digitada na tela) |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
