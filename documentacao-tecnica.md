@@ -42,7 +42,7 @@ O projeto é um monorepo com duas aplicações independentes, que podem ser publ
 - **Back-end** (`/backend-caj`): API REST em Node.js (Express 5, CommonJS), executada como função serverless na Vercel. Faz o que não convém fazer no navegador: autenticar usuários, chamar a IA e desenhar os arquivos Word e PDF. O único dado guardado no servidor é a tabela de usuários, num Postgres do Supabase.
 
 ```
-Navegador (SPA React)  ──fetch / JSON + JWT──►  API Express (Vercel)  ──►  Google Gemini 2.5 Flash
+Navegador (SPA React)  ──fetch / JSON + JWT──►  API Express (Vercel)  ──►  Google Gemini (gemini-3.8-flash)
   │ sessionStorage · localStorage · IndexedDB          │
   │ planilhas .xlsx lidas no próprio navegador          ├─ Postgres (Supabase): tabela usuarios
                                                         └─ docx e pdfkit ──► arquivo (Blob) ──► download
@@ -166,7 +166,7 @@ Os controllers só validam a entrada e traduzem o resultado em resposta HTTP. Er
 
 ### 5.3. Serviço de IA (`aiService.js`)
 
-Usa o modelo **gemini-2.5-flash** com a chave do **próprio usuário logado**. O `aiController` lê a chave cifrada do banco (`userService.getGeminiKey`) e a decifra só no servidor; o navegador não envia a chave na geração. Sem chave cadastrada, a geração responde 400 com “Cadastre sua chave do Gemini em “Minha chave do Gemini”, no rodapé da barra lateral.”. O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
+Usa o modelo definido em `GEMINI_MODEL` (padrão **gemini-3.8-flash**; o `gemini-2.5-flash` deixou de aceitar chaves novas em novembro/2026) com a chave do **próprio usuário logado**. O `aiController` lê a chave cifrada do banco (`userService.getGeminiKey`) e a decifra só no servidor; o navegador não envia a chave na geração. Sem chave cadastrada, a geração responde 400 com “Cadastre sua chave do Gemini em “Minha chave do Gemini”, no rodapé da barra lateral.”. O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
 
 O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as infrações selecionadas num formato obrigatório, sem saudações:
 
@@ -229,7 +229,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 
 ### 5.8. Deploy
 
-O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
+O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `GEMINI_MODEL` (opcional), `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
 ## 6. Camada de serviços do front-end (`src/services`)
 
