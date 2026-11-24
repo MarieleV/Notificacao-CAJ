@@ -335,17 +335,20 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 
 Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transição), com logo, descrição do sistema e cinco itens de menu em **Módulos**. Para administradores, aparece também a seção **Administração**, com o item **Usuários** (subtítulo “Cadastro e Acessos”). O rodapé mostra o nome do usuário logado e o perfil (“Administrador” ou “Dep. Atendimento”), além de três botões: **Minha chave do Gemini** (abre o `ChaveGeminiModal`), **Alterar minha senha** (abre o `AlterarSenhaModal`) e **Sair**. O conteúdo da rota aparece no `<Outlet />`, com rolagem própria. Quando recolhida, os itens mostram só o ícone e o nome aparece como dica ao passar o mouse.
 
-| Rótulo no menu | Subtítulo | Título da tela |
+O título de cada tela (`PageHeader`) é igual ao rótulo do menu; a descrição abaixo do título explica o que a tela faz.
+
+| Rótulo no menu e título da tela | Subtítulo no menu | Descrição na tela |
 | --- | --- | --- |
-| Redigir Notificação | Assistente de IA | Redigir Notificação Extrajudicial |
-| Retorno de Defesa | Pareceres de Resposta | Redigir Resposta de Defesa |
-| Tabela de Multas | Cálculo e Referência | Cálculo de Diferenças de Faturamento |
-| Análises Vencidas | Controle de Prazos | Controle de Análises Vencidas |
-| Ouvidoria e Recursos | Análise de Processos | Análise de Processos e Ouvidoria |
+| Redigir Notificação | Assistente de IA | Assistente de redação jurídica com inteligência artificial |
+| Retorno de Defesa | Pareceres de Resposta | Respostas a defesas com base no código de infração |
+| Tabela de Multas | Cálculo e Referência | Apuração do valor correto vs. cobrado |
+| Análises Vencidas | Controle de Prazos | Gestão de prazos e priorização de serviços |
+| Ouvidoria e Recursos | Análise de Processos | Pareceres de recursos e manifestações de ouvidoria |
+| Usuários (só administradores) | Cadastro e Acessos | Cadastre quem pode acessar o sistema e defina os perfis de acesso. |
 
 ### 8.3. Página 404
 
-Ícone, texto explicativo e dois botões: **Voltar** (`navigate(-1)`) e **Ir para o Início** (link para `/`). Como é filha do `Layout`, aparece dentro da barra lateral (PA-19).
+Ícone, texto explicativo e dois botões: **Voltar** (`navigate(-1)`) e **Ir para o início** (link para `/`). É filha do `Layout`, então a barra lateral continua visível para navegar; ocupa só a área de conteúdo (`min-h-full`), sem rolagem extra.
 
 ### 8.4. Estilos
 
@@ -359,7 +362,7 @@ Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transiçã
   - escala `gray` recalibrada para um cinza-azulado.
 - A fonte é a **IBM Plex Sans**, carregada do Google Fonts no `index.html`.
 - As animações `fadeIn`, `slideUp` e `scaleIn` (classes `animate-*`) estão definidas em `theme.css`.
-- `theme.css` ainda mantém as variáveis do tema escuro (`.dark`), que não é ativado em lugar nenhum (PA-19).
+- Não há tema escuro: o sistema usa só o tema claro.
 
 ## 9. Persistência de estado
 
@@ -505,7 +508,7 @@ O cabeçalho tem o botão da **Calculadora de Dias Úteis**, uma janela flutuant
 3. **Revisão e Edição do Texto:** o operador completa os campos `XXX` (valores, datas, prazos) e ajusta o texto.
 4. **Exportação e Entrega:** botões PDF e Word.
 
-### 12.3. Tabela de Multas (`CalculadoraMulta`, título “Cálculo de Diferenças de Faturamento”)
+### 12.3. Tabela de Multas (`CalculadoraMulta`)
 
 Acima dos blocos numerados fica o **Filtro de Matrícula** (seção 10.6), para trabalhar os casos importados do Controle de Análises.
 
@@ -551,7 +554,7 @@ O cabeçalho tem a Calculadora de Dias Úteis e o botão Limpar. A tela tem cinc
 
 O painel recolhível **Tratativas de Resposta – Guia Sansys** orienta o pós-decisão. O operador informa canal de resposta (e-mail, telefone ou ambos), contatos, se aplica a IN 83/2025, se a fatura foi alterada, se há restituição de multa e o tipo de indeferimento, e o painel mostra, em blocos editáveis e copiáveis (`EditableCopyBlock`): o texto de encerramento no Sansys (cód. 3773), a geração do cód. 426 (prorrogação de prazo, com o status da multa), a alteração de fatura (cód. 10024/10082, com vencimento da nova fatura 20 dias úteis após a decisão), o e-mail de resposta ao cliente e a abertura do cód. 1073 para contato ativo (cód. 1170). Há também lembretes de anexos (PDF do parecer em todos os casos; PDF da fatura corrigida nos retornos por telefone).
 
-### 12.6. Gestão de Usuários (`GerenciarUsuarios`, só administradores)
+### 12.6. Usuários (`GerenciarUsuarios`, só administradores)
 
 Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.7).
 
@@ -663,7 +666,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 12 itens resolvidos (PA-01, 03, 04, 07, 09, 11, 14, 15, 16, 21, 22 e 24) e 11 abertos. Dos abertos, 4 já foram resolvidos em parte (PA-08, 10, 12 e 19; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 13 itens resolvidos (PA-01, 03, 04, 07, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 10 abertos. Dos abertos, 3 já foram resolvidos em parte (PA-08, 10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -689,7 +692,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | ID | Onde | Problema |
 | --- | --- | --- |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
-| PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 
 ### 17.4. Itens resolvidos
 
@@ -704,6 +706,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
+| PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais”; a página 404 continua dentro do `Layout`, mas ocupa só a área de conteúdo (`min-h-full` no lugar de `min-h-screen`); o título de cada tela passou a ser igual ao rótulo do menu; e o tema escuro sem uso (`.dark` e `@custom-variant dark`) foi removido do `theme.css` |
 | PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `ENCRYPTION_KEY`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
 | PA-22 | O `funcionarioSelecionado` fixo em `null` foi removido do Redator; o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova; e o `kvStorage` abre uma única conexão com o IndexedDB e a reaproveita, abrindo outra só se ela for fechada ou falhar |
 | PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
@@ -717,7 +720,6 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 | PA-08 | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03 | Aceitar o hífen comum além do travessão nos numerais romanos, se for o padrão desejado |
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
-| PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” | Página 404 dentro do `Layout`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 
 ## 18. Glossário
 
