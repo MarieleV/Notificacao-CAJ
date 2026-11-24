@@ -1,7 +1,9 @@
 // src/services/aiService.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const MODEL_NAME = "gemini-2.5-flash";
+// Modelo do Gemini. Pode ser trocado pela variável GEMINI_MODEL sem mudar o código
+// (o Google aposenta modelos antigos: o gemini-2.5-flash deixou de aceitar chaves novas).
+const MODEL_NAME = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.8-flash";
 
 const LABELS = [
   "Descrição do fato gerador",
