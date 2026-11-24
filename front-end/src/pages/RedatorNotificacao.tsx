@@ -2,7 +2,7 @@
 import React, { Component, ErrorInfo, ReactNode, useRef } from "react";
 import {
   Sparkles, Copy, Download, CheckCircle2, AlertCircle,
-  ChevronDown, X, FileText, Info, Key, Search, UserCheck, Eraser,
+  ChevronDown, X, FileText, Info, Search, UserCheck, Eraser,
   ChevronLeft, ChevronRight, RefreshCw
 } from "lucide-react";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../components/shared/ui";
 
 import { SectionBlock } from "../components/shared/SectionBlock";
-import { CATEGORY_COLORS } from "../services/notificacoes";
+import { CATEGORY_COLORS } from "../services/categorias";
 import { useRedatorNotificacao } from "../hooks/useRedatorNotificacao";
 
 // Error Boundary para proteção contra modificações indevidas no DOM pelo tradutor
@@ -60,10 +60,16 @@ function RedatorNotificacaoConteudo() {
         <FeedbackModal type={hook.fileModal.type} message={<span>{hook.fileModal.message}</span>} onClose={() => hook.setFileModal(null)} />
       )}
       
-      <Cabecalho apiKey={hook.apiKey} setApiKey={hook.setApiKey} limparTela={hook.limparTela} />
+      <Cabecalho limparTela={hook.limparTela} />
 
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-5xl mx-auto space-y-6">
+
+          {hook.chaveGeminiCadastrada === false && (
+            <Alert tone="warning">
+              Você ainda não cadastrou sua chave do Gemini. Cadastre em <b>Minha chave do Gemini</b> (ícone <Sparkles size={13} className="inline -mt-0.5" /> no rodapé da barra lateral) para gerar notificações com IA.
+            </Alert>
+          )}
 
           {/* ================= BLOCO 1: CÓDIGOS ================= */}
           <SectionBlock number={1} title="Seleção de Códigos de Infração" description="Selecione um ou mais códigos referentes ao caso do cliente">
@@ -334,19 +340,13 @@ function RedatorNotificacaoConteudo() {
 // COMPONENTES VISUAIS (Dumb Components)
 // ============================================================================
 
-const Cabecalho = ({ apiKey, setApiKey, limparTela }: any) => (
+const Cabecalho = ({ limparTela }: any) => (
   <PageHeader
     icon={FileText}
-    title={<span>Redigir Notificação Extrajudicial</span>}
+    title={<span>Redigir Notificação</span>}
     description={<span>Assistente de redação jurídica com inteligência artificial</span>}
     actions={
-      <>
-        <Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>
-        <div className="flex items-center h-10 bg-white border border-gray-300 rounded-md px-3 transition-colors hover:border-gray-400 focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/15">
-          <Key size={14} className="text-gray-400 mr-2 flex-shrink-0" />
-          <input type="password" aria-label="Chave da API Gemini" placeholder="Chave da API Gemini" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="bg-transparent border-none focus:outline-none text-sm text-ink placeholder:text-gray-400 w-48" />
-        </div>
-      </>
+      <Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>
     }
   />
 );
@@ -532,7 +532,8 @@ const BuscaFuncionarioInput = ({ hook }: any) => (
             <span className="text-[11px] font-mono font-semibold text-brand"><span>Mat. </span><span>{f.matricula}</span></span>
           </div>
         ))}
-        {hook.filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-xs text-ink-muted">Nenhum funcionário encontrado. O texto digitado será usado como está.</div>}
+        {hook.erroFuncionarios && <div className="px-3 py-2 text-xs text-danger">{hook.erroFuncionarios}</div>}
+        {!hook.erroFuncionarios && hook.filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-xs text-ink-muted">Nenhum funcionário encontrado. O texto digitado será usado como está.</div>}
       </div>
     )}
   </div>

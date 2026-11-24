@@ -50,22 +50,22 @@ Navegador (SPA React)  ──fetch / JSON + JWT──►  API Express (Vercel)  
 
 ### 2.1. Onde cada dado fica
 
-No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil e status). Todo o estado de trabalho fica no navegador:
+No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil, status e a chave do Gemini de cada usuário, cifrada). Todo o estado de trabalho fica no navegador:
 
 | Armazenamento | Duração | O que guarda |
 | --- | --- | --- |
 | Memória (RAM) | Até recarregar a página | Planilhas brutas do Controle de Análises; textos temporários da calculadora |
-| `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, chave do Gemini, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
+| `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
 | `localStorage` | Sem prazo de expiração | Estado do Controle de Análises (chave `@ControleAnalises:state`); token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
 | IndexedDB (`redator-db`) | Sem prazo de expiração | Base de dados de clientes carregada no Redator |
 
-A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e PA-14).
+A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12).
 
 ### 2.2. Decisões de arquitetura
 
 - **Roteamento por hash** (`createHashRouter`): as URLs têm a forma `/#/multas`, o que dispensa regras de reescrita no servidor de hospedagem.
 - **Lógica separada da interface:** cada tela tem um hook dedicado em `hooks/` com estado, regras e ações; o arquivo da tela só renderiza.
-- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente, chave da IA). O banco é consultado só para autenticar e gerir usuários.
+- **Back-end sem estado de trabalho:** cada requisição traz tudo de que precisa (token JWT, texto final, dados do cliente). O banco é consultado só para autenticar, gerir usuários e ler a chave do Gemini do usuário logado.
 - **Textos montados no front-end:** os pareceres da Ouvidoria e das defesas são templates em TypeScript; a IA só é usada na tela de notificações.
 
 ## 3. Stack tecnológico
@@ -92,6 +92,7 @@ A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12 e P
 | `pg` | Conexão com o Postgres (Supabase) |
 | `jsonwebtoken` e `bcryptjs` | Tokens de acesso (JWT) e hash de senhas |
 | `dotenv` | Leitura do `.env` em execução local |
+| `crypto` (nativo do Node.js) | Cifra AES-256-GCM da chave do Gemini de cada usuário |
 | Vercel (`@vercel/node`, `vercel.json`) | Deploy serverless |
 
 ### 3.3. Dependências
@@ -109,10 +110,11 @@ Notificacao-CAJ
 │  │  ├─ index.js                      entrada do Express
 │  │  ├─ routes/indexRoutes.js         rotas /api/*
 │  │  ├─ middlewares/authMiddleware.js requireAuth e requireAdmin
-│  │  ├─ controllers/                  ai, auth, calculator, document, user
+│  │  ├─ controllers/                  ai, auth, calculator, document, funcionario, user
 │  │  ├─ services/                     ai, auth, calculator, document, user
 │  │  ├─ db/                           pool.js (conexão) e schema.sql (tabela usuarios)
-│  │  └─ utils/formatters.js
+│  │  ├─ data/funcionarios.js          lista de funcionários (entregue só a usuários logados)
+│  │  └─ utils/                      formatters.js e crypto.js (cifra a chave do Gemini)
 │  ├─ .env.example · vercel.json · package.json
 └─ front-end
    ├─ index.html · vite.config.ts · package.json · .env.example
@@ -122,10 +124,10 @@ Notificacao-CAJ
       ├─ routes/routes.ts
       ├─ contexts/AuthContext.tsx      sessão do usuário logado
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
-      ├─ hooks/                        7 hooks (um por tela + useFiltroMatriculaLote e useSessionStorage)
-      ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, shared/, ouvidoria/
-      ├─ services/                     api, auth, http, usuarios, notificacoes, defesas, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, funcionarios, controleAnalises
+      ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
+      ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
+      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
+      ├─ utils/                        dates, masks, kvStorage, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -133,7 +135,7 @@ Notificacao-CAJ
 
 ### 5.1. Entrada e rotas
 
-`src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS para qualquer origem (`*`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
+`src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS só para as origens permitidas (`CORS_ORIGINS`, URLs separadas por vírgula; se vazia, o front-end publicado `https://notificacao-caj-7ncb.vercel.app` e o ambiente local `http://localhost:5173`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
 
 Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.7).
 
@@ -142,6 +144,8 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 | `POST /api/auth/login` | `authController.login` | Tela de login (pública) |
 | `GET /api/auth/me` | `authController.me` | Dados do usuário do token |
 | `PUT /api/auth/senha` | `authController.trocarSenha` | Troca da própria senha (barra lateral) |
+| `GET /api/funcionarios` | `funcionarioController.list` | Buscas de funcionário do Redator e da Ouvidoria (usuário logado) |
+| `GET`, `PUT`, `DELETE /api/auth/gemini` | `authController.geminiStatus`, `salvarGemini` e `removerGemini` | Situação, cadastro e remoção da própria chave do Gemini (barra lateral) |
 | `GET`, `POST /api/usuarios` | `userController.list` e `create` | Gestão de Usuários (admin) |
 | `PUT`, `DELETE /api/usuarios/:id` | `userController.update` e `remove` | Gestão de Usuários (admin) |
 | `PUT /api/usuarios/:id/senha` | `userController.resetSenha` | Gestão de Usuários (admin) |
@@ -156,13 +160,13 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 
 Os controllers só validam a entrada e traduzem o resultado em resposta HTTP. Erros saem como `{ detail: mensagem }` com status 400 (entrada inválida) ou 500 (falha interna).
 
-- `generateNotification`: exige `api_key` e `textos_base` (lista). Repassa `dataConstatacao`, `protocolo`, `funcionario` e `equipe` ao serviço de IA.
+- `generateNotification`: exige `textos_base` (lista). Repassa `dataConstatacao`, `protocolo`, `funcionario` e `equipe` ao serviço de IA.
 - Exportação de parecer: exige `texto_final`; usa `tipoCaso` apenas no nome do arquivo do cabeçalho `Content-Disposition`. Os demais campos enviados pelas telas (`protocolo`, `numeroProcesso`, `decisao` etc.) são ignorados. Por isso as telas de Ouvidoria e de Defesa podem enviar payloads diferentes para as mesmas rotas.
 - Exportação de Auto de Infração: exige `texto_final` e repassa o corpo inteiro ao serviço.
 
 ### 5.3. Serviço de IA (`aiService.js`)
 
-Usa o modelo **gemini-2.5-flash**. A chave de API não vem de variável de ambiente: é a chave que o próprio usuário digita na tela, enviada no corpo da requisição.
+Usa o modelo **gemini-2.5-flash** com a chave do **próprio usuário logado**. O `aiController` lê a chave cifrada do banco (`userService.getGeminiKey`) e a decifra só no servidor; o navegador não envia a chave na geração. Sem chave cadastrada, a geração responde 400 com “Cadastre sua chave do Gemini em “Minha chave do Gemini”, no rodapé da barra lateral.”. O caso só com o código 20012, que não usa IA, funciona mesmo sem a chave.
 
 O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as infrações selecionadas num formato obrigatório, sem saudações:
 
@@ -192,7 +196,10 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 **Regras de formatação do texto** (compartilhadas por Word e PDF):
 
 - `**texto**` vira negrito.
-- Linhas que começam com um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `I –`, `II –`, `III –`, `IV –`, `V –`, `OBJETO:` ou `DECISÃO:` ficam inteiras em negrito (apenas no parecer). Os numerais romanos só são reconhecidos com o travessão “–” (PA-08).
+- Apenas no parecer, ficam inteiras em negrito (função `isFullBoldLine`) as linhas que começam com:
+  - um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `OBJETO:` ou `DECISÃO:`;
+  - um numeral romano de `I` a `XXXIX` seguido do travessão “–” (`IV – DA DECISÃO ADMINISTRATIVA`);
+  - um numeral romano seguido de hífen comum, só quando o resto da linha está todo em maiúsculas (`VI - CONCLUSÃO`). Assim os incisos citados da resolução, que usam hífen e texto normal (`V - Derivação do ramal predial antes do hidrômetro`), não ficam em negrito.
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (`#FF0000`) no Word, no PDF e na pré-visualização da Ouvidoria. A lista fica em `RED_MARKERS`, repetida no `documentService.js` e no `useProcessoOuvidoria`; as duas precisam ser mantidas iguais.
 - O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele. Na Vercel, a pasta `public` entra no pacote da função pelo `includeFiles` do `vercel.json` (PA-16).
 
@@ -200,7 +207,7 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 
 Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas de água e de esgoto e o fator K1. Para cada mês calcula o valor da água faixa a faixa, soma a tarifa de serviço e compara com o valor cobrado. O esgoto é 80% do valor correto da água multiplicado pelo fator K1. Devolve linhas, totais e dois textos de laudo. **Nenhuma tela chama essa rota hoje**; a tela de multas calcula tudo no navegador (seção 12.3). Ver PA-02.
 
-### 5.6. Utilitários (`formatters.js`)
+### 5.6. Utilitários (`formatters.js` e `crypto.js`)
 
 | Função | O que faz |
 | --- | --- |
@@ -208,6 +215,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 | `parseMonthYear` | Converte `MM/AAAA` em um inteiro (ano × 12 + mês) para comparação |
 | `isWithinRange` | Verifica se um mês está dentro de um intervalo; fim vazio significa vigência em aberto |
 | `formatBRL` | Formata número como `R$ 1.234,56` |
+| `cifrar` / `decifrar` (`crypto.js`) | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
 
 ### 5.7. Autenticação e usuários
 
@@ -216,11 +224,12 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 - **`requireAuth`.** Exige `Authorization: Bearer <token>`, valida o token e consulta o usuário no banco a cada requisição. Assim, desativar um usuário ou mudar o perfil vale na hora. Responde 401 com `detail` (“Token de acesso ausente.”, “Sessão expirada...”, “Token inválido.”, “Usuário inativo ou inexistente.”).
 - **`requireAdmin`.** Responde 403 para quem não tem perfil `admin`.
 - **Regras de usuários (`userService`).** Login de 3 a 50 caracteres (letras minúsculas, números, ponto, hífen ou sublinhado), guardado em minúsculas; nome de 2 a 120 caracteres; senha de no mínimo 8 caracteres. Login repetido devolve 409. O admin não pode rebaixar, desativar nem excluir a própria conta. A troca da própria senha exige a senha atual.
+- **Chave do Gemini por usuário.** Fica na coluna `gemini_api_key_enc`, cifrada com AES-256-GCM (`utils/crypto.js`) pela chave mestra `ENCRYPTION_KEY` (64 caracteres hexadecimais) do servidor. O formato é `v1:<iv>:<tag>:<conteúdo>`, e o GCM detecta qualquer alteração do valor. A API só informa se a chave existe e os 4 últimos caracteres; nunca devolve a chave. Ao salvar, exige de 20 a 200 caracteres, sem espaços. Se a `ENCRYPTION_KEY` for trocada, as chaves salvas deixam de ser lidas: a tela mostra “Não cadastrada” e o usuário precisa cadastrar de novo.
 - **Primeiro administrador.** `npm run criar-admin -- <usuario> "<Nome>" "<senha>"` executa o `schema.sql` e cria o admin. Se o login já existir, ele é promovido a admin, reativado e recebe a nova senha.
 
 ### 5.8. Deploy
 
-O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e repete os cabeçalhos de CORS (que o Express também aplica). O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
+O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
 ## 6. Camada de serviços do front-end (`src/services`)
 
@@ -228,7 +237,7 @@ O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas
 
 - `auth.ts` define `API_BASE_URL` (`VITE_API_URL` ou, na falta dela, `https://notificacao-caj.vercel.app/api`) e cuida da sessão: `loginApi` chama `/auth/login` e grava o token e o usuário no `localStorage`; `getToken` descarta o token vencido (lê o `exp` do JWT, sem validar a assinatura, que é papel do back-end); `clearSession` apaga a sessão e dispara o evento `caj:auth-logout`.
 - `http.ts` tem `apiFetch` (prefixa a URL, envia `Authorization: Bearer` e encerra a sessão se a API responder 401) e `throwApiError` (lança o `detail` devolvido pela API).
-- `usuarios.ts` chama as rotas de gestão de usuários (`listarUsuarios`, `criarUsuario`, `atualizarUsuario`, `redefinirSenhaUsuario`, `excluirUsuario`) e a troca da própria senha (`trocarMinhaSenha`).
+- `usuarios.ts` chama as rotas de gestão de usuários (`listarUsuarios`, `criarUsuario`, `atualizarUsuario`, `redefinirSenhaUsuario`, `excluirUsuario`), a troca da própria senha (`trocarMinhaSenha`) e a chave do Gemini do usuário (`obterStatusChaveGemini`, `salvarChaveGemini`, `removerChaveGemini`). Salvar ou remover a chave dispara o evento `caj:gemini-chave-alterada`.
 
 ### 6.1. `api.ts`
 
@@ -238,9 +247,9 @@ Concentra as chamadas à API. As requisições passam por `apiFetch` (`http.ts`)
 | --- | --- | --- |
 | `gerarNotificacaoApi` | `/gerar` | JSON com `texto_gerado` |
 | `exportarWordApi` / `exportarPdfApi` | `/exportar_word` e `/exportar_pdf` | `Blob` |
-| `exportarParecerWord` / `exportarParecerPDF` | `/exportar_parecer_word` e `/exportar_parecer_pdf` | `Blob` |
+| `exportarParecerWord` / `exportarParecerPDF` | `/exportar_parecer_word` e `/exportar_parecer_pdf` | `Blob` (Ouvidoria e Retorno de Defesa) |
 
-Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. Em caso de erro HTTP, todas as funções chamam `throwApiError` (`http.ts`), que lança o `detail` devolvido pela API. Se a resposta não trouxer `detail`, usa uma mensagem padrão. Assim, uma chave do Gemini inválida aparece ao usuário com a mensagem real, e não como erro de comunicação. As telas incluem essa mensagem nos alertas de falha de download.
+Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. No `ExportarParecerPayload` só `texto_final` é obrigatório; a Ouvidoria envia também `numeroProcesso`, `tipoCaso` e `decisao`, e o Retorno de Defesa, `protocolo`, `autoInfracao` e `matricula`. Em caso de erro HTTP, todas as funções chamam `throwApiError` (`http.ts`), que lança o `detail` devolvido pela API. Se a resposta não trouxer `detail`, usa uma mensagem padrão. Assim, uma chave do Gemini inválida aparece ao usuário com a mensagem real, e não como erro de comunicação. As telas incluem essa mensagem nos alertas de falha de download.
 
 ### 6.2. `notificacoes.ts`
 
@@ -249,15 +258,19 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 - `clauseMulta`: descrição do fato, dispositivo legal (quase todos no Art. 144 da Resolução 019/2019) e penalidade de multa.
 - `clauseMultaCP`: a mesma cláusula acrescida da **padronização obrigatória** da ligação em 90 dias úteis (Art. 144, § 3º), com a advertência de multa adicional por não padronização.
 - Os códigos incluem `20400` a `20418`, uma variante `20402 HD`, os códigos de acesso `20011` (serviços) e `20012` (leitura, com o marcador `[INFORMAR MESES SEM ACESSO]`), `20013` (notificação de atualização cadastral) e `20419` (recusa de atualização cadastral).
-- `CATEGORY_COLORS` associa cada categoria a uma cor de etiqueta: fraude (vermelho), infraestrutura (laranja), uso (verde), acesso (azul) e cadastral (roxo).
+- As cores das etiquetas de categoria ficam em `categorias.ts` (seção 6.4).
 
 ### 6.3. `defesas.ts`
 
-Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação) e as funções de exportação de parecer.
+Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação). A exportação do parecer usa as funções de `api.ts` (seção 6.1).
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Este arquivo repete `CATEGORY_COLORS` e as funções `exportarParecerWord/PDF` (PA-09 e PA-10).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os dados divergem em alguns pontos da biblioteca do Redator (PA-10).
 
-### 6.4. `ouvidoria.ts`
+### 6.4. `categorias.ts`
+
+`CATEGORY_COLORS` associa cada categoria a uma cor de etiqueta: fraude (vermelho), infraestrutura (laranja), uso (verde), acesso (azul) e cadastral (roxo). É usado pelas listas de códigos do Redator de Notificação e do Retorno de Defesa.
+
+### 6.5. `ouvidoria.ts`
 
 Só tipos que regem o fluxo da Ouvidoria:
 
@@ -265,7 +278,7 @@ Só tipos que regem o fluxo da Ouvidoria:
 - `TipoCasoType`: `leitura`, `servico`, `corte_cavalete`, `hd`, `bypass`, `clandestina`, `la_padronizada`, `la_cadastral`, `prorrogacao`.
 - `DefesaType`: `com_defesa` ou `sem_defesa`.
 
-### 6.5. `tarifas.ts` – sem uso
+### 6.6. `tarifas.ts` – sem uso
 
 O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Guarda tarifas de água por vigência (de 01/03/2023 em diante), com tarifa de serviço e faixas de consumo para Residencial (e suas variantes sociais), Comercial, Entidade Beneficente, Industrial e Pública, além da tabela de fator K1 (esgoto) com 32 atividades, de 1,00 (casas) a 1,68 (indústria da construção e aterro sanitário). Alimentava a calculadora antiga (PA-02).
 
@@ -284,11 +297,11 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 
 ### 7.3. `kvStorage.ts`
 
-Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
+Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
 
-### 7.4. `funcionarios.ts`
+### 7.4. Lista de funcionários (`services/funcionarios.ts` e `useFuncionarios`)
 
-Lista fixa de 29 funcionários (`matricula` numérica e `nome`) embutida no código, usada nos campos de busca de funcionário do Redator e da Ouvidoria (PA-14).
+A lista de 29 funcionários (`matricula` numérica e `nome`) fica no back-end, em `src/data/funcionarios.js`, e é entregue por `GET /api/funcionarios` só a usuários logados. No front-end, `listarFuncionarios` (`services/funcionarios.ts`) busca a lista uma vez por carregamento da página e a reaproveita; se a busca falhar, tenta de novo na próxima vez. O hook `useFuncionarios` entrega `funcionarios` e `erroFuncionarios` às buscas de funcionário do Redator e da Ouvidoria, que mostram a mensagem de erro no lugar da lista se ela não carregar. Para incluir ou remover alguém, edite `src/data/funcionarios.js` e publique o back-end.
 
 ### 7.5. `controleAnalises.ts`
 
@@ -323,19 +336,22 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 
 ### 8.2. Layout (`components/Layout.tsx`)
 
-Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transição), com logo, descrição do sistema e cinco itens de menu em **Módulos**. Para administradores, aparece também a seção **Administração**, com o item **Usuários** (subtítulo “Cadastro e Acessos”). O rodapé mostra o nome do usuário logado e o perfil (“Administrador” ou “Dep. Atendimento”), além de dois botões: **Alterar minha senha** (abre o `AlterarSenhaModal`) e **Sair**. O conteúdo da rota aparece no `<Outlet />`, com rolagem própria. Quando recolhida, os itens mostram só o ícone e o nome aparece como dica ao passar o mouse.
+Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transição), com logo, descrição do sistema e cinco itens de menu em **Módulos**. Para administradores, aparece também a seção **Administração**, com o item **Usuários** (subtítulo “Cadastro e Acessos”). O rodapé mostra o nome do usuário logado e o perfil (“Administrador” ou “Dep. Atendimento”), além de três botões: **Minha chave do Gemini** (abre o `ChaveGeminiModal`), **Alterar minha senha** (abre o `AlterarSenhaModal`) e **Sair**. O conteúdo da rota aparece no `<Outlet />`, com rolagem própria. Quando recolhida, os itens mostram só o ícone e o nome aparece como dica ao passar o mouse.
 
-| Rótulo no menu | Subtítulo | Título da tela |
+O título de cada tela (`PageHeader`) é igual ao rótulo do menu; a descrição abaixo do título explica o que a tela faz.
+
+| Rótulo no menu e título da tela | Subtítulo no menu | Descrição na tela |
 | --- | --- | --- |
-| Redigir Notificação | Assistente de IA | Redigir Notificação Extrajudicial |
-| Retorno de Defesa | Pareceres de Resposta | Redigir Resposta de Defesa |
-| Tabela de Multas | Cálculo e Referência | Cálculo de Diferenças de Faturamento |
-| Análises Vencidas | Controle de Prazos | Controle de Análises Vencidas |
-| Ouvidoria e Recursos | Análise de Processos | Análise de Processos e Ouvidoria |
+| Redigir Notificação | Assistente de IA | Assistente de redação jurídica com inteligência artificial |
+| Retorno de Defesa | Pareceres de Resposta | Respostas a defesas com base no código de infração |
+| Tabela de Multas | Cálculo e Referência | Apuração do valor correto vs. cobrado |
+| Análises Vencidas | Controle de Prazos | Gestão de prazos e priorização de serviços |
+| Ouvidoria e Recursos | Análise de Processos | Pareceres de recursos e manifestações de ouvidoria |
+| Usuários (só administradores) | Cadastro e Acessos | Cadastre quem pode acessar o sistema e defina os perfis de acesso. |
 
 ### 8.3. Página 404
 
-Ícone, texto explicativo e dois botões: **Voltar** (`navigate(-1)`) e **Ir para o Início** (link para `/`). Como é filha do `Layout`, aparece dentro da barra lateral (PA-19).
+Ícone, texto explicativo e dois botões: **Voltar** (`navigate(-1)`) e **Ir para o início** (link para `/`). É filha do `Layout`, então a barra lateral continua visível para navegar; ocupa só a área de conteúdo (`min-h-full`), sem rolagem extra.
 
 ### 8.4. Estilos
 
@@ -349,7 +365,7 @@ Barra lateral escura e recolhível (largura de 16 rem para 5 rem, com transiçã
   - escala `gray` recalibrada para um cinza-azulado.
 - A fonte é a **IBM Plex Sans**, carregada do Google Fonts no `index.html`.
 - As animações `fadeIn`, `slideUp` e `scaleIn` (classes `animate-*`) estão definidas em `theme.css`.
-- `theme.css` ainda mantém as variáveis do tema escuro (`.dark`), que não é ativado em lugar nenhum (PA-19).
+- Não há tema escuro: o sistema usa só o tema claro.
 
 ## 9. Persistência de estado
 
@@ -361,7 +377,7 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 | Tela | Armazenamento | Conteúdo | Não persiste |
 | --- | --- | --- | --- |
-| Redator | `sessionStorage` (`redator_*`) | Chave do Gemini, etapa, texto gerado, códigos, variante, dados do formulário, lote de casos (`excelDataResp`) | Estados visuais (menus abertos, carregando) |
+| Redator | `sessionStorage` (`redator_*`) | Etapa, texto gerado, códigos, variante, dados do formulário, lote de casos (`excelDataResp`) | Estados visuais (menus abertos, carregando) |
 | Redator | IndexedDB (`baseCliente`) | Base de dados de clientes carregada da planilha | – |
 | Retorno de Defesa | `sessionStorage` (`defesa_*`) | Etapa, código, nº da defesa, motivo, texto gerado, parâmetros da calculadora de prazos; filtro de matrícula (lote de casos, origem, responsável, matrícula e dados do cliente) | Modo preview/edição |
 | Tabela de Multas | `sessionStorage` (`calc_*`) | Linhas de água e esgoto, períodos, nº do AI, data da retirada, consumo base e referência; filtro de matrícula (mesmos campos da Defesa) | Textos dos laudos |
@@ -371,7 +387,7 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 Consequências práticas: ao recarregar a página, o Controle de Análises mantém a tabela de resultados, mas exige novo upload das planilhas para reprocessar; a Ouvidoria mantém os campos preenchidos, mas o texto gerado se perde.
 
-Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12 e PA-14.
+Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12.
 
 ## 10. Hooks (`src/hooks`)
 
@@ -381,8 +397,9 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
 - **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
-- **Validações antes de gerar.** Pelo menos um código; chave do Gemini; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
-- **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API.
+- **Chave do Gemini.** Ao abrir a tela, consulta se o usuário tem chave cadastrada (`obterStatusChaveGemini`) e devolve `chaveGeminiCadastrada` (`true`, `false` ou `null` enquanto consulta). Volta a consultar quando a chave é salva ou removida (evento `caj:gemini-chave-alterada`). Também apaga a `redator_apiKey` que versões antigas guardavam no `sessionStorage`.
+- **Validações antes de gerar.** Pelo menos um código; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
+- **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API. A chave do Gemini não vai na requisição: o servidor usa a do usuário logado.
 - **Exportação.** Exige o nº do Auto de Infração, envia texto, dados do cliente e identificadores, baixa `Notificacao_<matrícula>.docx` ou `.pdf` e marca a matrícula como processada.
 
 ### 10.2. `useRespostaDefesa`
@@ -391,7 +408,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 - Exige o nº da Defesa A.I. Ao gerar, substitui `{DEFESA_AI}` e, se informado, o marcador do fundamento do indeferimento. O texto continua com `R$ XXX,XX`, `XX/XX/XXXX` e a alternativa “indeferida/deferida parcialmente” para o operador resolver na revisão.
 - Contém a calculadora de dias úteis (prazo de 15 dias ou personalizado, a partir de uma data).
 - Usa o filtro de matrícula em lote (`useFiltroMatriculaLote("defesa")`, seção 10.6).
-- Exporta Word e PDF por `services/defesas.ts` com o nome `Resposta_Defesa_<matrícula>`, ou `Resposta_Defesa_<data>` quando não há matrícula informada.
+- Exporta Word e PDF por `exportarParecerWord/PDF` (`services/api.ts`, as mesmas da Ouvidoria) com o nome `Resposta_Defesa_<matrícula>`, ou `Resposta_Defesa_<data>` quando não há matrícula informada.
 
 ### 10.3. `useCalculadoraMulta`
 
@@ -454,6 +471,7 @@ Os três seletores de data fecham ao clicar fora e unificaram implementações q
 
 - `ProtectedRoute` e `AdminRoute`: guardas de rota (seção 8.1).
 - `AlterarSenhaModal`: troca da própria senha (senha atual, nova senha com no mínimo 8 caracteres e confirmação).
+- `ChaveGeminiModal`: “Minha chave do Gemini”. Mostra se a chave está cadastrada (com os 4 últimos caracteres), recebe uma nova chave (que substitui a atual) e permite removê-la. A chave não fica salva no navegador.
 
 ### 11.2. Ouvidoria (`components/ouvidoria`)
 
@@ -475,7 +493,7 @@ Cartão centralizado, fora da barra lateral, com logo, campos **Usuário** e **S
 
 ### 12.1. Redigir Notificação (`RedatorNotificacao`)
 
-No topo, um campo de senha recebe a **chave do Gemini** (guardada no `sessionStorage`).
+Se o usuário ainda não cadastrou a chave do Gemini, um aviso no topo indica onde cadastrar: **Minha chave do Gemini**, no ícone ✨ do rodapé da barra lateral. Sem chave, a geração com IA responde com essa mesma orientação; o código 20012 sozinho, que não usa IA, gera normalmente.
 
 1. **Seleção de Códigos de Infração.** Lista suspensa com busca por código, título ou categoria, seleção múltipla, etiquetas coloridas por categoria e botão **Confirmar Seleção**. Os códigos escolhidos aparecem como etiquetas removíveis. Um seletor alterna entre **Apenas Multa** e **Multa + Padronização**.
 2. **Dados da Notificação.** Dois cartões de carga: **Base de Dados do Cliente** (planilha para busca por matrícula) e **Análises Vencidas** (importa do Controle de Análises ou carrega uma planilha). Com um lote carregado, o operador escolhe o responsável e navega entre os casos dele (anterior e próximo, com contagem). Em seguida preenche: matrícula (botão **Buscar**, que preenche nome, endereço, bairro, CEP, localização, categoria e hidrômetro), data da constatação (máscara `DD/MM/AAAA`), protocolo, funcionário (lista pesquisavel, grava “Nome (Mat. N)”), equipe e, só para o código 20012, os meses sem acesso. O botão **Gerar** só libera com os campos obrigatórios preenchidos.
@@ -493,7 +511,7 @@ O cabeçalho tem o botão da **Calculadora de Dias Úteis**, uma janela flutuant
 3. **Revisão e Edição do Texto:** o operador completa os campos `XXX` (valores, datas, prazos) e ajusta o texto.
 4. **Exportação e Entrega:** botões PDF e Word.
 
-### 12.3. Tabela de Multas (`CalculadoraMulta`, título “Cálculo de Diferenças de Faturamento”)
+### 12.3. Tabela de Multas (`CalculadoraMulta`)
 
 Acima dos blocos numerados fica o **Filtro de Matrícula** (seção 10.6), para trabalhar os casos importados do Controle de Análises.
 
@@ -539,7 +557,7 @@ O cabeçalho tem a Calculadora de Dias Úteis e o botão Limpar. A tela tem cinc
 
 O painel recolhível **Tratativas de Resposta – Guia Sansys** orienta o pós-decisão. O operador informa canal de resposta (e-mail, telefone ou ambos), contatos, se aplica a IN 83/2025, se a fatura foi alterada, se há restituição de multa e o tipo de indeferimento, e o painel mostra, em blocos editáveis e copiáveis (`EditableCopyBlock`): o texto de encerramento no Sansys (cód. 3773), a geração do cód. 426 (prorrogação de prazo, com o status da multa), a alteração de fatura (cód. 10024/10082, com vencimento da nova fatura 20 dias úteis após a decisão), o e-mail de resposta ao cliente e a abertura do cód. 1073 para contato ativo (cód. 1170). Há também lembretes de anexos (PDF do parecer em todos os casos; PDF da fatura corrigida nos retornos por telefone).
 
-### 12.6. Gestão de Usuários (`GerenciarUsuarios`, só administradores)
+### 12.6. Usuários (`GerenciarUsuarios`, só administradores)
 
 Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.7).
 
@@ -565,7 +583,7 @@ Trechos que exigem julgamento humano são marcados com `[EDIÇÃO PECULIAR]` ou 
 | `la_cadastral` | – | Cliente atualizou o cadastro e pede cancelamento da multa |
 | `prorrogacao` | – | Cliente pede prazo para padronizar, antes da sanção |
 
-As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, corte, LA padronizada, LA cadastral e prorrogação. Ao trocar a resposta, o tipo volta para leitura.
+As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É recurso?**. Com **Sim**: leitura, serviço, corte, hd, by-pass e clandestina. Com **Não**: leitura, serviço, LA padronizada, LA cadastral e prorrogação. Violação de corte só existe para recurso, porque não há template para “Não é recurso”. Ao trocar a resposta, o tipo volta para leitura. Se a sessão tiver guardado “Não é recurso” com corte, a tela também volta para leitura.
 
 ### 13.3. Template por situação
 
@@ -581,7 +599,6 @@ As opções do campo **Qual foi o fato gerador?** dependem da resposta a **É re
 | **Recurso**, hd, by-pass ou clandestina | Texto único de manutenção das penalidades, com campos de veredicto a completar |
 | **Não é recurso**, leitura ou serviço | Parecer à Ouvidoria em cinco partes (I – Dos Fatos a V – Conclusão), com versão de revisão (deferir ou parcial) e de ratificação (indeferir) |
 | **Não é recurso**, LA padronizada, LA cadastral ou prorrogação | Textos curtos (cancelamento de multa ou nova prorrogação de 60 dias úteis) |
-| **Não é recurso**, corte | Sem template pronto: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]` (PA-03) |
 
 Se houve defesa prévia, a tela pede data e protocolo da defesa e do indeferimento, e o texto inclui o parágrafo padrão com a citação do Art. 144.
 
@@ -607,11 +624,11 @@ Observações:
 ## 15. Segurança e privacidade
 
 - **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
-- **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API ainda aceita qualquer origem (CORS `*`, no Express e no `vercel.json`) (PA-14).
-- **Segredos do servidor.** `JWT_SECRET` e `DATABASE_URL` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
-- **Chave do Gemini.** É digitada pelo usuário, guardada no `sessionStorage` e enviada no corpo de cada requisição de geração. Não há chave no servidor.
+- **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API só aceita chamadas do navegador vindas das origens permitidas (`CORS_ORIGINS`).
+- **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `ENCRYPTION_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
+- **Chave do Gemini.** Cada usuário cadastra a própria em “Minha chave do Gemini”. Ela vai uma vez ao servidor, é guardada cifrada no banco (AES-256-GCM com `ENCRYPTION_KEY`) e nunca volta ao navegador. O Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`. Quem tiver acesso ao banco sem a `ENCRYPTION_KEY` não consegue ler as chaves.
 - **Documentos gerados.** Os arquivos não são gravados no servidor; são devolvidos na própria resposta e baixados no navegador.
-- **Dados no código.** A lista de funcionários está embutida no front-end e, portanto, visível a quem acessa a aplicação.
+- **Lista de funcionários.** Fica no back-end e só é entregue a usuários logados (`GET /api/funcionarios`). Não aparece no JavaScript publicado do front-end.
 - **Repositório.** O `.env` não deve ser versionado, mesmo vazio. Confirme que a divulgação pública do projeto está autorizada pela CAJ e que o link público não expõe dados internos.
 
 ## 16. Execução local e deploy
@@ -623,7 +640,7 @@ Observações:
 ```bash
 cd backend-caj
 npm install
-cp .env.example .env   # preencher DATABASE_URL e JWT_SECRET
+cp .env.example .env   # preencher DATABASE_URL, JWT_SECRET e ENCRYPTION_KEY
 npm run criar-admin -- admin "Nome do Administrador" "SenhaForte123"   # só na primeira vez
 npm run dev            # com recarga automática; ou npm start
 ```
@@ -644,7 +661,7 @@ O Vite define o alias `@` para `src`.
 **Pontos de atenção para quem for rodar o projeto:**
 
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
-- O back-end não lê `GEMINI_API_KEY`. A chave do Gemini é digitada na tela do Redator.
+- Sem `ENCRYPTION_KEY`, ninguém consegue salvar a chave do Gemini. Em bancos criados antes desta versão, rode no SQL Editor do Supabase: `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT;`
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
 - Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
 
@@ -652,14 +669,14 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
+**Situação em novembro/2026:** 14 itens resolvidos (PA-01, 03, 04, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 9 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-03 | `useProcessoOuvidoria` | Em “Não é recurso”, a opção **Violação de Corte** não tem template: o texto gerado é só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`, que pode ir para o Word ou PDF se o operador não perceber. (Hidrômetro, by-pass e clandestina não aparecem nessa opção) | Criar o template ou retirar a opção de corte quando não for recurso |
 | PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
-| PA-14 | API e front-end | A API já exige login (JWT), mas continua com CORS `*`; chave do Gemini enviada no corpo e guardada no `sessionStorage`; lista de funcionários no código do front-end | Restringir a origem e, se possível, guardar a chave no servidor |
 
 ### 17.2. Prioridade média
 
@@ -667,7 +684,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- | --- |
 | PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
 | PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
-| PA-08 | `documentService` | A regra de negrito de linha inteira só reconhece os numerais romanos (`I` a `V`) seguidos do travessão “–”. Com hífen comum (“-”) ou do `VI` em diante, depende dos `**` do template | Aceitar também o hífen, se for o padrão desejado nos pareceres |
 | PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
@@ -677,26 +693,35 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema |
 | --- | --- | --- |
-| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS`, as funções `exportarParecerWord/PDF` e os tipos de payload (`ExportPayload` e `ExportarParecerPayload`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
-| PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
-| PA-22 | `kvStorage` | Abre uma nova conexão com o IndexedDB a cada operação |
 
 ### 17.4. Itens resolvidos
 
 | ID | Resolução |
 | --- | --- |
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
+| PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
-| PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
-| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET` e `JWT_EXPIRES_IN`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é digitada na tela) |
-| PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
-| PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
+| PA-08 | A regra de negrito de linha inteira (`isFullBoldLine`, no `documentService`) reconhece qualquer item numerado com dois dígitos (`\d{2}\.`), numerais romanos de `I` a `XXXIX` (antes só de `I` a `V`) com travessão e, com hífen comum, só títulos em maiúsculas (`VI - CONCLUSÃO`), para não pôr em negrito os incisos citados da resolução (`V - Derivação do ramal...`) |
+| PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
-| PA-08 (parcial) | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03. Continua aberta a parte do travessão |
+| PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
+| PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
+| PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
+| PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais”; a página 404 continua dentro do `Layout`, mas ocupa só a área de conteúdo (`min-h-full` no lugar de `min-h-screen`); o título de cada tela passou a ser igual ao rótulo do menu; e o tema escuro sem uso (`.dark` e `@custom-variant dark`) foi removido do `theme.css` |
+| PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `ENCRYPTION_KEY`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
+| PA-22 | O `funcionarioSelecionado` fixo em `null` foi removido do Redator; o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova; e o `kvStorage` abre uma única conexão com o IndexedDB e a reaproveita, abrindo outra só se ela for fechada ou falhar |
+| PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 
-Também foram resolvidas partes de outros itens, que continuam abertos pelo que falta: a API passou a exigir login (PA-14); o Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização (PA-12); o `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova (PA-22); a URL da API vem de `VITE_API_URL` e fica só em `auth.ts` (PA-09); a categoria “Acesso” passou a ser `acesso` (PA-10); `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” (PA-19).
+### 17.5. Itens resolvidos em parte
+
+Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
+
+| ID | O que já foi feito | O que falta |
+| --- | --- | --- |
+| PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
+| PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 
 ## 18. Glossário
 

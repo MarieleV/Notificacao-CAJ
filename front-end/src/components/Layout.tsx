@@ -11,11 +11,13 @@ import {
   Clock, // <-- Ícone novo importado para a nova tela
   LogOut,
   Users,
-  KeyRound
+  KeyRound,
+  Sparkles
 } from "lucide-react";
 import { ElementType } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { AlterarSenhaModal } from "./AlterarSenhaModal";
+import { ChaveGeminiModal } from "./ChaveGeminiModal";
 
 // Subcomponente para evitar repetição de código (DRY)
 interface NavItemProps {
@@ -69,6 +71,7 @@ export function Layout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, logout, isAdmin } = useAuth();
   const [senhaModalAberto, setSenhaModalAberto] = useState(false);
+  const [geminiModalAberto, setGeminiModalAberto] = useState(false);
 
   return (
     <div className="flex h-screen bg-navy overflow-hidden">
@@ -200,6 +203,14 @@ export function Layout() {
             )}
           </div>
           <button
+            onClick={() => setGeminiModalAberto(true)}
+            title="Minha chave do Gemini"
+            aria-label="Minha chave do Gemini"
+            className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 text-navy-muted hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
             onClick={() => setSenhaModalAberto(true)}
             title="Alterar minha senha"
             aria-label="Alterar minha senha"
@@ -224,6 +235,7 @@ export function Layout() {
       </main>
 
       <AlterarSenhaModal open={senhaModalAberto} onClose={() => setSenhaModalAberto(false)} />
+      <ChaveGeminiModal open={geminiModalAberto} onClose={() => setGeminiModalAberto(false)} />
     </div>
   );
 }

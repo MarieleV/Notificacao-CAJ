@@ -37,7 +37,7 @@ const preencherCampo = (texto, rotulo, valor) =>
     (_, r) => `${r} ${valor}`
   );
 
-const generateNotificationText = async (apiKey, baseTexts, metadata = {}) => {
+const generateNotificationText = async (apiKey, baseTexts, metadata = {}, erroChave = null) => {
   const textos = Array.isArray(baseTexts) ? baseTexts.filter(Boolean) : [];
   if (textos.length === 0) throw new Error("Nenhum texto base recebido.");
 
@@ -58,8 +58,14 @@ const generateNotificationText = async (apiKey, baseTexts, metadata = {}) => {
   }
 
   // ── CASO 2: demais códigos e combinações (inclui 20012 + outros) ─────────
+  // Chave do Gemini do próprio usuário, lida do banco (cifrada) pelo controller.
   const apiKeyLimpa = String(apiKey || "").trim();
-  if (!apiKeyLimpa) throw new Error("Chave de API do Gemini não informada.");
+  if (!apiKeyLimpa) {
+    if (erroChave) throw erroChave;
+    const erro = new Error("Cadastre sua chave do Gemini em “Minha chave do Gemini”, no rodapé da barra lateral.");
+    erro.status = 400;
+    throw erro;
+  }
 
   const genAI = new GoogleGenerativeAI(apiKeyLimpa);
   const model = genAI.getGenerativeModel({

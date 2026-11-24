@@ -54,7 +54,7 @@ function Header({ state }: { state: ProcessoState }) {
   return (
     <PageHeader
       icon={Scale}
-      title="Análise de Processos e Ouvidoria"
+      title="Ouvidoria e Recursos"
       description="Pareceres de recursos e manifestações de ouvidoria"
       actions={
         <>
@@ -82,7 +82,7 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
     morador, setMorador, matricula, setMatricula, tipoManifestacao, setTipoManifestacao,
     numProcesso, setNumProcesso, numAutoInfracao, setNumAutoInfracao, funcionario,
     setFuncionario, funcionarioBusca, setFuncionarioBusca, setFuncSearchOpen, funcSearchOpen,
-    filteredFuncionarios, funcionarioSelecionado, dataEmissaoFatura, setDataEmissaoFatura,
+    filteredFuncionarios, funcionarioSelecionado, erroFuncionarios, dataEmissaoFatura, setDataEmissaoFatura,
     dataManifestacao, setDataManifestacao, isForaDoPrazo, diasUteisDif
   } = state;
 
@@ -150,7 +150,8 @@ function Sessao1DadosGlobais({ state }: { state: ProcessoState }) {
                   <span className="text-[11px] font-mono font-semibold text-brand flex-shrink-0">Mat. {f.matricula}</span>
                 </div>
               ))}
-              {filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-sm text-ink-muted">Nenhum funcionário encontrado</div>}
+              {erroFuncionarios && <div className="px-3 py-2 text-sm text-danger">{erroFuncionarios}</div>}
+              {!erroFuncionarios && filteredFuncionarios.length === 0 && <div className="px-3 py-2 text-sm text-ink-muted">Nenhum funcionário encontrado</div>}
             </div>
           )}
         </div>
@@ -228,7 +229,6 @@ function Sessao2TipoInfracao({ state }: { state: ProcessoState }) {
               <>
                 <option value="leitura">Leitura</option>
                 <option value="servico">Serviços</option>
-                <option value="corte_cavalete">Violação de Corte</option>
                 <option value="la_padronizada">LA Padronizada</option>
                 <option value="la_cadastral">Atualização Cadastral</option>
                 <option value="prorrogacao">Não multado/Prorrogação de Prazo</option>

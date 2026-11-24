@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSessionStorage } from "./useSessionStorage";
 import { calculateEndDate, getBusinessDaysDifference, get60BusinessDaysFromToday } from "../utils/dates";
 import { formatName } from "../utils/masks";
-import { FUNCIONARIOS } from "../utils/funcionarios";
+import { useFuncionarios } from "./useFuncionarios";
 import { DecisaoType, TipoCasoType, DefesaType } from "../services/ouvidoria";
 import { exportarParecerPDF, exportarParecerWord } from "../services/api";
 
@@ -102,6 +102,8 @@ export function useProcessoOuvidoria() {
   const durationNum = calcPrazo === "X" ? parseInt(calcCustomPrazo || "0", 10) : parseInt(calcPrazo, 10);
   const calcDataFinal = calculateEndDate(calcDataInicial, durationNum);
 
+  const { funcionarios: FUNCIONARIOS, erroFuncionarios } = useFuncionarios();
+
   const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
     const term = funcionarioBusca.toLowerCase().trim();
     if (!term) return true;
@@ -171,9 +173,15 @@ export function useProcessoOuvidoria() {
     if (val === "leitura" || val === "servico" || val === "corte_cavalete") {
       setDecisao(null); 
     } else {
-      setDecisao("deferir"); 
+      setDecisao("deferir");
     }
   };
+
+  // Violação de Corte só existe para recurso. Se a sessão guardou "Não é recurso" com corte
+  // (de antes desta regra), volta para leitura, como acontece ao trocar a opção na tela (PA-03).
+  useEffect(() => {
+    if (!isRecurso && tipoCaso === "corte_cavalete") handleTipoCasoChange("leitura");
+  }, [isRecurso, tipoCaso]);
 
   const handleDecisaoChange = (val: DecisaoType) => {
     setDecisao(val);
@@ -457,10 +465,9 @@ export function useProcessoOuvidoria() {
     } 
 
     // TEXTOS: É RECURSO? -> NÃO
+    // Violação de Corte não é oferecida quando não é recurso (não há template; PA-03).
     else {
-      if (tipoCaso === "corte_cavalete") {
-        tpl = `**[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]**`;
-      } else if (tipoCaso === "leitura") {
+      if (tipoCaso === "leitura") {
         if (decisao === "deferir" || decisao === "parcial") {
           tpl = `À Ouvidoria,\nRecurso Administrativo nº ${tplProc}\n**Morador cadastrado:** ${tplMorador}\n**Matrícula:** ${tplMatricula}\n\n**Objeto:** Aplicação de multas por impedimento de acesso à ligação de água para execução de leituras e ausência de padronização obrigatória da ligação de água.\n\nI – DOS FATOS\nA presente demanda decorre de manifestação apresentada pelo(a) usuário(a) em razão da aplicação de penalidades administrativas relativas ao **impedimento involuntário de acesso à ligação de água para execução de leituras e à não padronização obrigatória da ligação de água**.\n\nII – DO PROCESSO ADMINISTRATIVO\nAuto de Infração nº ${tplAI} foi lavrado em ${tplGeracao}.\nAs infrações foram apuradas com fundamento no artigo 144, inciso XII, da **Resolução ARIS nº 019/2019**, cujo fato gerador consiste no impedimento de acesso para a realização das leituras do consumo, situação verificada nos meses ${tplMeses}.\nO referido Auto de Infração foi regularmente expedido e entregue no endereço do imóvel por meio dos Correios, tendo sido recebido por ${tplRecebedor} conforme aviso de recebimento constante no sistema do Prestador de Serviços.\nCom a notificação, foi oportunizado ao usuário o exercício do contraditório e da ampla defesa, bem como a regularização da ligação de água, o que não ocorreu dentro do prazo legalmente estabelecido.\n${historicoDefesa === "com_defesa" ? `\n${paragrafoDefesaPrevia}` : ""} As penalidades previstas na legislação aplicável foram devidamente aplicadas em ${tplAplicacao}, constando os valores correspondentes na fatura nº ${tplFatura}.\nEncaminhamos anexo, o **Processo Administrativo de Fiscalização** para análise da Agência Reguladora, bem como fatura ${tplFatura} revisada, para entrega ao cliente.\n\nIII – DO DIREITO E DA REVISÃO ADMINISTRATIVA\n${historicoDefesa === "com_defesa" ? `${paragrafoDefesaPrevia}\n\n` : ""}A Administração Pública, observando os princípios da legalidade, razoabilidade e autotutela, promoveu a revisão do ato administrativo anteriormente praticado, nos termos da legislação aplicável.\nConstatada a possibilidade normativa de revisão, procedeu-se à retificação da decisão, com a exclusão das multas aplicadas, em estrita observância à **Instrução Normativa nº 83/2025**, não havendo, portanto, qualquer ilegalidade ou prejuízo ao usuário.\nRessalte-se que a revisão administrativa não eximiu o usuário do cumprimento da obrigação principal, qual seja, a padronização da ligação de água, exigência de natureza técnica e obrigatória, prevista na regulamentação vigente.\n\nIV – DA DECISÃO ADMINISTRATIVA\nAssim, foi determinada a retirada das multas aplicadas, com a consequente correção da fatura nº ${tplFatura}, conforme documento anexo.\nAdemais, foi concedida prorrogação do prazo para padronização da ligação de água por **60 (sessenta) dias úteis**, a contar da data desta decisão, com término em ${tplPrazo}, ficando o usuário expressamente cientificado de que o descumprimento da obrigação dentro do novo prazo poderá ensejar a aplicação de novas sanções, independentemente de nova notificação, nos termos da **Resolução ARIS nº 019/2019**.\n\nV – CONCLUSÃO\nDiante do exposto, resta demonstrado que a Administração atuou em estrita conformidade com a legislação vigente, respeitando o devido processo administrativo e promovendo, inclusive, a revisão do ato sancionatório em benefício do usuário.`;
         } else {
@@ -639,7 +646,7 @@ export function useProcessoOuvidoria() {
     aplicaIN83, setAplicaIN83, temRestituicao, setTemRestituicao, statusMulta426, setStatusMulta426,
     tipoIndeferido, setTipoIndeferido, protContatoAtivo, setProtContatoAtivo, faturaAlterada, setFaturaAlterada,
     calcPrazo, setCalcPrazo, calcCustomPrazo, setCalcCustomPrazo, calcDataInicial, setCalcDataInicial, calcDataFinal,
-    diasUteisDif, isForaDoPrazo, filteredFuncionarios, funcionarioSelecionado,
+    diasUteisDif, isForaDoPrazo, filteredFuncionarios, funcionarioSelecionado, erroFuncionarios,
     isLeitura, isServico, isCorte, isHd, isBypass, isClandestina, isPadronizada, isCadastral, isProrrogacao,
     showSessao3, hasDecisaoButtons, hasDefesaToggle, numSessao3, numSessao4, numSessao5,
     showDataGeracaoAI, showMesesSemAcesso, showDataConstatacao, showProtServico, showRecebedorAR,

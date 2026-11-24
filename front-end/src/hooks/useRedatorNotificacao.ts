@@ -2,11 +2,12 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { useSessionStorage } from "./useSessionStorage"; 
-import { FUNCIONARIOS } from "../utils/funcionarios";
+import { useFuncionarios } from "./useFuncionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
 import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
+import { GEMINI_CHAVE_EVENT, obterStatusChaveGemini } from "../services/usuarios";
 
 const BASE_CLIENTE_KEY = "baseCliente";
 let baseClienteCache: any[] = [];
@@ -31,7 +32,27 @@ export function useRedatorNotificacao() {
   const [fileModal, setFileModal] = useState<FileModalState | null>(null);
   const [funcSearchOpen, setFuncSearchOpen] = useState(false);
 
-  const [apiKey, setApiKey] = useSessionStorage("redator_apiKey", "");
+  // A chave do Gemini é de cada usuário e fica cifrada no banco (cadastrada na barra lateral).
+  // Remove a que versões antigas guardavam nesta aba.
+  useEffect(() => {
+    try { window.sessionStorage.removeItem("redator_apiKey"); } catch { /* armazenamento indisponível */ }
+  }, []);
+
+  // Só para avisar na tela se o usuário ainda não cadastrou a chave (null = ainda consultando).
+  const [chaveGeminiCadastrada, setChaveGeminiCadastrada] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelado = false;
+    const consultar = () =>
+      obterStatusChaveGemini()
+        .then((s) => !cancelado && setChaveGeminiCadastrada(s.configurada))
+        .catch(() => !cancelado && setChaveGeminiCadastrada(null));
+    consultar();
+    window.addEventListener(GEMINI_CHAVE_EVENT, consultar);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(GEMINI_CHAVE_EVENT, consultar);
+    };
+  }, []);
   const [step, setStep] = useSessionStorage<"idle" | "generated">("redator_step", "idle");
   const [generatedText, setGeneratedText] = useSessionStorage("redator_generatedText", "");
   
@@ -108,6 +129,8 @@ export function useRedatorNotificacao() {
       item.category.toLowerCase().includes(searchLower)
     );
   });
+
+  const { funcionarios: FUNCIONARIOS, erroFuncionarios } = useFuncionarios();
 
   const filteredFuncionarios = FUNCIONARIOS.filter((f) => {
     const term = funcionarioBusca.toLowerCase().trim();
@@ -349,7 +372,6 @@ export function useRedatorNotificacao() {
 
   const handleGenerate = async () => {
     if (selectedItems.length === 0) return;
-    if (!apiKey.trim()) return alert("Insira sua Chave de API do Gemini.");
     if (camposObrigatoriosVazios) return alert("Preencha todos os Dados obrigatórios da Notificação.");
     if (esqueceuDeBuscar && excelData.length > 0) return alert("Você alterou a matrícula, clique em 'Buscar' antes de gerar.");
 
@@ -383,7 +405,6 @@ export function useRedatorNotificacao() {
 
     try {
       const data = await gerarNotificacaoApi({
-        api_key: apiKey.trim(), 
         textos_base: textosBase,
         dataConstatacao: dataConstatacao.trim(), 
         protocolo: protocoloEfetivo,            
@@ -462,7 +483,8 @@ export function useRedatorNotificacao() {
   }
 
   return {
-    apiKey, setApiKey, dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
+    chaveGeminiCadastrada, erroFuncionarios,
+    dropdownOpen, setDropdownOpen, searchTerm, setSearchTerm,
     reviewMode, setReviewMode, step, setStep, loading, copied,
     selectedCodes, penaltyVariant, setPenaltyVariant,
     excelData, baseHydrated, fileLoading, fileModal, setFileModal, fileName,

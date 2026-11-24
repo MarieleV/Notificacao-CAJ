@@ -4,7 +4,6 @@ import { apiFetch, throwApiError } from "./http";
 
 // tipos de dados que vamos enviar 
 export interface GerarNotificacaoPayload {
-  api_key: string;
   textos_base: string[];
   dataConstatacao: string;
   protocolo: string;
@@ -71,13 +70,20 @@ export async function exportarPdfApi(payload: ExportarDocumentoPayload) {
   return response.blob(); 
 }
 
-{ /* ----------------- Tela de Processo Ouvidoria --------------------- */ }
+{ /* ----------------- Pareceres (Ouvidoria e Retorno de Defesa) --------------------- */ }
 
+// O back-end só usa `texto_final` (e `tipoCaso` no nome do arquivo do cabeçalho);
+// os demais campos são opcionais e mantidos para identificar o caso na requisição.
 export interface ExportarParecerPayload {
   texto_final: string;
-  numeroProcesso: string;
-  tipoCaso: string;
-  decisao: string | null;
+  // Ouvidoria
+  numeroProcesso?: string;
+  tipoCaso?: string;
+  decisao?: string | null;
+  // Retorno de Defesa
+  protocolo?: string;
+  autoInfracao?: string;
+  matricula?: string;
 }
 
 export const exportarParecerPDF = async (payload: ExportarParecerPayload): Promise<Blob> => {

@@ -5,9 +5,16 @@ const routes = require("./routes/indexRoutes");
 
 const app = express();
 
-// Deixa o CORS super permissivo para evitar bloqueios
+// CORS: só o front-end publicado e o ambiente local podem chamar a API pelo navegador (PA-14).
+// Para trocar a lista, defina CORS_ORIGINS com as URLs separadas por vírgula.
+const ORIGENS_PADRAO = ["https://notificacao-caj-7ncb.vercel.app", "http://localhost:5173"];
+const origensPermitidas = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origem) => origem.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 app.use(cors({
-  origin: "*",
+  origin: origensPermitidas.length > 0 ? origensPermitidas : ORIGENS_PADRAO,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));

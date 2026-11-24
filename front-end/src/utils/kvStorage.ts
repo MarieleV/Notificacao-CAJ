@@ -1,13 +1,30 @@
 const DB_NAME = "redator-db";
 const STORE = "kv";
 
+// Conexão única, aberta na primeira operação e reaproveitada nas seguintes (PA-22).
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Se o navegador fechar a conexão ou outra aba pedir uma versão nova,
+      // descarta a conexão guardada para que a próxima operação abra outra.
+      db.onclose = () => { dbPromise = null; };
+      db.onversionchange = () => { db.close(); dbPromise = null; };
+      resolve(db);
+    };
+    req.onerror = () => {
+      dbPromise = null; // permite tentar de novo na próxima operação
+      reject(req.error);
+    };
   });
+
+  return dbPromise;
 }
 
 export async function kvSet(key: string, value: unknown): Promise<void> {
