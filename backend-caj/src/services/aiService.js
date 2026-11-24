@@ -5,6 +5,31 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // (o Google aposenta modelos antigos: o gemini-2.5-flash deixou de aceitar chaves novas).
 const MODEL_NAME = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.8-flash";
 
+// Erros passageiros do Gemini (sobrecarga, limite de requisições, falha interna):
+// vale tentar de novo depois de uma pequena espera.
+const STATUS_TEMPORARIOS = [429, 500, 503];
+const ESPERAS_MS = [1000, 2500]; // até 2 novas tentativas, além da primeira
+
+const ehErroTemporario = (err) => {
+  const status = Number(err?.status);
+  if (STATUS_TEMPORARIOS.includes(status)) return true;
+  return /\[(429|500|503)\b/.test(String(err?.message || ""));
+};
+
+const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function gerarComNovasTentativas(model, prompt) {
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (err) {
+      if (!ehErroTemporario(err) || tentativa >= ESPERAS_MS.length) throw err;
+      console.warn(`[aiService] Gemini indisponível (tentativa ${tentativa + 1}); tentando de novo.`);
+      await esperar(ESPERAS_MS[tentativa]);
+    }
+  }
+}
+
 const LABELS = [
   "Descrição do fato gerador",
   "Dispositivo legal infringido",
@@ -133,10 +158,17 @@ ${infracoes}
 
   let corpo;
   try {
-    const result = await model.generateContent(prompt);
+    const result = await gerarComNovasTentativas(model, prompt);
     corpo = result.response.text().replace(/[*#`]/g, "").trim();
   } catch (err) {
     console.error("[aiService] Erro Gemini:", err.message);
+    if (ehErroTemporario(err)) {
+      const erro = new Error(
+        "O Gemini está sobrecarregado no momento e não respondeu, mesmo depois de novas tentativas. Aguarde alguns minutos e gere de novo."
+      );
+      erro.status = 503;
+      throw erro;
+    }
     throw new Error(`Falha na API do Gemini: ${err.message}`);
   }
 
