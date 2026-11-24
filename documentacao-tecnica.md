@@ -290,7 +290,7 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 
 ### 7.3. `kvStorage.ts`
 
-Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
+Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
 
 ### 7.4. Lista de funcionários (`services/funcionarios.ts` e `useFuncionarios`)
 
@@ -659,7 +659,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 10 itens resolvidos (PA-01, 03, 04, 07, 11, 14, 15, 16, 21 e 24) e 13 abertos. Dos abertos, 6 já foram resolvidos em parte (PA-08, 09, 10, 12, 19 e 22; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 11 itens resolvidos (PA-01, 03, 04, 07, 11, 14, 15, 16, 21, 22 e 24) e 12 abertos. Dos abertos, 5 já foram resolvidos em parte (PA-08, 09, 10, 12 e 19; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -687,7 +687,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS` (em `defesas.ts` e `notificacoes.ts`), as funções `exportarParecerWord/PDF` e os tipos de payload `ExportPayload` e `ExportarParecerPayload` (em `api.ts` e `defesas.ts`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
 | PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
-| PA-22 | `kvStorage` | Abre uma nova conexão com o IndexedDB a cada operação |
 
 ### 17.4. Itens resolvidos
 
@@ -702,6 +701,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
 | PA-21 | README reescrito conforme o código: 5 módulos mais a gestão de usuários; login, banco e variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e `ENCRYPTION_KEY`; `npm run criar-admin`; `VITE_API_URL`; calculadora de dias úteis só em Retorno de Defesa e Ouvidoria; sem Date-fns, Axios e `GEMINI_API_KEY` (a chave do Gemini é de cada usuário, cadastrada no sistema) |
+| PA-22 | O `funcionarioSelecionado` fixo em `null` foi removido do Redator; o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova; e o `kvStorage` abre uma única conexão com o IndexedDB e a reaproveita, abrindo outra só se ela for fechada ou falhar |
 | PA-24 | Código 20419 (`notificacoes.ts`): as cláusulas `clauseMulta` e `clauseMultaCP` citavam “Resolução 19/2029”; agora citam “Resolução 19/2019, alterada pela Resolução 55/2026 – ARIS” |
 
 ### 17.5. Itens resolvidos em parte
@@ -715,7 +715,6 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 | PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” | Página 404 dentro do `Layout`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
-| PA-22 | O `funcionarioSelecionado` fixo em `null` foi removido do Redator, e o `useSessionStorage` passou a reler o valor quando a chave muda, sem gravar o valor antigo na chave nova | `kvStorage` abre uma nova conexão com o IndexedDB a cada operação |
 
 ## 18. Glossário
 
