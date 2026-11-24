@@ -126,7 +126,7 @@ Notificacao-CAJ
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
       ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
-      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, ouvidoria, tarifas
+      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
       ├─ utils/                        dates, masks, kvStorage, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
@@ -244,9 +244,9 @@ Concentra as chamadas à API. As requisições passam por `apiFetch` (`http.ts`)
 | --- | --- | --- |
 | `gerarNotificacaoApi` | `/gerar` | JSON com `texto_gerado` |
 | `exportarWordApi` / `exportarPdfApi` | `/exportar_word` e `/exportar_pdf` | `Blob` |
-| `exportarParecerWord` / `exportarParecerPDF` | `/exportar_parecer_word` e `/exportar_parecer_pdf` | `Blob` |
+| `exportarParecerWord` / `exportarParecerPDF` | `/exportar_parecer_word` e `/exportar_parecer_pdf` | `Blob` (Ouvidoria e Retorno de Defesa) |
 
-Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. Em caso de erro HTTP, todas as funções chamam `throwApiError` (`http.ts`), que lança o `detail` devolvido pela API. Se a resposta não trouxer `detail`, usa uma mensagem padrão. Assim, uma chave do Gemini inválida aparece ao usuário com a mensagem real, e não como erro de comunicação. As telas incluem essa mensagem nos alertas de falha de download.
+Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParecerPayload` descrevem os corpos enviados. No `ExportarParecerPayload` só `texto_final` é obrigatório; a Ouvidoria envia também `numeroProcesso`, `tipoCaso` e `decisao`, e o Retorno de Defesa, `protocolo`, `autoInfracao` e `matricula`. Em caso de erro HTTP, todas as funções chamam `throwApiError` (`http.ts`), que lança o `detail` devolvido pela API. Se a resposta não trouxer `detail`, usa uma mensagem padrão. Assim, uma chave do Gemini inválida aparece ao usuário com a mensagem real, e não como erro de comunicação. As telas incluem essa mensagem nos alertas de falha de download.
 
 ### 6.2. `notificacoes.ts`
 
@@ -255,15 +255,19 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 - `clauseMulta`: descrição do fato, dispositivo legal (quase todos no Art. 144 da Resolução 019/2019) e penalidade de multa.
 - `clauseMultaCP`: a mesma cláusula acrescida da **padronização obrigatória** da ligação em 90 dias úteis (Art. 144, § 3º), com a advertência de multa adicional por não padronização.
 - Os códigos incluem `20400` a `20418`, uma variante `20402 HD`, os códigos de acesso `20011` (serviços) e `20012` (leitura, com o marcador `[INFORMAR MESES SEM ACESSO]`), `20013` (notificação de atualização cadastral) e `20419` (recusa de atualização cadastral).
-- `CATEGORY_COLORS` associa cada categoria a uma cor de etiqueta: fraude (vermelho), infraestrutura (laranja), uso (verde), acesso (azul) e cadastral (roxo).
+- As cores das etiquetas de categoria ficam em `categorias.ts` (seção 6.4).
 
 ### 6.3. `defesas.ts`
 
-Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação) e as funções de exportação de parecer.
+Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação). A exportação do parecer usa as funções de `api.ts` (seção 6.1).
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Este arquivo repete `CATEGORY_COLORS` e as funções `exportarParecerWord/PDF` (PA-09 e PA-10).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os dados divergem em alguns pontos da biblioteca do Redator (PA-10).
 
-### 6.4. `ouvidoria.ts`
+### 6.4. `categorias.ts`
+
+`CATEGORY_COLORS` associa cada categoria a uma cor de etiqueta: fraude (vermelho), infraestrutura (laranja), uso (verde), acesso (azul) e cadastral (roxo). É usado pelas listas de códigos do Redator de Notificação e do Retorno de Defesa.
+
+### 6.5. `ouvidoria.ts`
 
 Só tipos que regem o fluxo da Ouvidoria:
 
@@ -271,7 +275,7 @@ Só tipos que regem o fluxo da Ouvidoria:
 - `TipoCasoType`: `leitura`, `servico`, `corte_cavalete`, `hd`, `bypass`, `clandestina`, `la_padronizada`, `la_cadastral`, `prorrogacao`.
 - `DefesaType`: `com_defesa` ou `sem_defesa`.
 
-### 6.5. `tarifas.ts` – sem uso
+### 6.6. `tarifas.ts` – sem uso
 
 O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Guarda tarifas de água por vigência (de 01/03/2023 em diante), com tarifa de serviço e faixas de consumo para Residencial (e suas variantes sociais), Comercial, Entidade Beneficente, Industrial e Pública, além da tabela de fator K1 (esgoto) com 32 atividades, de 1,00 (casas) a 1,68 (indústria da construção e aterro sanitário). Alimentava a calculadora antiga (PA-02).
 
@@ -398,7 +402,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 - Exige o nº da Defesa A.I. Ao gerar, substitui `{DEFESA_AI}` e, se informado, o marcador do fundamento do indeferimento. O texto continua com `R$ XXX,XX`, `XX/XX/XXXX` e a alternativa “indeferida/deferida parcialmente” para o operador resolver na revisão.
 - Contém a calculadora de dias úteis (prazo de 15 dias ou personalizado, a partir de uma data).
 - Usa o filtro de matrícula em lote (`useFiltroMatriculaLote("defesa")`, seção 10.6).
-- Exporta Word e PDF por `services/defesas.ts` com o nome `Resposta_Defesa_<matrícula>`, ou `Resposta_Defesa_<data>` quando não há matrícula informada.
+- Exporta Word e PDF por `exportarParecerWord/PDF` (`services/api.ts`, as mesmas da Ouvidoria) com o nome `Resposta_Defesa_<matrícula>`, ou `Resposta_Defesa_<data>` quando não há matrícula informada.
 
 ### 10.3. `useCalculadoraMulta`
 
@@ -659,7 +663,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 11 itens resolvidos (PA-01, 03, 04, 07, 11, 14, 15, 16, 21, 22 e 24) e 12 abertos. Dos abertos, 5 já foram resolvidos em parte (PA-08, 09, 10, 12 e 19; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 12 itens resolvidos (PA-01, 03, 04, 07, 09, 11, 14, 15, 16, 21, 22 e 24) e 11 abertos. Dos abertos, 4 já foram resolvidos em parte (PA-08, 10, 12 e 19; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -684,7 +688,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 | ID | Onde | Problema |
 | --- | --- | --- |
-| PA-09 | `api.ts`, `defesas.ts`, `notificacoes.ts` | Duplicações: `CATEGORY_COLORS` (em `defesas.ts` e `notificacoes.ts`), as funções `exportarParecerWord/PDF` e os tipos de payload `ExportPayload` e `ExportarParecerPayload` (em `api.ts` e `defesas.ts`) |
 | PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
 | PA-19 | Interface | 404 renderizada dentro do `Layout` com `min-h-screen`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
 
@@ -696,6 +699,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
+| PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
@@ -711,7 +715,6 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
 | PA-08 | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03 | Aceitar o hífen comum além do travessão nos numerais romanos, se for o padrão desejado |
-| PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts` | Remover as duplicações de `CATEGORY_COLORS`, das funções de exportar parecer e dos tipos de payload |
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 | PA-19 | `animate-fadeIn` foi definida; o `index.html` usa `lang="pt-BR"`, tem título (“Sistema CAJ - Notificações e Multas”), descrição do sistema e ícone (o logo da CAJ); a barra lateral e o login falam em notificações “Extrajudiciais” | Página 404 dentro do `Layout`; nomes do menu diferentes dos títulos das telas; tema escuro sem uso |
