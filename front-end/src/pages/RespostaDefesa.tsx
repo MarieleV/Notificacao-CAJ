@@ -9,7 +9,7 @@ import { SectionBlock } from "../components/shared/SectionBlock";
 import { CalculadoraDiasUteis } from "../components/shared/CalculadoraDiasUteis";
 import { FiltroMatriculaLote } from "../components/shared/FiltroMatriculaLote";
 import { Alert, Badge, Button, hintClass, inputClass, labelClass, PageHeader, textareaClass } from "../components/shared/ui";
-import { CATEGORY_COLORS } from "../services/defesas";
+import { CATEGORY_COLORS } from "../services/categorias";
 
 // 1. Importando o Hook
 import { useRespostaDefesa } from "../hooks/useRespostaDefesa";

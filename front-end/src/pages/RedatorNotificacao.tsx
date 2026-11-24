@@ -10,7 +10,7 @@ import {
 } from "../components/shared/ui";
 
 import { SectionBlock } from "../components/shared/SectionBlock";
-import { CATEGORY_COLORS } from "../services/notificacoes";
+import { CATEGORY_COLORS } from "../services/categorias";
 import { useRedatorNotificacao } from "../hooks/useRedatorNotificacao";
 
 // Error Boundary para proteção contra modificações indevidas no DOM pelo tradutor
