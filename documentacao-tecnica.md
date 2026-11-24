@@ -175,7 +175,7 @@ O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as
 3. Data da constatação, Protocolo, Funcionário e Equipe (preenchidos pelo código com os metadados, ou “Não informada/o”)
 4. Penalidade prevista
 
-Quando há mais de uma infração, o modelo deve somar as informações nos campos 1, 2 e 4 de forma coesa. A resposta é devolvida como texto simples (`texto_gerado`). Observação sobre os códigos 20013 e 20419, que têm formato diferente: PA-18.
+Quando há mais de uma infração, o modelo deve somar as informações nos campos 1, 2 e 4 de forma coesa. A resposta é devolvida como texto simples (`texto_gerado`). Se o Gemini responder com erro passageiro (429, 500 ou 503, como “high demand”), o serviço tenta de novo até duas vezes, esperando 1 s e depois 2,5 s (`gerarComNovasTentativas`). Se continuar falhando, a API responde 503 com a mensagem “O Gemini está sobrecarregado no momento...”; outros erros (como chave inválida ou modelo inexistente) não são repetidos. Observação sobre os códigos 20013 e 20419, que têm formato diferente: PA-18.
 
 ### 5.4. Serviço de documentos (`documentService.js`)
 
