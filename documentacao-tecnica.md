@@ -196,7 +196,10 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 **Regras de formatação do texto** (compartilhadas por Word e PDF):
 
 - `**texto**` vira negrito.
-- Linhas que começam com um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `I –`, `II –`, `III –`, `IV –`, `V –`, `OBJETO:` ou `DECISÃO:` ficam inteiras em negrito (apenas no parecer). Os numerais romanos só são reconhecidos com o travessão “–” (PA-08).
+- Apenas no parecer, ficam inteiras em negrito (função `isFullBoldLine`) as linhas que começam com:
+  - um número de dois dígitos seguido de ponto (`01.`, `02.`, `04.` etc.), `OBJETO:` ou `DECISÃO:`;
+  - um numeral romano de `I` a `XXXIX` seguido do travessão “–” (`IV – DA DECISÃO ADMINISTRATIVA`);
+  - um numeral romano seguido de hífen comum, só quando o resto da linha está todo em maiúsculas (`VI - CONCLUSÃO`). Assim os incisos citados da resolução, que usam hífen e texto normal (`V - Derivação do ramal predial antes do hidrômetro`), não ficam em negrito.
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (`#FF0000`) no Word, no PDF e na pré-visualização da Ouvidoria. A lista fica em `RED_MARKERS`, repetida no `documentService.js` e no `useProcessoOuvidoria`; as duas precisam ser mantidas iguais.
 - O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele. Na Vercel, a pasta `public` entra no pacote da função pelo `includeFiles` do `vercel.json` (PA-16).
 
@@ -666,7 +669,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 13 itens resolvidos (PA-01, 03, 04, 07, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 10 abertos. Dos abertos, 3 já foram resolvidos em parte (PA-08, 10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-08 (aceitar hífen comum), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 14 itens resolvidos (PA-01, 03, 04, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 9 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -681,7 +684,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | --- | --- | --- | --- |
 | PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
 | PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
-| PA-08 | `documentService` | A regra de negrito de linha inteira só reconhece os numerais romanos (`I` a `V`) seguidos do travessão “–”. Com hífen comum (“-”) ou do `VI` em diante, depende dos `**` do template | Aceitar também o hífen, se for o padrão desejado nos pareceres |
 | PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
@@ -701,6 +703,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
+| PA-08 | A regra de negrito de linha inteira (`isFullBoldLine`, no `documentService`) reconhece qualquer item numerado com dois dígitos (`\d{2}\.`), numerais romanos de `I` a `XXXIX` (antes só de `I` a `V`) com travessão e, com hífen comum, só títulos em maiúsculas (`VI - CONCLUSÃO`), para não pôr em negrito os incisos citados da resolução (`V - Derivação do ramal...`) |
 | PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
@@ -717,7 +720,6 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
-| PA-08 | A regra de negrito de linha inteira (`fullLineBoldRegex`) passou a reconhecer qualquer item numerado com dois dígitos (`\d{2}\.`), e não só de 01 a 03 | Aceitar o hífen comum além do travessão nos numerais romanos, se for o padrão desejado |
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 

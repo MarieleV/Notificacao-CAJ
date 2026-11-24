@@ -8,8 +8,23 @@ const {
 const PDFDocument = require("pdfkit");
 
 // Mesma regra de negrito de linha inteira reaproveitada para Word e PDF.
-// Itens numerados com dois dígitos (01., 02., ..., 04. RATIFICAR etc.) ficam inteiros em negrito.
-const fullLineBoldRegex = /^(\d{2}\.|I\s–|II\s–|III\s–|IV\s–|V\s–|OBJETO:|DECISÃO:)/i;
+// Ficam inteiras em negrito:
+//  - itens numerados com dois dígitos (01., 02., ..., 04. RATIFICAR etc.), OBJETO: e DECISÃO:;
+//  - títulos de seção com numeral romano (I a XXXIX) e travessão: "IV – DA DECISÃO ADMINISTRATIVA";
+//  - os mesmos títulos com hífen comum, desde que o texto esteja todo em maiúsculas: "VI - CONCLUSÃO".
+//    A exigência de maiúsculas evita pôr em negrito os incisos citados da resolução,
+//    que usam hífen e texto normal (ex.: "V - Derivação do ramal predial antes do hidrômetro") (PA-08).
+const ROMANO = "(?=[IVX])X{0,3}(?:IX|IV|V?I{0,3})";
+const fullLineBoldRegex = new RegExp(`^(\\d{2}\\.|${ROMANO}\\s+–|OBJETO:|DECISÃO:)`, "i");
+const romanoComHifenRegex = new RegExp(`^${ROMANO}\\s+-\\s+(.+)$`);
+
+const isFullBoldLine = (line) => {
+  if (fullLineBoldRegex.test(line)) return true;
+  const match = line.match(romanoComHifenRegex);
+  if (!match) return false;
+  const titulo = match[1];
+  return /\p{Lu}/u.test(titulo) && !/\p{Ll}/u.test(titulo);
+};
 
 // Marcadores de revisão que saem em vermelho, com a mesma regra no Word e no PDF.
 // A pré-visualização da Ouvidoria (front-end) usa a mesma lista (PA-07).
@@ -23,8 +38,8 @@ const isRedMarker = (part) => RED_MARKERS.includes(part);
 const formatTextToDocx = (text) => {
   const lines = text.split('\n');
   return lines.map(line => {
-    const isBoldLine = fullLineBoldRegex.test(line);
-    
+    const isBoldLine = isFullBoldLine(line);
+
     // Suporte para **negrito** inline (ex: texto **forte** texto)
     const parts = line.split(/\*\*(.*?)\*\*/g);
     const textRuns = parts.map((part, index) => {
@@ -95,7 +110,7 @@ const buildParecerPdf = (textoFinal) => {
     const lines = textoFinal.split('\n');
 
     lines.forEach(line => {
-      const isBoldLine = fullLineBoldRegex.test(line);
+      const isBoldLine = isFullBoldLine(line);
       const safeLine = line.trim() === "" ? " " : line;
 
       if (safeLine === " ") {
