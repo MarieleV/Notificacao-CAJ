@@ -324,7 +324,7 @@ export function GerenciarUsuarios() {
       {/* Header */}
       <PageHeader
         icon={Users}
-        title="Gestão de Usuários"
+        title="Usuários"
         description="Cadastre quem pode acessar o sistema e defina os perfis de acesso."
         actions={<Button icon={UserPlus} onClick={() => setModal({ tipo: "novo" })}>Novo usuário</Button>}
       />
