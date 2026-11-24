@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useSessionStorage } from "./useSessionStorage";
 import { useFiltroMatriculaLote } from "./useFiltroMatriculaLote";
 import { calculateEndDate } from "../utils/dates";
-import { DEFESAS_TEMPLATES, exportarParecerWord, exportarParecerPDF } from "../services/defesas";
+import { DEFESAS_TEMPLATES } from "../services/defesas";
+import { exportarParecerWord, exportarParecerPDF } from "../services/api";
 
 export function useRespostaDefesa() {
   // 1. Estados da Interface
