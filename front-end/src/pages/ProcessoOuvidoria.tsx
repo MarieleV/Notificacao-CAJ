@@ -54,7 +54,7 @@ function Header({ state }: { state: ProcessoState }) {
   return (
     <PageHeader
       icon={Scale}
-      title="Análise de Processos e Ouvidoria"
+      title="Ouvidoria e Recursos"
       description="Pareceres de recursos e manifestações de ouvidoria"
       actions={
         <>

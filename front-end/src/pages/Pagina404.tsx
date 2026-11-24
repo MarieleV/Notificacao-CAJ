@@ -6,7 +6,8 @@ export function Pagina404() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-canvas p-6 text-center">
+    // Renderizada dentro do <main> do Layout: ocupa só a área de conteúdo, sem rolagem extra (PA-19).
+    <div className="min-h-full flex flex-col items-center justify-center p-6 text-center">
       <span className="w-16 h-16 bg-brand-soft text-brand rounded-full flex items-center justify-center mb-6">
         <FileQuestion size={30} />
       </span>

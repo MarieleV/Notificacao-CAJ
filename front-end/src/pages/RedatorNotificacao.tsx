@@ -343,7 +343,7 @@ function RedatorNotificacaoConteudo() {
 const Cabecalho = ({ limparTela }: any) => (
   <PageHeader
     icon={FileText}
-    title={<span>Redigir Notificação Extrajudicial</span>}
+    title={<span>Redigir Notificação</span>}
     description={<span>Assistente de redação jurídica com inteligência artificial</span>}
     actions={
       <Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>

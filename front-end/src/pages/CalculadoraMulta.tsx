@@ -341,7 +341,7 @@ export function CalculadoraMulta() {
     <div className="h-full flex flex-col">
       <PageHeader
         icon={Calculator}
-        title="Cálculo de Diferenças de Faturamento"
+        title="Tabela de Multas"
         description="Apuração do valor correto vs. cobrado"
         actions={<Button variant="ghost-danger" icon={Eraser} onClick={limparTela}>Limpar tela</Button>}
       />

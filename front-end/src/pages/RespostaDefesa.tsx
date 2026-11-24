@@ -24,7 +24,7 @@ export function RespostaDefesa() {
 
       <PageHeader
         icon={MessageSquareReply}
-        title="Redigir Resposta de Defesa"
+        title="Retorno de Defesa"
         description="Respostas a defesas com base no código de infração"
         actions={
           <>

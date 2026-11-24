@@ -87,7 +87,7 @@ function ControleAnalisesConteudo() {
       {/* ─── CABEÇALHO ─── */}
       <PageHeader
         icon={Clock}
-        title="Controle de Análises Vencidas"
+        title="Análises Vencidas"
         description="Gestão de prazos e priorização de serviços"
         actions={<Button variant="ghost-danger" icon={Eraser} onClick={hook.limparTela}>Limpar tela</Button>}
       />
