@@ -1,33 +1,53 @@
 // src/services/aiService.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Modelo do Gemini. Pode ser trocado pela variável GEMINI_MODEL sem mudar o código
-// (o Google aposenta modelos antigos: o gemini-2.5-flash deixou de aceitar chaves novas).
-const MODEL_NAME = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.8-flash";
+// Modelos do Gemini, na ordem em que são tentados. Os dois podem ser trocados
+// por variável de ambiente, sem mudar o código (o Google aposenta modelos antigos).
+//  - GEMINI_MODEL: o principal.
+//  - GEMINI_MODEL_RESERVA: usado quando o principal está sobrecarregado (503) ou sem cota (429).
+//    O gemini-3.8-flash devolve 503 com frequência para chaves gratuitas; o Flash-Lite é menos
+//    disputado e tem cota gratuita maior.
+const MODELO_PRINCIPAL = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.8-flash";
+const MODELO_RESERVA = String(process.env.GEMINI_MODEL_RESERVA || "").trim() || "gemini-3.5-flash-lite";
+const MODELOS = [...new Set([MODELO_PRINCIPAL, MODELO_RESERVA])];
 
-// Erros passageiros do Gemini (sobrecarga, limite de requisições, falha interna):
-// vale tentar de novo depois de uma pequena espera.
-const STATUS_TEMPORARIOS = [429, 500, 503];
-const ESPERAS_MS = [1000, 2500]; // até 2 novas tentativas, além da primeira
-
-const ehErroTemporario = (err) => {
+const statusDoErro = (err) => {
   const status = Number(err?.status);
-  if (STATUS_TEMPORARIOS.includes(status)) return true;
-  return /\[(429|500|503)\b/.test(String(err?.message || ""));
+  if (status) return status;
+  const m = String(err?.message || "").match(/\[(\d{3})\b/);
+  return m ? Number(m[1]) : null;
 };
 
+// 500/503: servidor do Google sobrecarregado ou com falha passageira — vale esperar e repetir.
+const ehSobrecarga = (err) => [500, 503].includes(statusDoErro(err));
+// 429: cota da chave esgotada para aquele modelo — repetir no mesmo modelo não adianta.
+const ehCotaEsgotada = (err) => statusDoErro(err) === 429;
+
+const ESPERA_MS = 1500;
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function gerarComNovasTentativas(model, prompt) {
-  for (let tentativa = 0; ; tentativa++) {
-    try {
-      return await model.generateContent(prompt);
-    } catch (err) {
-      if (!ehErroTemporario(err) || tentativa >= ESPERAS_MS.length) throw err;
-      console.warn(`[aiService] Gemini indisponível (tentativa ${tentativa + 1}); tentando de novo.`);
-      await esperar(ESPERAS_MS[tentativa]);
+/**
+ * Tenta cada modelo da lista. Em cada um: se der sobrecarga, espera e tenta mais uma vez;
+ * se der cota esgotada (ou a sobrecarga continuar), passa para o próximo modelo.
+ * Outros erros (chave inválida, modelo inexistente etc.) são lançados na hora.
+ */
+async function gerarComModelos(genAI, prompt) {
+  let ultimoErro;
+  for (const nome of MODELOS) {
+    const model = genAI.getGenerativeModel({ model: nome, generationConfig: { temperature: 0.1 } });
+    for (let tentativa = 1; tentativa <= 2; tentativa++) {
+      try {
+        return await model.generateContent(prompt);
+      } catch (err) {
+        ultimoErro = err;
+        if (!ehSobrecarga(err) && !ehCotaEsgotada(err)) throw err;
+        console.warn(`[aiService] ${nome} indisponível (${statusDoErro(err)}, tentativa ${tentativa}).`);
+        if (ehCotaEsgotada(err) || tentativa === 2) break; // vai para o próximo modelo
+        await esperar(ESPERA_MS);
+      }
     }
   }
+  throw ultimoErro;
 }
 
 const LABELS = [
@@ -95,10 +115,6 @@ const generateNotificationText = async (apiKey, baseTexts, metadata = {}, erroCh
   }
 
   const genAI = new GoogleGenerativeAI(apiKeyLimpa);
-  const model = genAI.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: { temperature: 0.1 },
-  });
 
   // Entrega à IA só o conteúdo jurídico de cada infração
   const infracoes = parsed
@@ -158,13 +174,20 @@ ${infracoes}
 
   let corpo;
   try {
-    const result = await gerarComNovasTentativas(model, prompt);
+    const result = await gerarComModelos(genAI, prompt);
     corpo = result.response.text().replace(/[*#`]/g, "").trim();
   } catch (err) {
     console.error("[aiService] Erro Gemini:", err.message);
-    if (ehErroTemporario(err)) {
+    if (ehCotaEsgotada(err)) {
       const erro = new Error(
-        "O Gemini está sobrecarregado no momento e não respondeu, mesmo depois de novas tentativas. Aguarde alguns minutos e gere de novo."
+        "A cota gratuita da sua chave do Gemini acabou por hoje. Tente de novo amanhã ou use uma chave com faturamento ativado no Google AI Studio."
+      );
+      erro.status = 429;
+      throw erro;
+    }
+    if (ehSobrecarga(err)) {
+      const erro = new Error(
+        "O Gemini está sobrecarregado no momento e não respondeu, nem pelo modelo reserva. Aguarde alguns minutos e gere de novo."
       );
       erro.status = 503;
       throw erro;

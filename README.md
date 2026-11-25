@@ -214,6 +214,7 @@ JWT_EXPIRES_IN=8h
 DATABASE_URL=postgresql://usuario:senha@host:6543/postgres
 ENCRYPTION_KEY=64-caracteres-hexadecimais
 GEMINI_MODEL=
+GEMINI_MODEL_RESERVA=
 CORS_ORIGINS=
 ```
 
@@ -223,7 +224,7 @@ Para gerar a `ENCRYPTION_KEY`, que cifra a chave do Gemini de cada usuário no b
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-`GEMINI_MODEL` é opcional: se ficar vazia, a geração usa o `gemini-3.8-flash`. Quando o Google aposentar o modelo, basta trocar o valor aqui e na Vercel.
+`GEMINI_MODEL` e `GEMINI_MODEL_RESERVA` são opcionais. Se ficarem vazias, a geração usa o `gemini-3.8-flash` e, quando ele estiver sobrecarregado ou sem cota, o `gemini-3.5-flash-lite`. Quando o Google aposentar algum deles, basta trocar o valor aqui e na Vercel.
 
 `CORS_ORIGINS` aceita URLs separadas por vírgula. Se ficar vazia, a API aceita o front-end publicado e o `http://localhost:5173`.
 

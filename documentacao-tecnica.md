@@ -175,7 +175,14 @@ O prompt instrui o modelo a agir como assistente jurídico e a **consolidar** as
 3. Data da constatação, Protocolo, Funcionário e Equipe (preenchidos pelo código com os metadados, ou “Não informada/o”)
 4. Penalidade prevista
 
-Quando há mais de uma infração, o modelo deve somar as informações nos campos 1, 2 e 4 de forma coesa. A resposta é devolvida como texto simples (`texto_gerado`). Se o Gemini responder com erro passageiro (429, 500 ou 503, como “high demand”), o serviço tenta de novo até duas vezes, esperando 1 s e depois 2,5 s (`gerarComNovasTentativas`). Se continuar falhando, a API responde 503 com a mensagem “O Gemini está sobrecarregado no momento...”; outros erros (como chave inválida ou modelo inexistente) não são repetidos. Observação sobre os códigos 20013 e 20419, que têm formato diferente: PA-18.
+Quando há mais de uma infração, o modelo deve somar as informações nos campos 1, 2 e 4 de forma coesa. A resposta é devolvida como texto simples (`texto_gerado`).
+
+**Modelo reserva e novas tentativas (`gerarComModelos`).** Desde novembro/2026 o `gemini-3.8-flash` devolve 503 (“high demand”) com frequência para chaves gratuitas, que o Google deixa por último quando falta capacidade; a cota gratuita dele também é pequena (cerca de 20 pedidos por dia por chave, segundo relatos de desenvolvedores). Por isso o serviço tenta os modelos em ordem:
+
+1. o principal (`GEMINI_MODEL`, padrão `gemini-3.8-flash`): em 500 ou 503, espera 1,5 s e tenta mais uma vez; em 429 (cota esgotada), passa direto ao reserva;
+2. o reserva (`GEMINI_MODEL_RESERVA`, padrão `gemini-3.5-flash-lite`), com a mesma regra.
+
+Se todos falharem, a API responde 429 (“A cota gratuita da sua chave do Gemini acabou por hoje...”) ou 503 (“O Gemini está sobrecarregado no momento...”). Outros erros, como chave inválida ou modelo inexistente, são devolvidos na hora, sem repetir. Observação sobre os códigos 20013 e 20419, que têm formato diferente: PA-18.
 
 ### 5.4. Serviço de documentos (`documentService.js`)
 
@@ -229,7 +236,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 
 ### 5.8. Deploy
 
-O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `GEMINI_MODEL` (opcional), `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
+O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `GEMINI_MODEL` e `GEMINI_MODEL_RESERVA` (opcionais), `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
 ## 6. Camada de serviços do front-end (`src/services`)
 
