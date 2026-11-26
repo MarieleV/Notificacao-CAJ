@@ -6,37 +6,18 @@
 import { useEffect, useState } from "react";
 import { useSessionStorage } from "./useSessionStorage";
 import { kvGet } from "../utils/kvStorage";
-import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
+import { CasoLote, importarCasosDoControleAnalises } from "../utils/controleAnalises";
+import {
+  BASE_CLIENTE_KEY, CLIENTE_VAZIO, ClienteLocalizado, LinhaBaseCliente, buscarClienteNaBase,
+} from "../utils/baseCliente";
 
-const BASE_CLIENTE_KEY = "baseCliente";
+export type { ClienteLocalizado };
 
 export type FiltroModalType = "success" | "warning" | "error";
 
 export interface FiltroModalState {
   type: FiltroModalType;
   message: string;
-}
-
-export interface ClienteLocalizado {
-  nomeCliente: string;
-  logradouro: string;
-  bairro: string;
-  cep: string;
-  localizacao: string;
-  categoriaTarifa: string;
-  numeroHidrometro: string;
-}
-
-const CLIENTE_VAZIO: ClienteLocalizado = {
-  nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "",
-};
-
-interface CasoLote {
-  uniqueId: string;
-  "Matrícula": string;
-  "Responsável": string;
-  "Código": string;
-  "Status": string;
 }
 
 /**
@@ -53,12 +34,12 @@ export function useFiltroMatriculaLote(prefixo: string) {
   const [clienteData, setClienteData] = useSessionStorage<ClienteLocalizado>(`${prefixo}_clienteData`, CLIENTE_VAZIO);
 
   // Base de clientes (somente leitura): é carregada na tela Redigir Notificação e persistida no IndexedDB.
-  const [baseCliente, setBaseCliente] = useState<any[]>([]);
+  const [baseCliente, setBaseCliente] = useState<LinhaBaseCliente[]>([]);
   const [baseHydrated, setBaseHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    kvGet<any[]>(BASE_CLIENTE_KEY)
+    kvGet<LinhaBaseCliente[]>(BASE_CLIENTE_KEY)
       .then((saved) => {
         if (!cancelled && saved && saved.length > 0) setBaseCliente(saved);
       })
@@ -85,35 +66,16 @@ export function useFiltroMatriculaLote(prefixo: string) {
 
   // ── Ações ───────────────────────────────────────────────────────────────
   const importarDoControleAnalises = () => {
-    try {
-      // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
-      const casosParaImportar = lerCasosDoControleAnalises();
-      if (!casosParaImportar) {
-        setModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
-        return;
-      }
-
-      if (casosParaImportar.length === 0) {
-        setModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
-        return;
-      }
-
-      const dataMapped: CasoLote[] = casosParaImportar.map((item: any, i: number) => ({
-        uniqueId: `import-${Date.now()}-${i}`,
-        "Matrícula": String(item.matricula || item.Matrícula || item.Matricula || ""),
-        "Responsável": String(item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || ""),
-        "Código": String(item.codigoServico || item.codigo || item.Codigo || ""),
-        "Status": String(item.situacao || item.status || item.Situacao || ""),
-      }));
-
-      setCasos(dataMapped);
-      setOrigemCasos(`Importado: ${casosParaImportar.length} casos analisados`);
-      setFiltroResponsavel("");
-      setModal({ type: "success", message: `${casosParaImportar.length} casos puxados da tela de Controle de Análises com sucesso!` });
-    } catch (error) {
-      console.error("Erro ao importar do Controle:", error);
-      setModal({ type: "error", message: "Erro ao tentar ler os dados. Tente processar novamente na tela de Controle de Análises." });
+    // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
+    const resultado = importarCasosDoControleAnalises();
+    if (!resultado.ok) {
+      setModal({ type: resultado.tipo, message: resultado.mensagem });
+      return;
     }
+    setCasos(resultado.casos);
+    setOrigemCasos(resultado.origem);
+    setFiltroResponsavel("");
+    setModal({ type: "success", message: resultado.mensagem });
   };
 
   const buscarMatricula = (mat: string) => {
@@ -131,17 +93,9 @@ export function useFiltroMatriculaLote(prefixo: string) {
       return;
     }
 
-    const encontrado = baseCliente.find((row) => row.matricula === matTrimmed);
-    if (encontrado) {
-      setClienteData({
-        nomeCliente: encontrado.morador,
-        logradouro: encontrado.endereco,
-        bairro: encontrado.bairro,
-        cep: encontrado.cep,
-        localizacao: encontrado.localizacao,
-        categoriaTarifa: encontrado.ativEconomica,
-        numeroHidrometro: encontrado.numeroHidrometro,
-      });
+    const cliente = buscarClienteNaBase(baseCliente, matTrimmed);
+    if (cliente) {
+      setClienteData(cliente);
     } else {
       setClienteData(CLIENTE_VAZIO);
       setModal({

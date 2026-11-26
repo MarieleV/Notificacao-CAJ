@@ -128,7 +128,7 @@ Notificacao-CAJ
       ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
       ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, dadosLocais, controleAnalises
+      ├─ utils/                        dates, masks, kvStorage, dadosLocais, controleAnalises, baseCliente
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -322,7 +322,12 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 
 - `AnaliseProcessada` (tipo de cada linha da tabela), `CONTROLE_ANALISES_KEY` (`@ControleAnalises:state`);
 - `filtrarAnalises` e `ordenarAnalises`: os filtros e a ordenação da tabela (seção 12.4);
-- `lerCasosDoControleAnalises`: lê o estado salvo, recalcula a lista filtrada e ordenada a partir de `resultados`, dos filtros e da ordenação salvos e a devolve. Se o filtro não deixar nenhum caso, devolve todos os resultados; se não houver nada salvo, devolve `null`. É usada pelo Redator e pelo filtro de matrícula em lote (PA-13).
+- `lerCasosDoControleAnalises`: lê o estado salvo, recalcula a lista filtrada e ordenada a partir de `resultados`, dos filtros e da ordenação salvos e a devolve. Se o filtro não deixar nenhum caso, devolve todos os resultados; se não houver nada salvo, devolve `null`.
+- `CasoLote` e `importarCasosDoControleAnalises`: convertem os casos lidos em lote de trabalho (`Matrícula`, `Responsável`, `Código`, `Status`) e devolvem também a origem e a mensagem para a tela, ou o aviso quando não há dados. É a única conversão, usada pelo Redator e pelo filtro de matrícula em lote (Retorno de Defesa e Tabela de Multas).
+
+### 7.6. `baseCliente.ts`
+
+Tudo o que é comum à Base de Dados do Cliente: a chave no IndexedDB (`BASE_CLIENTE_KEY`), o formato de cada linha gravada pelo Redator (`LinhaBaseCliente`), os dados do cliente exibidos e enviados nos documentos (`ClienteLocalizado` e `CLIENTE_VAZIO`) e a busca por matrícula (`buscarClienteNaBase`). É usado pelo Redator e pelo filtro de matrícula em lote.
 
 ## 8. Navegação, layout e estilos
 
@@ -417,7 +422,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 ### 10.1. `useRedatorNotificacao`
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
-- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
+- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `importarCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum), já convertida em Matrícula, Responsável, Código e Status. As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
 - **Chave do Gemini.** Ao abrir a tela, consulta se o usuário tem chave cadastrada (`obterStatusChaveGemini`) e devolve `chaveGeminiCadastrada` (`true`, `false` ou `null` enquanto consulta). Volta a consultar quando a chave é salva ou removida (evento `caj:gemini-chave-alterada`). Também apaga a `redator_apiKey` que versões antigas guardavam no `sessionStorage`.
 - **Validações antes de gerar.** Pelo menos um código; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
 - **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API. A chave do Gemini não vai na requisição: o servidor usa a do usuário logado.
@@ -466,7 +471,7 @@ O maior hook do sistema. Concentra:
 
 Hook reutilizável que leva para Retorno de Defesa e Tabela de Multas o mesmo trabalho em lote do Redator. Recebe um prefixo (`defesa` ou `calc`), e cada tela guarda o próprio filtro no `sessionStorage`.
 
-- **Importar do Controle de Análises:** usa `lerCasosDoControleAnalises` (seção 7.5), como o Redator, e converte cada item em Matrícula, Responsável, Código e Status (PA-13). Avisa por modal se não houver dados ou se a tabela estiver vazia.
+- **Importar do Controle de Análises:** usa `importarCasosDoControleAnalises` (seção 7.5), a mesma função do Redator, que já devolve os casos em Matrícula, Responsável, Código e Status. Avisa por modal se não houver dados ou se a tabela estiver vazia.
 - **Lote por responsável:** lista os responsáveis, seleciona o primeiro caso do escolhido e navega entre os casos dele (`navegarCaso`, anterior e próximo).
 - **Busca do cliente:** procura a matrícula na base de clientes do IndexedDB, que só pode ser carregada no Redator. Se a base não foi carregada, o botão Buscar fica desabilitado e explica o motivo.
 - `limparFiltro` zera lote, responsável, matrícula e dados do cliente.
@@ -692,7 +697,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 17 itens resolvidos (PA-01, 03, 04, 05, 06, 07, 08, 09, 11, 12, 14, 15, 16, 19, 21, 22 e 24) e 6 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio ou de teste: PA-10 (valores e incisos), PA-23 (data da decisão), PA-02 (remover ou manter o legado) e testes de PA-18 e PA-20. Só o PA-13 é manutenção interna.
+**Situação em novembro/2026:** 18 itens resolvidos (PA-01, 03, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 15, 16, 19, 21, 22 e 24) e 5 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Todos os que faltam dependem de decisão ou de teste: PA-10 (valores e incisos), PA-23 (data da decisão), PA-02 (remover ou manter o legado) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -711,9 +716,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 
 ### 17.3. Prioridade baixa (manutenção)
 
-| ID | Onde | Problema |
-| --- | --- | --- |
-| PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
+Nenhum item aberto.
 
 ### 17.4. Itens resolvidos
 
@@ -729,6 +732,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada e grava só quando os dados mudam; o estado do Controle e a base de clientes expiram depois de 7 dias sem atualização e são apagados ao clicar em **Sair**, junto com o `sessionStorage`; falhas ao salvar (espaço cheio) aparecem numa faixa na tela, e não só no console (seção 9.3). Os lotes continuam no `sessionStorage`, com limite de cerca de 5 MB, agora com aviso visível |
+| PA-13 | A conversão dos casos do Controle de Análises em lote ficou num lugar só (`importarCasosDoControleAnalises`, seção 7.5), sem os nomes de campo alternativos que nunca eram usados; a chave, o formato e a busca da base de clientes ficaram em `baseCliente.ts` (seção 7.6). As telas continuam trocando os casos pelo `localStorage`, de propósito: o Controle salva e as outras telas leem na hora de importar |
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
