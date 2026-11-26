@@ -44,7 +44,7 @@ Plataforma <i>full-stack</i> desenvolvida para a <b>Companhia Águas de Joinvill
   <tr>
     <td width="50%" valign="top">
       <h3>Redator Inteligente (IA)</h3>
-      <p>Integração com o <b>Gemini 2.5 Flash</b> para consolidar infrações e redigir notificações extrajudiciais (Autos de Infração) com base no Artigo 144 da Resolução ARIS nº 019/2019. Busca os dados do cliente numa planilha lida no navegador, trabalha em lote com os casos do Controle de Análises e exporta em Word e PDF.</p>
+      <p>Integração com o <b>Google Gemini</b> (modelo padrão gemini-3.8-flash) para consolidar infrações e redigir notificações extrajudiciais (Autos de Infração) com base no Artigo 144 da Resolução ARIS nº 019/2019. Busca os dados do cliente numa planilha lida no navegador, trabalha em lote com os casos do Controle de Análises e exporta em Word e PDF.</p>
     </td>
     <td width="50%" valign="top">
       <h3>Retorno de Defesa</h3>
@@ -213,6 +213,8 @@ JWT_SECRET=um-segredo-aleatorio-com-pelo-menos-32-caracteres
 JWT_EXPIRES_IN=8h
 DATABASE_URL=postgresql://usuario:senha@host:6543/postgres
 ENCRYPTION_KEY=64-caracteres-hexadecimais
+GEMINI_MODEL=
+GEMINI_MODEL_RESERVA=
 CORS_ORIGINS=
 ```
 
@@ -221,6 +223,8 @@ Para gerar a `ENCRYPTION_KEY`, que cifra a chave do Gemini de cada usuário no b
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+`GEMINI_MODEL` e `GEMINI_MODEL_RESERVA` são opcionais. Se ficarem vazias, a geração usa o `gemini-3.8-flash` e, quando ele estiver sobrecarregado ou sem cota, o `gemini-3.5-flash-lite`. Quando o Google aposentar algum deles, basta trocar o valor aqui e na Vercel.
 
 `CORS_ORIGINS` aceita URLs separadas por vírgula. Se ficar vazia, a API aceita o front-end publicado e o `http://localhost:5173`.
 
