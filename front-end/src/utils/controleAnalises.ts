@@ -126,6 +126,55 @@ export function lerEstadoSalvoControle(): any | null {
   }
 }
 
+/** Caso de um lote de trabalho por responsável (Redator, Retorno de Defesa e Tabela de Multas). */
+export interface CasoLote {
+  uniqueId: string;
+  "Matrícula": string;
+  "Responsável": string;
+  "Código": string;
+  "Status": string;
+}
+
+export type ResultadoImportacao =
+  | { ok: true; casos: CasoLote[]; origem: string; mensagem: string }
+  | { ok: false; tipo: "warning" | "error"; mensagem: string };
+
+/**
+ * Importa os casos do Controle de Análises como lote de trabalho (PA-13).
+ * Usado pelo Redator e pelo filtro de matrícula (Retorno de Defesa e Tabela de Multas),
+ * que antes repetiam esta conversão.
+ */
+export function importarCasosDoControleAnalises(): ResultadoImportacao {
+  try {
+    const analises = lerCasosDoControleAnalises();
+    if (!analises) {
+      return { ok: false, tipo: "warning", mensagem: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." };
+    }
+    if (analises.length === 0) {
+      return { ok: false, tipo: "warning", mensagem: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." };
+    }
+
+    const agora = Date.now();
+    const casos: CasoLote[] = analises.map((a, i) => ({
+      uniqueId: `import-${agora}-${i}`,
+      "Matrícula": String(a.matricula ?? ""),
+      "Responsável": String(a.funcionario ?? ""),
+      "Código": String(a.codigoServico ?? ""),
+      "Status": String(a.situacao ?? ""),
+    }));
+
+    return {
+      ok: true,
+      casos,
+      origem: `Importado: ${casos.length} casos analisados`,
+      mensagem: `${casos.length} casos puxados da tela de Controle de Análises com sucesso!`,
+    };
+  } catch (error) {
+    console.error("Erro ao importar do Controle:", error);
+    return { ok: false, tipo: "error", mensagem: "Erro ao tentar ler os dados. Tente processar novamente na tela de Controle de Análises." };
+  }
+}
+
 /**
  * Lê o estado salvo pelo Controle de Análises e devolve os casos a importar:
  * a lista filtrada e ordenada como está na tela; se ela estiver vazia, todos os resultados.

@@ -7,11 +7,13 @@ import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
 import { avisarFalhaAoSalvar } from "../utils/dadosLocais";
-import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
+import { importarCasosDoControleAnalises } from "../utils/controleAnalises";
+import {
+  BASE_CLIENTE_KEY, CLIENTE_VAZIO, ClienteLocalizado, LinhaBaseCliente, buscarClienteNaBase,
+} from "../utils/baseCliente";
 import { GEMINI_CHAVE_EVENT, obterStatusChaveGemini } from "../services/usuarios";
 
-const BASE_CLIENTE_KEY = "baseCliente";
-let baseClienteCache: any[] = [];
+let baseClienteCache: LinhaBaseCliente[] = [];
 
 const CODIGO_SEM_PROTOCOLO = "20012";
 
@@ -60,11 +62,11 @@ export function useRedatorNotificacao() {
   const [selectedCodes, setSelectedCodes] = useSessionStorage<string[]>("redator_selectedCodes", []);
   const [penaltyVariant, setPenaltyVariant] = useSessionStorage<PenaltyVariant>("redator_penaltyVariant", "multa");
 
-  const [excelData, setExcelDataState] = useState<any[]>(baseClienteCache);
+  const [excelData, setExcelDataState] = useState<LinhaBaseCliente[]>(baseClienteCache);
   const [baseHydrated, setBaseHydrated] = useState<boolean>(baseClienteCache.length > 0);
   const [fileName, setFileName] = useSessionStorage<string>("redator_fileName", "");
 
-  const setExcelData = (data: any[]) => {
+  const setExcelData = (data: LinhaBaseCliente[]) => {
     baseClienteCache = data;
     setExcelDataState(data);
     kvSet(BASE_CLIENTE_KEY, data).catch((e) =>
@@ -78,7 +80,7 @@ export function useRedatorNotificacao() {
       return;
     }
     let cancelled = false;
-    kvGet<any[]>(BASE_CLIENTE_KEY)
+    kvGet<LinhaBaseCliente[]>(BASE_CLIENTE_KEY)
       .then((saved) => {
         if (cancelled) return;
         if (saved && saved.length > 0) {
@@ -112,9 +114,7 @@ export function useRedatorNotificacao() {
   const [funcionario, setFuncionario] = useSessionStorage("redator_funcionario", "");
   const [funcionarioBusca, setFuncionarioBusca] = useSessionStorage("redator_funcionarioBusca", "");
 
-  const [clienteData, setClienteData] = useSessionStorage("redator_clienteData", {
-    nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: ""
-  });
+  const [clienteData, setClienteData] = useSessionStorage<ClienteLocalizado>("redator_clienteData", CLIENTE_VAZIO);
 
   const [filtroResponsavel, setFiltroResponsavel] = useSessionStorage("redator_filtroResponsavel", "");
   const [processedMatriculas, setProcessedMatriculas] = useSessionStorage<string[]>("redator_processedMatriculas", []);
@@ -200,7 +200,7 @@ export function useRedatorNotificacao() {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        const dataMapped = data.map((row: any, index: number) => {
+        const dataMapped: LinhaBaseCliente[] = data.map((row: any, index: number) => {
           const getRowVal = (patterns: RegExp[]) => {
             for (const pattern of patterns) {
               const key = Object.keys(row).find(k => pattern.test(k));
@@ -266,36 +266,16 @@ export function useRedatorNotificacao() {
   };
 
   const importarDoControleAnalises = () => {
-    try {
-      // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
-      const casosParaImportar = lerCasosDoControleAnalises();
-      if (!casosParaImportar) {
-        setFileModal({ type: "warning", message: "Nenhum dado salvo encontrado. Acesse a tela 'Controle de Análises' e processe as planilhas primeiro." });
-        return;
-      }
-
-      if (casosParaImportar.length === 0) {
-        setFileModal({ type: "warning", message: "A tabela no 'Controle de Análises' está vazia ou todos os itens foram filtrados/removidos." });
-        return;
-      }
-
-      const dataMapped = casosParaImportar.map((item: any, i: number) => ({
-        uniqueId: `import-${Date.now()}-${i}`,
-        "Matrícula": item.matricula || item.Matrícula || item.Matricula || "",
-        "Responsável": item.funcionario || item.responsavel || item.Funcionario || item.Responsavel || "",
-        "Código": item.codigoServico || item.codigo || item.Codigo || "",
-        "Status": item.situacao || item.status || item.Situacao || ""
-      }));
-
-      setExcelDataResp(dataMapped);
-      setFileNameResp(`Importado: ${casosParaImportar.length} casos analisados`);
-      setFiltroResponsavel("");
-      setFileModal({ type: "success", message: `${casosParaImportar.length} casos puxados da tela de Controle de Análises com sucesso!` });
-      
-    } catch (error) {
-      console.error("Erro ao importar do Controle:", error);
-      setFileModal({ type: "error", message: "Erro ao tentar ler os dados. Tente processar novamente na tela de Controle de Análises." });
+    // Mesma lista filtrada e ordenada que aparece na tela Controle de Análises.
+    const resultado = importarCasosDoControleAnalises();
+    if (!resultado.ok) {
+      setFileModal({ type: resultado.tipo, message: resultado.mensagem });
+      return;
     }
+    setExcelDataResp(resultado.casos);
+    setFileNameResp(resultado.origem);
+    setFiltroResponsavel("");
+    setFileModal({ type: "success", message: resultado.mensagem });
   };
 
   const buscarMatricula = (mat: string) => {
@@ -313,20 +293,12 @@ export function useRedatorNotificacao() {
       return;
     }
 
-    const encontrado = excelData.find((row) => row.matricula === matTrimmed);
+    const cliente = buscarClienteNaBase(excelData, matTrimmed);
 
-    if (encontrado) {
-      setClienteData({
-        nomeCliente: encontrado.morador,
-        logradouro: encontrado.endereco,
-        bairro: encontrado.bairro,
-        cep: encontrado.cep,
-        localizacao: encontrado.localizacao,
-        categoriaTarifa: encontrado.ativEconomica,
-        numeroHidrometro: encontrado.numeroHidrometro
-      });
+    if (cliente) {
+      setClienteData(cliente);
     } else {
-      setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+      setClienteData(CLIENTE_VAZIO);
       setFileModal({ 
         type: "warning", 
         message: `A matrícula "${matTrimmed}" não foi encontrada na "Base de Dados do Cliente" (Planilha 1). Verifique se o arquivo correto foi carregado.` 
@@ -480,7 +452,7 @@ export function useRedatorNotificacao() {
     setFuncionarioBusca("");
     setFiltroResponsavel("");
     setMesesSemAcesso("");
-    setClienteData({ nomeCliente: "", logradouro: "", bairro: "", cep: "", localizacao: "", categoriaTarifa: "", numeroHidrometro: "" });
+    setClienteData(CLIENTE_VAZIO);
   }
 
   return {
