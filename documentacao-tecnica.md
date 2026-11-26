@@ -56,10 +56,11 @@ No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil, st
 | --- | --- | --- |
 | Memória (RAM) | Até recarregar a página | Planilhas brutas do Controle de Análises; textos temporários da calculadora |
 | `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
-| `localStorage` | Sem prazo de expiração | Estado do Controle de Análises (chave `@ControleAnalises:state`); token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
-| IndexedDB (`redator-db`) | Sem prazo de expiração | Base de dados de clientes carregada no Redator |
+| `localStorage` | Até clicar em **Sair** ou 7 dias sem atualização | Estado do Controle de Análises (chave `@ControleAnalises:state`) |
+| `localStorage` | Até o token vencer (8h) ou clicar em Sair | Token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
+| IndexedDB (`redator-db`) | Até clicar em **Sair** ou 7 dias sem atualização | Base de dados de clientes carregada no Redator |
 
-A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12).
+A seção 9 detalha esse modelo e as regras de privacidade.
 
 ### 2.2. Decisões de arquitetura
 
@@ -127,7 +128,7 @@ Notificacao-CAJ
       ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
       ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, controleAnalises
+      ├─ utils/                        dates, masks, kvStorage, dadosLocais, controleAnalises
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -309,7 +310,7 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 
 ### 7.3. `kvStorage.ts`
 
-Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
+Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Cada valor é gravado com a data da gravação, e `kvGet` apaga e ignora o que tiver mais de 7 dias; `kvDelete` e `kvClear` apagam uma chave ou tudo (seção 9.3). Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
 
 ### 7.4. Lista de funcionários (`services/funcionarios.ts` e `useFuncionarios`)
 
@@ -344,7 +345,7 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 | `/usuarios` | `GerenciarUsuarios` | Administrador |
 | `*` | `Pagina404` (precisa ser sempre a última rota) | Logado |
 
-**Sessão (`contexts/AuthContext.tsx`).** Expõe `user`, `isAuthenticated`, `isAdmin`, `login` e `logout`. Encerra a sessão quando o token vence (com um temporizador), quando a API responde 401 (evento `caj:auth-logout`) e quando outra aba faz logout (evento `storage`).
+**Sessão (`contexts/AuthContext.tsx`).** Expõe `user`, `isAuthenticated`, `isAdmin`, `login` e `logout`. Encerra a sessão quando o token vence (com um temporizador), quando a API responde 401 (evento `caj:auth-logout`) e quando outra aba faz logout (evento `storage`). Só o `logout` (botão **Sair**) apaga também os dados de trabalho do navegador e recarrega a página (seção 9.3).
 
 ### 8.2. Layout (`components/Layout.tsx`)
 
@@ -383,7 +384,7 @@ O título de cada tela (`PageHeader`) é igual ao rótulo do menu; a descrição
 
 ### 9.1. `useSessionStorage`
 
-Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Se a chave mudar, relê o valor salvo na nova chave, e cada valor é gravado sempre na chave a que pertence. Falhas de leitura ou gravação geram apenas um aviso no console. Cada tela usa um prefixo de chave próprio.
+Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Se a chave mudar, relê o valor salvo na nova chave, e cada valor é gravado sempre na chave a que pertence. Falhas de leitura geram um aviso no console; falhas de gravação (em geral, espaço cheio) também aparecem na tela (seção 9.3). Cada tela usa um prefixo de chave próprio.
 
 ### 9.2. O que cada tela guarda e onde
 
@@ -399,7 +400,15 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 Consequências práticas: ao recarregar a página, o Controle de Análises mantém a tabela de resultados, mas exige novo upload das planilhas para reprocessar; a Ouvidoria mantém os campos preenchidos, mas o texto gerado se perde.
 
-Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12.
+Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`.
+
+### 9.3. Validade, limpeza e falhas ao salvar (`utils/dadosLocais.ts`)
+
+O estado do Controle de Análises e a base de clientes têm dados pessoais (nomes, endereços, matrículas). Por isso:
+
+- **Validade de 7 dias.** Os dois são gravados com a data da gravação (`salvoEm`). Ao ler, o que tiver mais de 7 dias sem atualização (`VALIDADE_DADOS_LOCAIS_MS`) é apagado e tratado como inexistente: `lerEstadoSalvoControle` (`controleAnalises.ts`) para o Controle e `kvGet` (`kvStorage.ts`) para a base de clientes. Dados gravados antes dessa regra, sem data, também são descartados.
+- **Sair apaga tudo.** O botão **Sair** (`logout` do `AuthContext`) apaga o estado do Controle de Análises, todo o `sessionStorage` (formulários e lotes das telas) e o IndexedDB (`kvClear`), encerra a sessão e recarrega a página, o que zera também o que estava só na memória. Quando o token apenas vence (8h), nada é apagado: o sistema só pede login de novo.
+- **Falha ao salvar.** Se o navegador recusar uma gravação (`sessionStorage`, `localStorage` ou IndexedDB), `avisarFalhaAoSalvar` registra no console e dispara o evento `caj:falha-ao-salvar`. O `Layout` mostra então uma faixa vermelha no topo dizendo o que não foi salvo e sugerindo usar “Limpar tela” nas telas que não estão em uso. Depois de fechada, a faixa só volta após recarregar a página. O limite do `sessionStorage` e do `localStorage` é de cerca de 5 MB por site.
 
 ## 10. Hooks (`src/hooks`)
 
@@ -547,7 +556,7 @@ Acima dos blocos numerados fica o **Filtro de Matrícula** (seção 10.6), para 
 
 Análises de códigos fora dessa tabela são ignoradas.
 
-**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo*. O “+1” ainda aguarda confirmação da CAJ (PA-05).
+**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo*. O “+1” é regra de negócio confirmada pela CAJ: com prazo de 15 dias úteis e 16 decorridos, o atraso é 2.
 
 **Data de abertura ilegível.** Se a data de abertura não puder ser lida no formato DD/MM/AAAA (vazia, número de série do Excel, formato americano etc.), o prazo não é calculado: a situação é *Data inválida*, os dias transcorridos aparecem como “—” e um aviso acima dos indicadores mostra quantas análises estão nessa condição. Elas têm filtro próprio na coluna Situação, ficam entre as vencidas e as no prazo na ordem inicial e vão para o fim ao ordenar pela data.
 
@@ -637,7 +646,7 @@ Observações:
 
 ## 15. Segurança e privacidade
 
-- **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
+- **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB, e as matrículas e nomes de funcionários das análises, no `localStorage`. Os dois são apagados ao clicar em **Sair** e descartados depois de 7 dias sem atualização (seção 9.3). Em computadores compartilhados, oriente os usuários a sempre clicar em Sair.
 - **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API só aceita chamadas do navegador vindas das origens permitidas (`CORS_ORIGINS`).
 - **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `ENCRYPTION_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
 - **Chave do Gemini.** Cada usuário cadastra a própria em “Minha chave do Gemini”. Ela vai uma vez ao servidor, é guardada cifrada no banco (AES-256-GCM com `ENCRYPTION_KEY`) e nunca volta ao navegador. O Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`. Quem tiver acesso ao banco sem a `ENCRYPTION_KEY` não consegue ler as chaves.
@@ -683,13 +692,12 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 15 itens resolvidos (PA-01, 03, 04, 06, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 8 abertos. Dos abertos, 3 já foram resolvidos em parte (PA-05, 10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 17 itens resolvidos (PA-01, 03, 04, 05, 06, 07, 08, 09, 11, 12, 14, 15, 16, 19, 21, 22 e 24) e 6 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio ou de teste: PA-10 (valores e incisos), PA-23 (data da decisão), PA-02 (remover ou manter o legado) e testes de PA-18 e PA-20. Só o PA-13 é manutenção interna.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-05 | `useControleAnalises` | O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Confirmar com a CAJ se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 
 ### 17.2. Prioridade média
@@ -697,7 +705,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
 | PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
-| PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -715,11 +722,13 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
+| PA-05 | Datas de abertura ilegíveis não viram mais 0 dia útil “No Prazo”: a análise fica como **Data inválida**, sem cálculo de prazo, com aviso na tela, filtro próprio e ordenação no fim da lista (seção 12.4). O “+1” no atraso foi confirmado pela CAJ como regra de negócio |
 | PA-06 | A faixa da lista de feriados (`FERIADOS_INICIO` a `FERIADOS_FIM`) é calculada da própria lista, e o sistema avisa quando um cálculo sai dela: na Calculadora de dias úteis, em Análises Vencidas e numa faixa no topo das telas a partir de 120 dias antes do fim da lista (seção 7.1). Continua sendo preciso **atualizar a lista todo ano**; a de 2028 deve entrar até o fim de 2027 |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
 | PA-08 | A regra de negrito de linha inteira (`isFullBoldLine`, no `documentService`) reconhece qualquer item numerado com dois dígitos (`\d{2}\.`), numerais romanos de `I` a `XXXIX` (antes só de `I` a `V`) com travessão e, com hífen comum, só títulos em maiúsculas (`VI - CONCLUSÃO`), para não pôr em negrito os incisos citados da resolução (`V - Derivação do ramal...`) |
 | PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
+| PA-12 | O Controle de Análises deixou de gravar a lista filtrada e grava só quando os dados mudam; o estado do Controle e a base de clientes expiram depois de 7 dias sem atualização e são apagados ao clicar em **Sair**, junto com o `sessionStorage`; falhas ao salvar (espaço cheio) aparecem numa faixa na tela, e não só no console (seção 9.3). Os lotes continuam no `sessionStorage`, com limite de cerca de 5 MB, agora com aviso visível |
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
@@ -734,9 +743,7 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
-| PA-05 | Datas de abertura ilegíveis não viram mais 0 dia útil “No Prazo”: a análise fica como **Data inválida**, sem cálculo de prazo, com aviso na tela, filtro próprio e ordenação no fim da lista (seção 12.4) | Confirmar com a CAJ se o “+1” no atraso é regra de negócio |
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
-| PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 
 ## 18. Glossário
 
