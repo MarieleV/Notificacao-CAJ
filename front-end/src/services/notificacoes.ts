@@ -1,5 +1,14 @@
+// Fonte única dos códigos de infração (PA-10): esta lista alimenta o Redigir Notificação
+// e o Retorno de Defesa (defesas.ts usa os mesmos códigos, títulos e categorias).
+// Para incluir um código: acrescente-o em CodigoInfracao, em INFRACTION_CODES e o
+// texto da defesa em TEXTOS_DEFESA (defesas.ts); o build acusa o que faltar.
+export type CodigoInfracao =
+  | "20400" | "20401" | "20402" | "20402 HD" | "20403" | "20404" | "20405" | "20406"
+  | "20407" | "20408" | "20409" | "20410" | "20411" | "20412" | "20413" | "20414"
+  | "20415" | "20416" | "20417" | "20418" | "20011" | "20012" | "20013" | "20419";
+
 export interface InfractionCode {
-  code: string;
+  code: CodigoInfracao;
   title: string;
   clauseMulta: string;
   clauseMultaCP: string;

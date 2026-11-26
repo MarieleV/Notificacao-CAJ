@@ -252,7 +252,7 @@ Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParece
 
 ### 6.2. `notificacoes.ts`
 
-Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `code`, `title`, `category`, `clauseMulta` e `clauseMultaCP`.
+Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `code`, `title`, `category`, `clauseMulta` e `clauseMultaCP`. É a **fonte única dos códigos** do sistema: o Retorno de Defesa usa os mesmos códigos, títulos e categorias (seção 6.3). O tipo `CodigoInfracao` lista os 24 códigos; para incluir um código, acrescente-o em `CodigoInfracao`, em `INFRACTION_CODES` e o texto da defesa em `TEXTOS_DEFESA` (`defesas.ts`). O build acusa erro se o texto da defesa faltar.
 
 - `clauseMulta`: descrição do fato, dispositivo legal (quase todos no Art. 144 da Resolução 019/2019) e penalidade de multa.
 - `clauseMultaCP`: a mesma cláusula acrescida da **padronização obrigatória** da ligação em 90 dias úteis (Art. 144, § 3º), com a advertência de multa adicional por não padronização.
@@ -261,9 +261,9 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 
 ### 6.3. `defesas.ts`
 
-Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação). A exportação do parecer usa as funções de `api.ts` (seção 6.1).
+Guarda só o **texto da defesa de cada código** (`TEXTOS_DEFESA`, indexado por `CodigoInfracao`). A lista exibida na tela (`DEFESAS_TEMPLATES`) é montada a partir de `INFRACTION_CODES`: os **mesmos 24 códigos do Redigir Notificação**, na mesma ordem, com os mesmos títulos e categorias, mais o modelo genérico `Prazo` (prorrogação da padronização) no fim, que não é um código de infração. O 20402 (lacre do cavalete) e o 20402 HD (lacre do hidrômetro) têm textos separados. Os textos dos códigos 20402 HD, 20011, 20012 e 20013, incluídos em novembro/2026, seguem o padrão dos demais e devem ser revisados pela CAJ. A exportação do parecer usa as funções de `api.ts` (seção 6.1).
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os valores das multas, inclusive a de padronização, e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo. O inciso do 20418 diverge da biblioteca do Redator (PA-10).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o dispositivo aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os valores das multas, inclusive a de padronização, e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo. O inciso do 20418 diverge da biblioteca do Redator (PA-10).
 
 ### 6.4. `categorias.ts`
 
@@ -733,7 +733,7 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
-| PA-10 | A categoria “Acesso” passou a ser `acesso`. A CAJ confirmou que o valor da multa de padronização e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo; por isso o 20400 deixou de trazer R$ 480,40 fixo e passou a usar `R$ XXX,XX`, como os demais templates. O R$ 480,80 do 20419 é outra multa (recusa de atualização cadastral), não a de padronização. As diferenças entre as bibliotecas são esperadas: as defesas não têm os códigos de acesso (20011 a 20013) nem o 20402 HD e têm o modelo `Prazo`; os títulos diferem só na redação | Conferir com a resolução vigente o inciso do 20418 (XIV nas notificações, XV nas defesas) |
+| PA-10 | A categoria “Acesso” passou a ser `acesso`. A CAJ confirmou que o valor da multa de padronização e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo; por isso o 20400 deixou de trazer R$ 480,40 fixo e passou a usar `R$ XXX,XX`, como os demais templates. O R$ 480,80 do 20419 é outra multa (recusa de atualização cadastral), não a de padronização. As bibliotecas foram unificadas: `INFRACTION_CODES` é a fonte única de códigos, títulos e categorias, e o Retorno de Defesa passou a ter os mesmos 24 códigos do Redigir Notificação (antes 20), com textos novos para 20402 HD, 20011, 20012 e 20013 e o 20402 separado do 20402 HD (seção 6.3). O 20419 ganhou o marcador do motivo, que antes era ignorado nesse código | Conferir com a resolução vigente o inciso do 20418 (XIV nas notificações, XV no texto da defesa); a CAJ revisar os textos novos de defesa |
 
 ## 18. Glossário
 
