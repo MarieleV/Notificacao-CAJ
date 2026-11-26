@@ -48,6 +48,53 @@ const FERIADOS_E_FDS = new Set([
   "2027-12-31",
 ]);
 
+// ─── Faixa coberta pela lista de feriados (PA-06) ───────────────────────────
+// Fora dela, só sábados e domingos são descontados. A lista precisa ser
+// atualizada todo ano: inclua as datas do ano seguinte em FERIADOS_E_FDS.
+
+function fromISODate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+const DATAS_ORDENADAS = [...FERIADOS_E_FDS].sort();
+/** Primeiro dia coberto pela lista de feriados. */
+export const FERIADOS_INICIO = fromISODate(DATAS_ORDENADAS[0]);
+/** Último dia coberto pela lista de feriados. */
+export const FERIADOS_FIM = fromISODate(DATAS_ORDENADAS[DATAS_ORDENADAS.length - 1]);
+
+/** Antecedência com que o sistema avisa que a lista de feriados está acabando. */
+const DIAS_AVISO_FIM_DA_LISTA = 120;
+
+/** Verdadeiro se alguma das datas cai fora da faixa coberta pela lista de feriados. */
+export function foraDaFaixaDeFeriados(...datas: (Date | null | undefined)[]): boolean {
+  // O fim vale até 23:59 do último dia, para "hoje" com horário não sair da faixa.
+  const limiteFim = FERIADOS_FIM.getTime() + 86_400_000;
+  return datas.some(
+    (d) => d != null && (d.getTime() < FERIADOS_INICIO.getTime() || d.getTime() >= limiteFim)
+  );
+}
+
+/** Texto de aviso padrão quando um cálculo usa datas fora da lista de feriados. */
+export function avisoForaDaFaixaDeFeriados(): string {
+  return `A lista de feriados do sistema vai de ${formatFullDate(FERIADOS_INICIO)} a ${formatFullDate(FERIADOS_FIM)}. ` +
+    "Fora desse período só sábados e domingos são descontados; confira o resultado.";
+}
+
+/**
+ * Aviso para quando a lista de feriados está perto do fim (ou já acabou).
+ * Os prazos de 60 dias úteis contam a partir de hoje e logo passam do fim da lista.
+ * Devolve null enquanto faltar mais de DIAS_AVISO_FIM_DA_LISTA dias.
+ */
+export function avisoFimDaListaDeFeriados(hoje: Date = new Date()): string | null {
+  const diasRestantes = Math.floor((FERIADOS_FIM.getTime() - hoje.getTime()) / 86_400_000);
+  if (diasRestantes > DIAS_AVISO_FIM_DA_LISTA) return null;
+  const fim = formatFullDate(FERIADOS_FIM);
+  return diasRestantes < 0
+    ? `A lista de feriados do sistema terminou em ${fim}. Os prazos em dias úteis só descontam sábados e domingos até a lista ser atualizada.`
+    : `A lista de feriados do sistema termina em ${fim}. Prazos que passam dessa data só descontam sábados e domingos; peça a atualização da lista.`;
+}
+
 function toISODate(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");

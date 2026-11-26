@@ -24,7 +24,7 @@ O sistema:
 | Ouvidoria e Recursos | `/ouvidoria` | Árvore de decisão que gera o parecer de recurso, com guia de tratativas no Sansys |
 | Usuários (só administradores) | `/usuarios` | Cadastro de usuários, perfis, ativação e redefinição de senha |
 
-Todas as telas exigem login (`/login`). Usuário e senha ficam no banco do back-end (seção 5.7).
+Todas as telas exigem login (`/login`). Usuário e senha ficam no banco do back-end (seção 5.6).
 
 ### 1.2. Ambientes e licença
 
@@ -56,10 +56,11 @@ No servidor fica só a tabela `usuarios` (login, nome, hash da senha, perfil, st
 | --- | --- | --- |
 | Memória (RAM) | Até recarregar a página | Planilhas brutas do Controle de Análises; textos temporários da calculadora |
 | `sessionStorage` | Enquanto a aba estiver aberta | Formulários das telas, texto gerado, lotes de casos (Redator, Retorno de Defesa e Tabela de Multas) |
-| `localStorage` | Sem prazo de expiração | Estado do Controle de Análises (chave `@ControleAnalises:state`); token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
-| IndexedDB (`redator-db`) | Sem prazo de expiração | Base de dados de clientes carregada no Redator |
+| `localStorage` | Até clicar em **Sair** ou 7 dias sem atualização | Estado do Controle de Análises (chave `@ControleAnalises:state`) |
+| `localStorage` | Até o token vencer (8h) ou clicar em Sair | Token JWT e dados do usuário logado (`caj_auth_token` e `caj_auth_user`) |
+| IndexedDB (`redator-db`) | Até clicar em **Sair** ou 7 dias sem atualização | Base de dados de clientes carregada no Redator |
 
-A seção 9 detalha esse modelo. Ele tem implicações de privacidade (PA-12).
+A seção 9 detalha esse modelo e as regras de privacidade.
 
 ### 2.2. Decisões de arquitetura
 
@@ -110,11 +111,11 @@ Notificacao-CAJ
 │  │  ├─ index.js                      entrada do Express
 │  │  ├─ routes/indexRoutes.js         rotas /api/*
 │  │  ├─ middlewares/authMiddleware.js requireAuth e requireAdmin
-│  │  ├─ controllers/                  ai, auth, calculator, document, funcionario, user
-│  │  ├─ services/                     ai, auth, calculator, document, user
+│  │  ├─ controllers/                  ai, auth, document, funcionario, user
+│  │  ├─ services/                     ai, auth, document, user
 │  │  ├─ db/                           pool.js (conexão) e schema.sql (tabela usuarios)
 │  │  ├─ data/funcionarios.js          lista de funcionários (entregue só a usuários logados)
-│  │  └─ utils/                      formatters.js e crypto.js (cifra a chave do Gemini)
+│  │  └─ utils/                      crypto.js (cifra a chave do Gemini)
 │  ├─ .env.example · vercel.json · package.json
 └─ front-end
    ├─ index.html · vite.config.ts · package.json · .env.example
@@ -126,8 +127,8 @@ Notificacao-CAJ
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
       ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
-      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
-      ├─ utils/                        dates, masks, kvStorage, controleAnalises
+      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria
+      ├─ utils/                        dates, masks, kvStorage, dadosLocais, controleAnalises, baseCliente
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
 
@@ -137,7 +138,7 @@ Notificacao-CAJ
 
 `src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS só para as origens permitidas (`CORS_ORIGINS`, URLs separadas por vírgula; se vazia, o front-end publicado `https://notificacao-caj-7ncb.vercel.app` e o ambiente local `http://localhost:5173`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
 
-Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.7).
+Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.6).
 
 | Método e rota | Controller | Usada por |
 | --- | --- | --- |
@@ -154,7 +155,6 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 | `POST /api/exportar_pdf` | `exportInfracaoPdf` | Redator de Notificação |
 | `POST /api/exportar_parecer_word` | `exportParecerWord` | Ouvidoria e Retorno de Defesa |
 | `POST /api/exportar_parecer_pdf` | `exportParecerPdf` | Ouvidoria e Retorno de Defesa |
-| `POST /api/calcular_multa` | `calculatorController.calculate` | **Nenhuma tela** (legado, PA-02) |
 
 ### 5.2. Controllers
 
@@ -210,21 +210,13 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (`#FF0000`) no Word, no PDF e na pré-visualização da Ouvidoria. A lista fica em `RED_MARKERS`, repetida no `documentService.js` e no `useProcessoOuvidoria`; as duas precisam ser mantidas iguais.
 - O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele. Na Vercel, a pasta `public` entra no pacote da função pelo `includeFiles` do `vercel.json` (PA-16).
 
-### 5.5. Calculadora no back-end (`calculatorService.js`) – legado
-
-Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas de água e de esgoto e o fator K1. Para cada mês calcula o valor da água faixa a faixa, soma a tarifa de serviço e compara com o valor cobrado. O esgoto é 80% do valor correto da água multiplicado pelo fator K1. Devolve linhas, totais e dois textos de laudo. **Nenhuma tela chama essa rota hoje**; a tela de multas calcula tudo no navegador (seção 12.3). Ver PA-02.
-
-### 5.6. Utilitários (`formatters.js` e `crypto.js`)
+### 5.5. Utilitário de criptografia (`crypto.js`)
 
 | Função | O que faz |
 | --- | --- |
-| `parseBRL` | Converte texto em formato brasileiro (`1.234,56`, com ou sem `R$`) em número; devolve 0 se inválido |
-| `parseMonthYear` | Converte `MM/AAAA` em um inteiro (ano × 12 + mês) para comparação |
-| `isWithinRange` | Verifica se um mês está dentro de um intervalo; fim vazio significa vigência em aberto |
-| `formatBRL` | Formata número como `R$ 1.234,56` |
-| `cifrar` / `decifrar` (`crypto.js`) | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
+| `cifrar` / `decifrar` | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
 
-### 5.7. Autenticação e usuários
+### 5.6. Autenticação e usuários
 
 - **Banco.** `db/pool.js` abre um pool de conexões (`pg`, no máximo 3) com o Postgres indicado em `DATABASE_URL`, com SSL fora do ambiente local. Para a Vercel, recomenda-se o *Transaction pooler* do Supabase (porta 6543). `db/schema.sql` cria a tabela `usuarios` (`id`, `usuario` único, `nome`, `senha_hash`, `perfil` `admin` ou `usuario`, `ativo`, `criado_em`, `atualizado_em`) e ativa o RLS sem políticas, o que bloqueia o acesso pela API pública do Supabase.
 - **Login (`authService`).** Compara a senha com o hash (bcrypt). Quando o usuário não existe, compara com um hash fictício, para que o tempo de resposta não revele quais logins existem. Usuários inativos não entram. O token é um JWT (HS256) assinado com `JWT_SECRET` (mínimo de 32 caracteres; sem ele, ninguém autentica) e vale por `JWT_EXPIRES_IN` (padrão `8h`).
@@ -234,7 +226,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 - **Chave do Gemini por usuário.** Fica na coluna `gemini_api_key_enc`, cifrada com AES-256-GCM (`utils/crypto.js`) pela chave mestra `ENCRYPTION_KEY` (64 caracteres hexadecimais) do servidor. O formato é `v1:<iv>:<tag>:<conteúdo>`, e o GCM detecta qualquer alteração do valor. A API só informa se a chave existe e os 4 últimos caracteres; nunca devolve a chave. Ao salvar, exige de 20 a 200 caracteres, sem espaços. Se a `ENCRYPTION_KEY` for trocada, as chaves salvas deixam de ser lidas: a tela mostra “Não cadastrada” e o usuário precisa cadastrar de novo.
 - **Primeiro administrador.** `npm run criar-admin -- <usuario> "<Nome>" "<senha>"` executa o `schema.sql` e cria o admin. Se o login já existir, ele é promovido a admin, reativado e recebe a nova senha.
 
-### 5.8. Deploy
+### 5.7. Deploy
 
 O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `GEMINI_MODEL` e `GEMINI_MODEL_RESERVA` (opcionais), `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
@@ -260,7 +252,7 @@ Os tipos `GerarNotificacaoPayload`, `ExportarDocumentoPayload` e `ExportarParece
 
 ### 6.2. `notificacoes.ts`
 
-Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `code`, `title`, `category`, `clauseMulta` e `clauseMultaCP`.
+Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `code`, `title`, `category`, `clauseMulta` e `clauseMultaCP`. É a **fonte única dos códigos** do sistema: o Retorno de Defesa usa os mesmos códigos, títulos e categorias (seção 6.3). O tipo `CodigoInfracao` lista os 24 códigos; para incluir um código, acrescente-o em `CodigoInfracao`, em `INFRACTION_CODES` e o texto da defesa em `TEXTOS_DEFESA` (`defesas.ts`). O build acusa erro se o texto da defesa faltar.
 
 - `clauseMulta`: descrição do fato, dispositivo legal (quase todos no Art. 144 da Resolução 019/2019) e penalidade de multa.
 - `clauseMultaCP`: a mesma cláusula acrescida da **padronização obrigatória** da ligação em 90 dias úteis (Art. 144, § 3º), com a advertência de multa adicional por não padronização.
@@ -269,9 +261,9 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 
 ### 6.3. `defesas.ts`
 
-Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação). A exportação do parecer usa as funções de `api.ts` (seção 6.1).
+Guarda só o **texto da defesa de cada código** (`TEXTOS_DEFESA`, indexado por `CodigoInfracao`). A lista exibida na tela (`DEFESAS_TEMPLATES`) é montada a partir de `INFRACTION_CODES`: os **mesmos 24 códigos do Redigir Notificação**, na mesma ordem, com os mesmos títulos e categorias, mais o modelo genérico `Prazo` (prorrogação da padronização) no fim, que não é um código de infração. O 20402 (lacre do cavalete) e o 20402 HD (lacre do hidrômetro) têm textos separados. Os textos dos códigos 20402 HD, 20011, 20012 e 20013, incluídos em novembro/2026, seguem o padrão dos demais e devem ser revisados pela CAJ. A exportação do parecer usa as funções de `api.ts` (seção 6.1).
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os dados divergem em alguns pontos da biblioteca do Redator (PA-10).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o dispositivo aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os valores das multas, inclusive a de padronização, e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo. O inciso do 20418 diverge da biblioteca do Redator (PA-10).
 
 ### 6.4. `categorias.ts`
 
@@ -285,18 +277,19 @@ Só tipos que regem o fluxo da Ouvidoria:
 - `TipoCasoType`: `leitura`, `servico`, `corte_cavalete`, `hd`, `bypass`, `clandestina`, `la_padronizada`, `la_cadastral`, `prorrogacao`.
 - `DefesaType`: `com_defesa` ou `sem_defesa`.
 
-### 6.6. `tarifas.ts` – sem uso
-
-O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Guarda tarifas de água por vigência (de 01/03/2023 em diante), com tarifa de serviço e faixas de consumo para Residencial (e suas variantes sociais), Comercial, Entidade Beneficente, Industrial e Pública, além da tabela de fator K1 (esgoto) com 32 atividades, de 1,00 (casas) a 1,68 (indústria da construção e aterro sanitário). Alimentava a calculadora antiga (PA-02).
-
 ## 7. Utilitários do front-end (`src/utils`)
 
 ### 7.1. `dates.ts`
 
 - **Rótulos:** `MONTHS_SHORT` e `WEEKDAYS_SHORT`, usados pelos seletores de data.
-- **Dias úteis:** `isNonBusinessDay`, `addBusinessDays` e `businessDaysBetween` descartam sábados, domingos e as datas de um `Set` com feriados e emendas, de 30/08/2025 a 31/12/2027 (PA-06).
+- **Dias úteis:** `isNonBusinessDay`, `addBusinessDays` e `businessDaysBetween` descartam sábados, domingos e as datas de um `Set` com feriados e emendas, de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana. **A lista precisa ser atualizada todo ano**, incluindo as datas do ano seguinte em `FERIADOS_E_FDS`.
+- **Faixa da lista de feriados:** `FERIADOS_INICIO` e `FERIADOS_FIM` são calculados a partir da própria lista. `foraDaFaixaDeFeriados(...datas)` indica se alguma data sai da faixa, e `avisoForaDaFaixaDeFeriados` dá o texto do aviso. Os avisos aparecem:
+  - na **Calculadora de dias úteis** (Retorno de Defesa e Ouvidoria), quando a data inicial ou a final saem da faixa;
+  - em **Análises Vencidas**, com a quantidade de análises cujo período (abertura até hoje) sai da faixa;
+  - numa faixa amarela no topo de todas as telas (`avisoFimDaListaDeFeriados`, no `Layout`), a partir de 120 dias antes do fim da lista e depois que ela acaba, porque os prazos de 60 dias úteis contam a partir de hoje.
+- “Hoje” vem do relógio do computador do usuário.
 - **Conversão:** `parseFullDate` (`DD/MM/AAAA`, validando o calendário), `formatFullDate`, `labelFullDate`, `parseMonthYear` (`MM/AAAA`), `formatMonthYear` e `labelMonth`.
-- **Regras de negócio:** `calculateEndDate` (data inicial + N dias úteis), `get60BusinessDaysFromToday` (hoje + 60 dias úteis, usado nas prorrogações de padronização) e `getBusinessDaysDifference` (dias úteis entre duas datas, em qualquer ordem; devolve 0 se uma data for inválida, PA-05).
+- **Regras de negócio:** `calculateEndDate` (data inicial + N dias úteis), `get60BusinessDaysFromToday` (hoje + 60 dias úteis, usado nas prorrogações de padronização) e `getBusinessDaysDifference` (dias úteis entre duas datas, em qualquer ordem; devolve 0 se uma data for inválida, por isso quem chama deve validar a data antes com `parseFullDate`, como faz o Controle de Análises).
 
 ### 7.2. `masks.ts`
 
@@ -304,7 +297,7 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 
 ### 7.3. `kvStorage.ts`
 
-Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
+Camada assíncrona sobre IndexedDB (banco `redator-db`, loja `kv`) com `kvSet` e `kvGet`. A conexão é aberta na primeira operação e reaproveitada nas seguintes; se o navegador a fechar, se outra aba pedir uma versão nova do banco ou se a abertura falhar, a próxima operação abre outra. Cada valor é gravado com a data da gravação, e `kvGet` apaga e ignora o que tiver mais de 7 dias; `kvDelete` e `kvClear` apagam uma chave ou tudo (seção 9.3). Hoje guarda apenas a base de clientes, gravada pelo Redator e lida também pelo filtro de matrícula de Retorno de Defesa e Tabela de Multas (`useFiltroMatriculaLote`).
 
 ### 7.4. Lista de funcionários (`services/funcionarios.ts` e `useFuncionarios`)
 
@@ -316,7 +309,12 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 
 - `AnaliseProcessada` (tipo de cada linha da tabela), `CONTROLE_ANALISES_KEY` (`@ControleAnalises:state`);
 - `filtrarAnalises` e `ordenarAnalises`: os filtros e a ordenação da tabela (seção 12.4);
-- `lerCasosDoControleAnalises`: lê o estado salvo, recalcula a lista filtrada e ordenada a partir de `resultados`, dos filtros e da ordenação salvos e a devolve. Se o filtro não deixar nenhum caso, devolve todos os resultados; se não houver nada salvo, devolve `null`. É usada pelo Redator e pelo filtro de matrícula em lote (PA-13).
+- `lerCasosDoControleAnalises`: lê o estado salvo, recalcula a lista filtrada e ordenada a partir de `resultados`, dos filtros e da ordenação salvos e a devolve. Se o filtro não deixar nenhum caso, devolve todos os resultados; se não houver nada salvo, devolve `null`.
+- `CasoLote` e `importarCasosDoControleAnalises`: convertem os casos lidos em lote de trabalho (`Matrícula`, `Responsável`, `Código`, `Status`) e devolvem também a origem e a mensagem para a tela, ou o aviso quando não há dados. É a única conversão, usada pelo Redator e pelo filtro de matrícula em lote (Retorno de Defesa e Tabela de Multas).
+
+### 7.6. `baseCliente.ts`
+
+Tudo o que é comum à Base de Dados do Cliente: a chave no IndexedDB (`BASE_CLIENTE_KEY`), o formato de cada linha gravada pelo Redator (`LinhaBaseCliente`), os dados do cliente exibidos e enviados nos documentos (`ClienteLocalizado` e `CLIENTE_VAZIO`) e a busca por matrícula (`buscarClienteNaBase`). É usado pelo Redator e pelo filtro de matrícula em lote.
 
 ## 8. Navegação, layout e estilos
 
@@ -339,7 +337,7 @@ Regras do Controle de Análises compartilhadas entre a tela e as importações d
 | `/usuarios` | `GerenciarUsuarios` | Administrador |
 | `*` | `Pagina404` (precisa ser sempre a última rota) | Logado |
 
-**Sessão (`contexts/AuthContext.tsx`).** Expõe `user`, `isAuthenticated`, `isAdmin`, `login` e `logout`. Encerra a sessão quando o token vence (com um temporizador), quando a API responde 401 (evento `caj:auth-logout`) e quando outra aba faz logout (evento `storage`).
+**Sessão (`contexts/AuthContext.tsx`).** Expõe `user`, `isAuthenticated`, `isAdmin`, `login` e `logout`. Encerra a sessão quando o token vence (com um temporizador), quando a API responde 401 (evento `caj:auth-logout`) e quando outra aba faz logout (evento `storage`). Só o `logout` (botão **Sair**) apaga também os dados de trabalho do navegador e recarrega a página (seção 9.3).
 
 ### 8.2. Layout (`components/Layout.tsx`)
 
@@ -378,7 +376,7 @@ O título de cada tela (`PageHeader`) é igual ao rótulo do menu; a descrição
 
 ### 9.1. `useSessionStorage`
 
-Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Se a chave mudar, relê o valor salvo na nova chave, e cada valor é gravado sempre na chave a que pertence. Falhas de leitura ou gravação geram apenas um aviso no console. Cada tela usa um prefixo de chave próprio.
+Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sessionStorage` e grava a cada mudança (em JSON). Se a chave mudar, relê o valor salvo na nova chave, e cada valor é gravado sempre na chave a que pertence. Falhas de leitura geram um aviso no console; falhas de gravação (em geral, espaço cheio) também aparecem na tela (seção 9.3). Cada tela usa um prefixo de chave próprio.
 
 ### 9.2. O que cada tela guarda e onde
 
@@ -394,7 +392,15 @@ Hook genérico que se comporta como `useState`, mas lê o valor inicial do `sess
 
 Consequências práticas: ao recarregar a página, o Controle de Análises mantém a tabela de resultados, mas exige novo upload das planilhas para reprocessar; a Ouvidoria mantém os campos preenchidos, mas o texto gerado se perde.
 
-Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`. Riscos de volume e privacidade: PA-12.
+Todas as telas têm um botão **Limpar** com confirmação. No Redator, ele limpa o formulário e preserva as planilhas carregadas; no Controle de Análises, remove também a chave do `localStorage`.
+
+### 9.3. Validade, limpeza e falhas ao salvar (`utils/dadosLocais.ts`)
+
+O estado do Controle de Análises e a base de clientes têm dados pessoais (nomes, endereços, matrículas). Por isso:
+
+- **Validade de 7 dias.** Os dois são gravados com a data da gravação (`salvoEm`). Ao ler, o que tiver mais de 7 dias sem atualização (`VALIDADE_DADOS_LOCAIS_MS`) é apagado e tratado como inexistente: `lerEstadoSalvoControle` (`controleAnalises.ts`) para o Controle e `kvGet` (`kvStorage.ts`) para a base de clientes. Dados gravados antes dessa regra, sem data, também são descartados.
+- **Sair apaga tudo.** O botão **Sair** (`logout` do `AuthContext`) apaga o estado do Controle de Análises, todo o `sessionStorage` (formulários e lotes das telas) e o IndexedDB (`kvClear`), encerra a sessão e recarrega a página, o que zera também o que estava só na memória. Quando o token apenas vence (8h), nada é apagado: o sistema só pede login de novo.
+- **Falha ao salvar.** Se o navegador recusar uma gravação (`sessionStorage`, `localStorage` ou IndexedDB), `avisarFalhaAoSalvar` registra no console e dispara o evento `caj:falha-ao-salvar`. O `Layout` mostra então uma faixa vermelha no topo dizendo o que não foi salvo e sugerindo usar “Limpar tela” nas telas que não estão em uso. Depois de fechada, a faixa só volta após recarregar a página. O limite do `sessionStorage` e do `localStorage` é de cerca de 5 MB por site.
 
 ## 10. Hooks (`src/hooks`)
 
@@ -403,7 +409,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 ### 10.1. `useRedatorNotificacao`
 
 - **Base de clientes.** A planilha é lida no navegador e cada linha é mapeada por nome de coluna (expressões regulares) para `matricula`, `morador`, `endereco`, `bairro`, `cep`, `localizacao`, `ativEconomica` e `numeroHidrometro`; linhas sem matrícula são descartadas. O resultado fica num cache de módulo e no IndexedDB. Ao abrir a tela, o hook restaura a base do IndexedDB (`baseHydrated` indica o fim da leitura).
-- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `lerCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum) e converte cada item em Matrícula, Responsável, Código e Status (PA-13). As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
+- **Lote de casos.** Pode vir de uma planilha própria ou do botão **Importar do Controle de Análises**, que usa `importarCasosDoControleAnalises` (`utils/controleAnalises.ts`, seção 7.5) para obter a mesma lista filtrada e ordenada da tela de análises (ou todos os resultados, se o filtro não deixar nenhum), já convertida em Matrícula, Responsável, Código e Status. As colunas de responsável e de matrícula são descobertas por nome. O usuário escolhe um responsável e navega pelos casos dele (`navegarCaso`, de forma circular); casos já exportados são marcados como processados.
 - **Chave do Gemini.** Ao abrir a tela, consulta se o usuário tem chave cadastrada (`obterStatusChaveGemini`) e devolve `chaveGeminiCadastrada` (`true`, `false` ou `null` enquanto consulta). Volta a consultar quando a chave é salva ou removida (evento `caj:gemini-chave-alterada`). Também apaga a `redator_apiKey` que versões antigas guardavam no `sessionStorage`.
 - **Validações antes de gerar.** Pelo menos um código; matrícula, data da constatação, protocolo, funcionário e equipe preenchidos (e meses sem acesso, se houver o código 20012); e a matrícula digitada precisa ter sido buscada na base.
 - **Geração.** Para cada código escolhe `clauseMulta` ou `clauseMultaCP` conforme a variante, troca `[INFORMAR MESES SEM ACESSO]` por “N meses sem acesso” no 20012 e envia tudo à API. A chave do Gemini não vai na requisição: o servidor usa a do usuário logado.
@@ -429,7 +435,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 ### 10.4. `useControleAnalises`
 
 - Recebe três planilhas: **OP00002** (obrigatória, as análises), **989 Cliente** (situação do serviço para o cliente) e **989 CAJ** (situação e códigos de encerramento da OS na CAJ). As colunas são localizadas por vários nomes possíveis.
-- `processarDados` descarta serviços cujo código não tem prazo cadastrado e calcula, para cada análise, dias úteis transcorridos, atraso, situação (No Prazo ou Vencida) e se está **padronizada** (regras na seção 12.4).
+- `processarDados` descarta serviços cujo código não tem prazo cadastrado e calcula, para cada análise, dias úteis transcorridos, atraso, situação (No Prazo, Vencida ou Data inválida) e se está **padronizada** (regras na seção 12.4).
 - Filtra por busca global, códigos (separados por vírgula), funcionário, situação, status do cliente e situação da OS (múltipla escolha), e ordena por qualquer coluna (`requestSort`).
 - As regras de filtro e ordenação ficam em `utils/controleAnalises.ts` (seção 7.5).
 - Grava resultados, filtros e ordenação no `localStorage` quando algum deles muda. A lista filtrada não é gravada, porque pode ser recalculada.
@@ -452,7 +458,7 @@ O maior hook do sistema. Concentra:
 
 Hook reutilizável que leva para Retorno de Defesa e Tabela de Multas o mesmo trabalho em lote do Redator. Recebe um prefixo (`defesa` ou `calc`), e cada tela guarda o próprio filtro no `sessionStorage`.
 
-- **Importar do Controle de Análises:** usa `lerCasosDoControleAnalises` (seção 7.5), como o Redator, e converte cada item em Matrícula, Responsável, Código e Status (PA-13). Avisa por modal se não houver dados ou se a tabela estiver vazia.
+- **Importar do Controle de Análises:** usa `importarCasosDoControleAnalises` (seção 7.5), a mesma função do Redator, que já devolve os casos em Matrícula, Responsável, Código e Status. Avisa por modal se não houver dados ou se a tabela estiver vazia.
 - **Lote por responsável:** lista os responsáveis, seleciona o primeiro caso do escolhido e navega entre os casos dele (`navegarCaso`, anterior e próximo).
 - **Busca do cliente:** procura a matrícula na base de clientes do IndexedDB, que só pode ser carregada no Redator. Se a base não foi carregada, o botão Buscar fica desabilitado e explica o motivo.
 - `limparFiltro` zera lote, responsável, matrícula e dados do cliente.
@@ -542,7 +548,9 @@ Acima dos blocos numerados fica o **Filtro de Matrícula** (seção 10.6), para 
 
 Análises de códigos fora dessa tabela são ignoradas.
 
-**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo* (PA-05).
+**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo*. O “+1” é regra de negócio confirmada pela CAJ: com prazo de 15 dias úteis e 16 decorridos, o atraso é 2.
+
+**Data de abertura ilegível.** Se a data de abertura não puder ser lida no formato DD/MM/AAAA (vazia, número de série do Excel, formato americano etc.), o prazo não é calculado: a situação é *Data inválida*, os dias transcorridos aparecem como “—” e um aviso acima dos indicadores mostra quantas análises estão nessa condição. Elas têm filtro próprio na coluna Situação, ficam entre as vencidas e as no prazo na ordem inicial e vão para o fim ao ordenar pela data.
 
 **Regra de “padronizada”.** Uma análise só é marcada como padronizada quando as três condições são verdadeiras:
 
@@ -566,7 +574,7 @@ O painel recolhível **Tratativas de Resposta – Guia Sansys** orienta o pós-d
 
 ### 12.6. Usuários (`GerenciarUsuarios`, só administradores)
 
-Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.7).
+Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.6).
 
 ## 13. Fluxo de decisão da Ouvidoria
 
@@ -626,11 +634,10 @@ Todos os prazos são em **dias úteis** (sem sábados, domingos, feriados e emen
 Observações:
 
 - Os textos dizem que a prorrogação conta “a partir da data desta decisão”, mas o código conta 60 dias a partir de **hoje**. Os dois coincidem se o parecer for gerado no dia da decisão (PA-23).
-- Esgoto (calculadora legada): 80% do valor correto da água, multiplicado pelo fator K1 da atividade.
 
 ## 15. Segurança e privacidade
 
-- **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB sem prazo de expiração; matrículas e nomes de funcionários das análises ficam no `localStorage`. Em computadores compartilhados, os dados permanecem após fechar o navegador (PA-12).
+- **Dados pessoais no navegador.** A base de clientes (nome, endereço, matrícula) fica no IndexedDB, e as matrículas e nomes de funcionários das análises, no `localStorage`. Os dois são apagados ao clicar em **Sair** e descartados depois de 7 dias sem atualização (seção 9.3). Em computadores compartilhados, oriente os usuários a sempre clicar em Sair.
 - **Autenticação.** Exceto `POST /api/auth/login`, todas as rotas exigem token JWT (`requireAuth`), e a gestão de usuários exige perfil de administrador (`requireAdmin`). As senhas são guardadas só como hash bcrypt. O token vale 8 horas por padrão e fica no `localStorage` (`caj_auth_token`), por isso continua valendo em outras abas e depois de fechar o navegador, até vencer ou o usuário sair. A API só aceita chamadas do navegador vindas das origens permitidas (`CORS_ORIGINS`).
 - **Segredos do servidor.** `JWT_SECRET`, `DATABASE_URL` e `ENCRYPTION_KEY` ficam só nas variáveis de ambiente (Vercel ou `.env` local, fora do Git).
 - **Chave do Gemini.** Cada usuário cadastra a própria em “Minha chave do Gemini”. Ela vai uma vez ao servidor, é guardada cifrada no banco (AES-256-GCM com `ENCRYPTION_KEY`) e nunca volta ao navegador. O Redator apaga a `redator_apiKey` que versões antigas deixavam no `sessionStorage`. Quem tiver acesso ao banco sem a `ENCRYPTION_KEY` não consegue ler as chaves.
@@ -670,49 +677,48 @@ O Vite define o alias `@` para `src`.
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
 - Sem `ENCRYPTION_KEY`, ninguém consegue salvar a chave do Gemini. Em bancos criados antes desta versão, rode no SQL Editor do Supabase: `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT;`
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
-- Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
+- Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.7.
 
 ## 17. Pontos de atenção e dívida técnica
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 14 itens resolvidos (PA-01, 03, 04, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 9 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 19 itens resolvidos (PA-01, 02, 03, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 15, 16, 19, 21, 22 e 24) e 4 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Todos os que faltam dependem de decisão ou de teste: PA-10 (inciso do 20418), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
-| PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
+| PA-10 | `notificacoes.ts`, `defesas.ts` | O código 20418 cita o inciso XIV do Art. 144 nas notificações e o inciso XV nas defesas | Conferir com a resolução vigente e corrigir a biblioteca errada |
 
 ### 17.2. Prioridade média
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
-| PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
-| PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
 
 ### 17.3. Prioridade baixa (manutenção)
 
-| ID | Onde | Problema |
-| --- | --- | --- |
-| PA-13 | `useRedatorNotificacao`, `useFiltroMatriculaLote` | A leitura do `@ControleAnalises:state` já está num lugar só (`lerCasosDoControleAnalises`), mas as telas continuam se comunicando pelo `localStorage`, e os dois hooks repetem a conversão dos casos aceitando vários nomes de campo alternativos |
+Nenhum item aberto.
 
 ### 17.4. Itens resolvidos
 
 | ID | Resolução |
 | --- | --- |
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
+| PA-02 | A calculadora legada do back-end, que nenhuma tela usava, foi removida: a rota `POST /api/calcular_multa`, o `calculatorController`, o `calculatorService`, o `formatters.js` (usado só por ela) e o `tarifas.ts` do front-end. A Tabela de Multas continua calculando tudo no navegador (seção 12.3) |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
+| PA-05 | Datas de abertura ilegíveis não viram mais 0 dia útil “No Prazo”: a análise fica como **Data inválida**, sem cálculo de prazo, com aviso na tela, filtro próprio e ordenação no fim da lista (seção 12.4). O “+1” no atraso foi confirmado pela CAJ como regra de negócio |
+| PA-06 | A faixa da lista de feriados (`FERIADOS_INICIO` a `FERIADOS_FIM`) é calculada da própria lista, e o sistema avisa quando um cálculo sai dela: na Calculadora de dias úteis, em Análises Vencidas e numa faixa no topo das telas a partir de 120 dias antes do fim da lista (seção 7.1). Continua sendo preciso **atualizar a lista todo ano**; a de 2028 deve entrar até o fim de 2027 |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
 | PA-08 | A regra de negrito de linha inteira (`isFullBoldLine`, no `documentService`) reconhece qualquer item numerado com dois dígitos (`\d{2}\.`), numerais romanos de `I` a `XXXIX` (antes só de `I` a `V`) com travessão e, com hífen comum, só títulos em maiúsculas (`VI - CONCLUSÃO`), para não pôr em negrito os incisos citados da resolução (`V - Derivação do ramal...`) |
 | PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |
 | PA-11 | Não confirmado: no repositório, `defesas.ts` não tem linhas começando com hífen nem antes de `text:` nem dentro dos textos. Era resíduo da cópia do arquivo recebido |
+| PA-12 | O Controle de Análises deixou de gravar a lista filtrada e grava só quando os dados mudam; o estado do Controle e a base de clientes expiram depois de 7 dias sem atualização e são apagados ao clicar em **Sair**, junto com o `sessionStorage`; falhas ao salvar (espaço cheio) aparecem numa faixa na tela, e não só no console (seção 9.3). Os lotes continuam no `sessionStorage`, com limite de cerca de 5 MB, agora com aviso visível |
+| PA-13 | A conversão dos casos do Controle de Análises em lote ficou num lugar só (`importarCasosDoControleAnalises`, seção 7.5), sem os nomes de campo alternativos que nunca eram usados; a chave, o formato e a busca da base de clientes ficaram em `baseCliente.ts` (seção 7.6). As telas continuam trocando os casos pelo `localStorage`, de propósito: o Controle salva e as outras telas leem na hora de importar |
 | PA-14 | API e dados sensíveis: a API exige login (JWT); o CORS aceita só as origens de `CORS_ORIGINS` (sem `*`); a chave do Gemini é de cada usuário, guardada cifrada no banco e nunca devolvida ao navegador; a lista de funcionários saiu do front-end e é entregue por `GET /api/funcionarios`, só a usuários logados |
 | PA-15 | `throwApiError` (`http.ts`) repassa o `detail` da API nas funções de `api.ts` e `defesas.ts`; os alertas de download mostram a mensagem recebida |
 | PA-16 | O `vercel.json` declara `"includeFiles": ["public/**"]` no build do `@vercel/node`, e assim o `logo-docx-vale.jpg` entra no pacote da função. Confirmar após o próximo deploy que o logo aparece no Word e no PDF |
@@ -727,8 +733,7 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
-| PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
-| PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
+| PA-10 | A categoria “Acesso” passou a ser `acesso`. A CAJ confirmou que o valor da multa de padronização e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo; por isso o 20400 deixou de trazer R$ 480,40 fixo e passou a usar `R$ XXX,XX`, como os demais templates. O R$ 480,80 do 20419 é outra multa (recusa de atualização cadastral), não a de padronização. As bibliotecas foram unificadas: `INFRACTION_CODES` é a fonte única de códigos, títulos e categorias, e o Retorno de Defesa passou a ter os mesmos 24 códigos do Redigir Notificação (antes 20), com textos novos para 20402 HD, 20011, 20012 e 20013 e o 20402 separado do 20402 HD (seção 6.3). O 20419 ganhou o marcador do motivo, que antes era ignorado nesse código | Conferir com a resolução vigente o inciso do 20418 (XIV nas notificações, XV no texto da defesa); a CAJ revisar os textos novos de defesa |
 
 ## 18. Glossário
 
