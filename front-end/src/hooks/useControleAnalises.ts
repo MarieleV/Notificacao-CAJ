@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { getBusinessDaysDifference } from "../utils/dates";
+import { getBusinessDaysDifference, parseFullDate } from "../utils/dates";
 import {
   AnaliseProcessada,
   CONTROLE_ANALISES_KEY,
@@ -218,10 +218,15 @@ export function useControleAnalises() {
         const prazoEsperado = PRAZOS_SERVICO[codigoServico];
         if (!prazoEsperado) return; 
 
-        const diasTranscorridos = getBusinessDaysDifference(dataAberturaLimpa, hojeStr);
+        // Data de abertura ilegível: não calcula o prazo e marca a análise, em vez de
+        // contar 0 dia útil e mostrá-la como "No Prazo" (PA-05).
+        const dataValida = parseFullDate(dataAberturaLimpa) !== null;
+
+        const diasTranscorridos = dataValida ? getBusinessDaysDifference(dataAberturaLimpa, hojeStr) : 0;
+        // O "+1" no atraso aguarda confirmação da CAJ (PA-05).
         const diasAtraso = diasTranscorridos > prazoEsperado ? (diasTranscorridos - prazoEsperado) + 1 : 0;
-        
-        const situacao = diasAtraso > 0 ? "Vencida" : "No Prazo";
+
+        const situacao: AnaliseProcessada["situacao"] = !dataValida ? "Data inválida" : diasAtraso > 0 ? "Vencida" : "No Prazo";
         
         const statusCliente = mapStatusCliente.get(matricula) || "—";
         const statusCAJ = mapStatusCAJ.get(matricula) || "—";
@@ -251,9 +256,11 @@ export function useControleAnalises() {
         });
       });
 
+      // Ordem inicial: vencidas (maior atraso primeiro), depois as de data inválida, depois no prazo.
+      const ordemSituacao: Record<AnaliseProcessada["situacao"], number> = { "Vencida": 0, "Data inválida": 1, "No Prazo": 2 };
       processados.sort((a, b) => {
-        if (a.situacao === "Vencida" && b.situacao !== "Vencida") return -1;
-        if (b.situacao === "Vencida" && a.situacao !== "Vencida") return 1;
+        const porSituacao = ordemSituacao[a.situacao] - ordemSituacao[b.situacao];
+        if (porSituacao !== 0) return porSituacao;
         return b.diasAtraso - a.diasAtraso;
       });
 

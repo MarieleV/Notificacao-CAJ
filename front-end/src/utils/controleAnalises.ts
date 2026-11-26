@@ -3,6 +3,8 @@
 // A lista filtrada não é gravada no localStorage: ela é recalculada a partir de
 // `resultados` e dos filtros salvos (PA-12).
 
+import { parseFullDate } from "./dates";
+
 export const CONTROLE_ANALISES_KEY = "@ControleAnalises:state";
 
 export interface AnaliseProcessada {
@@ -13,7 +15,8 @@ export interface AnaliseProcessada {
   funcionario: string;
   diasTranscorridos: number;
   diasAtraso: number;
-  situacao: "No Prazo" | "Vencida";
+  /** "Data inválida": a data de abertura não pôde ser lida (DD/MM/AAAA); o prazo não foi calculado (PA-05). */
+  situacao: "No Prazo" | "Vencida" | "Data inválida";
   statusCliente: string;
   statusCAJ: string;
   isPadronizado: boolean;
@@ -63,10 +66,12 @@ export function ordenarAnalises(lista: AnaliseProcessada[], sortConfig: SortConf
     let bValue: any = b[sortConfig.key];
 
     if (sortConfig.key === "dataAbertura") {
-      const [dayA, monthA, yearA] = (aValue as string).split("/");
-      const [dayB, monthB, yearB] = (bValue as string).split("/");
-      aValue = new Date(`${yearA}-${monthA}-${dayA}`).getTime();
-      bValue = new Date(`${yearB}-${monthB}-${dayB}`).getTime();
+      aValue = parseFullDate(String(aValue))?.getTime() ?? NaN;
+      bValue = parseFullDate(String(bValue))?.getTime() ?? NaN;
+      // Datas ilegíveis vão para o fim da lista, em qualquer direção (PA-05).
+      const aInvalida = Number.isNaN(aValue);
+      const bInvalida = Number.isNaN(bValue);
+      if (aInvalida || bInvalida) return aInvalida === bInvalida ? 0 : aInvalida ? 1 : -1;
     } else if (sortConfig.key === "codigoServico" || sortConfig.key === "matricula" || sortConfig.key === "diasTranscorridos" || sortConfig.key === "diasAtraso") {
       aValue = Number(String(aValue).replace(/\D/g, ""));
       bValue = Number(String(bValue).replace(/\D/g, ""));
