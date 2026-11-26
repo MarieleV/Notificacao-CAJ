@@ -1,3 +1,5 @@
+import { estaExpirado } from "./dadosLocais";
+
 const DB_NAME = "redator-db";
 const STORE = "kv";
 
@@ -27,21 +29,55 @@ function openDB(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-export async function kvSet(key: string, value: unknown): Promise<void> {
+// Cada valor é gravado com a data da gravação, para expirar depois de 7 dias sem
+// atualização (PA-12).
+interface Registro<T> {
+  salvoEm: number;
+  valor: T;
+}
+
+async function transacao(modo: IDBTransactionMode, operar: (store: IDBObjectStore) => void): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(value, key);
+    const tx = db.transaction(STORE, modo);
+    operar(tx.objectStore(STORE));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
   });
 }
 
+export async function kvSet(key: string, value: unknown): Promise<void> {
+  const registro: Registro<unknown> = { salvoEm: Date.now(), valor: value };
+  return transacao("readwrite", (store) => store.put(registro, key));
+}
+
+/**
+ * Lê um valor. Devolve `undefined` se não existir ou se tiver passado da validade
+ * (nesse caso, o valor é apagado). Registros antigos, gravados sem data, também
+ * são tratados como vencidos.
+ */
 export async function kvGet<T>(key: string): Promise<T | undefined> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  const registro = await new Promise<Registro<T> | undefined>((resolve, reject) => {
     const req = db.transaction(STORE).objectStore(STORE).get(key);
-    req.onsuccess = () => resolve(req.result as T | undefined);
+    req.onsuccess = () => resolve(req.result as Registro<T> | undefined);
     req.onerror = () => reject(req.error);
   });
+
+  if (registro === undefined) return undefined;
+  if (estaExpirado(registro?.salvoEm)) {
+    await kvDelete(key).catch(() => { /* tenta de novo na próxima leitura */ });
+    return undefined;
+  }
+  return registro.valor;
+}
+
+export async function kvDelete(key: string): Promise<void> {
+  return transacao("readwrite", (store) => store.delete(key));
+}
+
+/** Apaga tudo o que foi guardado no IndexedDB do sistema. */
+export async function kvClear(): Promise<void> {
+  return transacao("readwrite", (store) => store.clear());
 }

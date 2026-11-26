@@ -6,8 +6,10 @@ import {
   CONTROLE_ANALISES_KEY,
   SortConfig,
   filtrarAnalises,
+  lerEstadoSalvoControle,
   ordenarAnalises,
 } from "../utils/controleAnalises";
+import { avisarFalhaAoSalvar } from "../utils/dadosLocais";
 
 export type { AnaliseProcessada };
 
@@ -34,14 +36,9 @@ const CODIGOS_APROVADOS_CAJ = [
 
 const STORAGE_KEY = CONTROLE_ANALISES_KEY;
 
+// Estado salvo, descartado se tiver mais de 7 dias sem atualização (PA-12).
 function loadSavedState() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (error) {
-    console.error("Erro ao carregar dados salvos:", error);
-  }
-  return {};
+  return lerEstadoSalvoControle() ?? {};
 }
 
 export function useControleAnalises() {
@@ -98,6 +95,7 @@ export function useControleAnalises() {
   // A lista filtrada não é gravada: ela é recalculada a partir de `resultados` e dos filtros (PA-12).
   useEffect(() => {
     const stateToSave = {
+      salvoEm: Date.now(), // para descartar depois de 7 dias sem atualização (PA-12)
       fileNameOP, fileName989Cliente, fileName989CAJ,
       resultados,
       searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS,
@@ -106,7 +104,7 @@ export function useControleAnalises() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
-      console.warn("Aviso: Limite de armazenamento local atingido.", error);
+      avisarFalhaAoSalvar("os resultados do Controle de Análises", error);
     }
   }, [fileNameOP, fileName989Cliente, fileName989CAJ, resultados, searchTerm, filtroCodigo, filtroFuncionario, filtroSituacao, filtroStatusCliente, filtroPadronizadoAtivo, filtroSituacaoOS, sortConfig]);
 
@@ -223,7 +221,7 @@ export function useControleAnalises() {
         const dataValida = parseFullDate(dataAberturaLimpa) !== null;
 
         const diasTranscorridos = dataValida ? getBusinessDaysDifference(dataAberturaLimpa, hojeStr) : 0;
-        // O "+1" no atraso aguarda confirmação da CAJ (PA-05).
+        // O "+1" no atraso é regra de negócio confirmada pela CAJ (PA-05).
         const diasAtraso = diasTranscorridos > prazoEsperado ? (diasTranscorridos - prazoEsperado) + 1 : 0;
 
         const situacao: AnaliseProcessada["situacao"] = !dataValida ? "Data inválida" : diasAtraso > 0 ? "Vencida" : "No Prazo";

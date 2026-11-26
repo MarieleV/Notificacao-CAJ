@@ -4,6 +4,7 @@
 // `resultados` e dos filtros salvos (PA-12).
 
 import { parseFullDate } from "./dates";
+import { estaExpirado } from "./dadosLocais";
 
 export const CONTROLE_ANALISES_KEY = "@ControleAnalises:state";
 
@@ -104,15 +105,36 @@ export function sortConfigDoEstadoSalvo(saved: any): SortConfig {
 }
 
 /**
+ * Lê o estado salvo pelo Controle de Análises. Devolve `null` se não houver nada salvo,
+ * se o conteúdo estiver corrompido ou se tiver mais de 7 dias sem atualização; nos dois
+ * últimos casos, apaga o que estava salvo (PA-12).
+ */
+export function lerEstadoSalvoControle(): any | null {
+  try {
+    const savedStr = localStorage.getItem(CONTROLE_ANALISES_KEY);
+    if (!savedStr) return null;
+    const saved = JSON.parse(savedStr);
+    if (estaExpirado(saved?.salvoEm)) {
+      localStorage.removeItem(CONTROLE_ANALISES_KEY);
+      return null;
+    }
+    return saved;
+  } catch (error) {
+    console.warn("Estado salvo do Controle de Análises ilegível; descartado.", error);
+    try { localStorage.removeItem(CONTROLE_ANALISES_KEY); } catch { /* ignora */ }
+    return null;
+  }
+}
+
+/**
  * Lê o estado salvo pelo Controle de Análises e devolve os casos a importar:
  * a lista filtrada e ordenada como está na tela; se ela estiver vazia, todos os resultados.
  * Devolve `null` quando não há nada salvo.
  */
 export function lerCasosDoControleAnalises(): AnaliseProcessada[] | null {
-  const savedStr = localStorage.getItem(CONTROLE_ANALISES_KEY);
-  if (!savedStr) return null;
+  const saved = lerEstadoSalvoControle();
+  if (!saved) return null;
 
-  const saved = JSON.parse(savedStr);
   const resultados: AnaliseProcessada[] = saved.resultados || [];
   const filtrados = ordenarAnalises(filtrarAnalises(resultados, filtrosDoEstadoSalvo(saved)), sortConfigDoEstadoSalvo(saved));
 
