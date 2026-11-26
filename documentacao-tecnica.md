@@ -301,7 +301,7 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
   - numa faixa amarela no topo de todas as telas (`avisoFimDaListaDeFeriados`, no `Layout`), a partir de 120 dias antes do fim da lista e depois que ela acaba, porque os prazos de 60 dias úteis contam a partir de hoje.
 - “Hoje” vem do relógio do computador do usuário.
 - **Conversão:** `parseFullDate` (`DD/MM/AAAA`, validando o calendário), `formatFullDate`, `labelFullDate`, `parseMonthYear` (`MM/AAAA`), `formatMonthYear` e `labelMonth`.
-- **Regras de negócio:** `calculateEndDate` (data inicial + N dias úteis), `get60BusinessDaysFromToday` (hoje + 60 dias úteis, usado nas prorrogações de padronização) e `getBusinessDaysDifference` (dias úteis entre duas datas, em qualquer ordem; devolve 0 se uma data for inválida, PA-05).
+- **Regras de negócio:** `calculateEndDate` (data inicial + N dias úteis), `get60BusinessDaysFromToday` (hoje + 60 dias úteis, usado nas prorrogações de padronização) e `getBusinessDaysDifference` (dias úteis entre duas datas, em qualquer ordem; devolve 0 se uma data for inválida, por isso quem chama deve validar a data antes com `parseFullDate`, como faz o Controle de Análises).
 
 ### 7.2. `masks.ts`
 
@@ -434,7 +434,7 @@ Cada tela tem um hook que concentra estado, regras e ações. O componente da te
 ### 10.4. `useControleAnalises`
 
 - Recebe três planilhas: **OP00002** (obrigatória, as análises), **989 Cliente** (situação do serviço para o cliente) e **989 CAJ** (situação e códigos de encerramento da OS na CAJ). As colunas são localizadas por vários nomes possíveis.
-- `processarDados` descarta serviços cujo código não tem prazo cadastrado e calcula, para cada análise, dias úteis transcorridos, atraso, situação (No Prazo ou Vencida) e se está **padronizada** (regras na seção 12.4).
+- `processarDados` descarta serviços cujo código não tem prazo cadastrado e calcula, para cada análise, dias úteis transcorridos, atraso, situação (No Prazo, Vencida ou Data inválida) e se está **padronizada** (regras na seção 12.4).
 - Filtra por busca global, códigos (separados por vírgula), funcionário, situação, status do cliente e situação da OS (múltipla escolha), e ordena por qualquer coluna (`requestSort`).
 - As regras de filtro e ordenação ficam em `utils/controleAnalises.ts` (seção 7.5).
 - Grava resultados, filtros e ordenação no `localStorage` quando algum deles muda. A lista filtrada não é gravada, porque pode ser recalculada.
@@ -547,7 +547,9 @@ Acima dos blocos numerados fica o **Filtro de Matrícula** (seção 10.6), para 
 
 Análises de códigos fora dessa tabela são ignoradas.
 
-**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo* (PA-05).
+**Cálculo do atraso.** Os dias transcorridos são os dias úteis entre a abertura e hoje. Se passarem do prazo, o atraso é (transcorridos − prazo) + 1 e a situação é *Vencida*; caso contrário, *No Prazo*. O “+1” ainda aguarda confirmação da CAJ (PA-05).
+
+**Data de abertura ilegível.** Se a data de abertura não puder ser lida no formato DD/MM/AAAA (vazia, número de série do Excel, formato americano etc.), o prazo não é calculado: a situação é *Data inválida*, os dias transcorridos aparecem como “—” e um aviso acima dos indicadores mostra quantas análises estão nessa condição. Elas têm filtro próprio na coluna Situação, ficam entre as vencidas e as no prazo na ordem inicial e vão para o fim ao ordenar pela data.
 
 **Regra de “padronizada”.** Uma análise só é marcada como padronizada quando as três condições são verdadeiras:
 
@@ -681,13 +683,13 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 15 itens resolvidos (PA-01, 03, 04, 06, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 8 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 15 itens resolvidos (PA-01, 03, 04, 06, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 8 abertos. Dos abertos, 3 já foram resolvidos em parte (PA-05, 10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-05 | `dates.ts`, `useControleAnalises` | Datas ilegíveis viram 0 dia útil e a análise aparece como “No Prazo” sem aviso. O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Sinalizar datas inválidas; confirmar se o +1 é regra de negócio |
+| PA-05 | `useControleAnalises` | O atraso soma 1 ao excedente (prazo 15, 16 dias úteis decorridos → atraso 2) | Confirmar com a CAJ se o +1 é regra de negócio |
 | PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
 
 ### 17.2. Prioridade média
@@ -732,6 +734,7 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
+| PA-05 | Datas de abertura ilegíveis não viram mais 0 dia útil “No Prazo”: a análise fica como **Data inválida**, sem cálculo de prazo, com aviso na tela, filtro próprio e ordenação no fim da lista (seção 12.4) | Confirmar com a CAJ se o “+1” no atraso é regra de negócio |
 | PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
 | PA-12 | O Controle de Análises deixou de gravar a lista filtrada (`resultadosFiltrados`), que agora é recalculada por `lerCasosDoControleAnalises`, e passou a gravar no `localStorage` só quando os dados mudam, e não a cada renderização | Limite de cerca de 5 MB com aviso só no console; dados pessoais sem expiração |
 
