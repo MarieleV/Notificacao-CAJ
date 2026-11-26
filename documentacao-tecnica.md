@@ -294,7 +294,12 @@ O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Gua
 ### 7.1. `dates.ts`
 
 - **Rótulos:** `MONTHS_SHORT` e `WEEKDAYS_SHORT`, usados pelos seletores de data.
-- **Dias úteis:** `isNonBusinessDay`, `addBusinessDays` e `businessDaysBetween` descartam sábados, domingos e as datas de um `Set` com feriados e emendas, de 30/08/2025 a 31/12/2027 (PA-06).
+- **Dias úteis:** `isNonBusinessDay`, `addBusinessDays` e `businessDaysBetween` descartam sábados, domingos e as datas de um `Set` com feriados e emendas, de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana. **A lista precisa ser atualizada todo ano**, incluindo as datas do ano seguinte em `FERIADOS_E_FDS`.
+- **Faixa da lista de feriados:** `FERIADOS_INICIO` e `FERIADOS_FIM` são calculados a partir da própria lista. `foraDaFaixaDeFeriados(...datas)` indica se alguma data sai da faixa, e `avisoForaDaFaixaDeFeriados` dá o texto do aviso. Os avisos aparecem:
+  - na **Calculadora de dias úteis** (Retorno de Defesa e Ouvidoria), quando a data inicial ou a final saem da faixa;
+  - em **Análises Vencidas**, com a quantidade de análises cujo período (abertura até hoje) sai da faixa;
+  - numa faixa amarela no topo de todas as telas (`avisoFimDaListaDeFeriados`, no `Layout`), a partir de 120 dias antes do fim da lista e depois que ela acaba, porque os prazos de 60 dias úteis contam a partir de hoje.
+- “Hoje” vem do relógio do computador do usuário.
 - **Conversão:** `parseFullDate` (`DD/MM/AAAA`, validando o calendário), `formatFullDate`, `labelFullDate`, `parseMonthYear` (`MM/AAAA`), `formatMonthYear` e `labelMonth`.
 - **Regras de negócio:** `calculateEndDate` (data inicial + N dias úteis), `get60BusinessDaysFromToday` (hoje + 60 dias úteis, usado nas prorrogações de padronização) e `getBusinessDaysDifference` (dias úteis entre duas datas, em qualquer ordem; devolve 0 se uma data for inválida, PA-05).
 
@@ -676,7 +681,7 @@ O Vite define o alias `@` para `src`.
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 14 itens resolvidos (PA-01, 03, 04, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 9 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 15 itens resolvidos (PA-01, 03, 04, 06, 07, 08, 09, 11, 14, 15, 16, 19, 21, 22 e 24) e 8 abertos. Dos abertos, 2 já foram resolvidos em parte (PA-10 e 12; seção 17.5). Os que faltam dependem, na maioria, de decisão do negócio: PA-10 (valores e incisos), PA-05 (o “+1” no atraso), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
@@ -690,7 +695,6 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
 | PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
-| PA-06 | `dates.ts` | A lista de feriados vai de 30/08/2025 a 31/12/2027. Fora desse período só se descontam fins de semana, sem aviso. “Hoje” vem do relógio do navegador | Atualizar a lista todo ano; avisar quando a data sair da faixa |
 | PA-12 | Persistência | Os lotes de casos do Redator, da Defesa e da Tabela de Multas ficam no `sessionStorage` (uma cópia por tela), e os resultados do Controle, no `localStorage`; ambos com limite de cerca de 5 MB e só aviso no console quando estoura; dados pessoais sem expiração | Gravar só o necessário; usar IndexedDB; definir expiração |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
@@ -709,6 +713,7 @@ Lista de problemas e riscos encontrados na leitura do código, em três faixas d
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
+| PA-06 | A faixa da lista de feriados (`FERIADOS_INICIO` a `FERIADOS_FIM`) é calculada da própria lista, e o sistema avisa quando um cálculo sai dela: na Calculadora de dias úteis, em Análises Vencidas e numa faixa no topo das telas a partir de 120 dias antes do fim da lista (seção 7.1). Continua sendo preciso **atualizar a lista todo ano**; a de 2028 deve entrar até o fim de 2027 |
 | PA-07 | Regra única para o vermelho: `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` saem em vermelho no Word, no PDF (antes só o segundo) e na pré-visualização da Ouvidoria (antes só o primeiro), pela lista `RED_MARKERS` |
 | PA-08 | A regra de negrito de linha inteira (`isFullBoldLine`, no `documentService`) reconhece qualquer item numerado com dois dígitos (`\d{2}\.`), numerais romanos de `I` a `XXXIX` (antes só de `I` a `V`) com travessão e, com hífen comum, só títulos em maiúsculas (`VI - CONCLUSÃO`), para não pôr em negrito os incisos citados da resolução (`V - Derivação do ramal...`) |
 | PA-09 | A URL da API vem de `VITE_API_URL` e fica só em `auth.ts`; `CATEGORY_COLORS` fica só em `services/categorias.ts`; as funções `exportarParecerWord/PDF` e o tipo `ExportarParecerPayload` ficam só em `api.ts`, usados pela Ouvidoria e pelo Retorno de Defesa (o `ExportPayload` de `defesas.ts` foi removido) |

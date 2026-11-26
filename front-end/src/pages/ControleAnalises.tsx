@@ -5,8 +5,9 @@ import {
   PieChart, AlertTriangle, Filter, ArrowUpDown, ArrowDown, ArrowUp, FileCheck, X, Eraser, ChevronDown
 } from "lucide-react";
 import { SectionBlock } from "./../components/shared/SectionBlock";
-import { Badge, Button, FeedbackModal, inputClass, PageHeader } from "./../components/shared/ui";
+import { Alert, Badge, Button, FeedbackModal, inputClass, PageHeader } from "./../components/shared/ui";
 import { useControleAnalises, AnaliseProcessada } from "./../hooks/useControleAnalises";
+import { avisoForaDaFaixaDeFeriados, foraDaFaixaDeFeriados, parseFullDate } from "./../utils/dates";
 
 class ComponenteProtegido extends Component<{children: ReactNode}, {hasError: boolean}> {
   constructor(props: {children: ReactNode}) {
@@ -58,6 +59,12 @@ function ControleAnalisesConteudo() {
   const diasAtrasoTotal = vencidasArr.reduce((acc, curr) => acc + curr.diasAtraso, 0);
   const mediaAtraso = qtdVencidas > 0 ? Math.round(diasAtrasoTotal / qtdVencidas) : 0;
   const maxAtraso = qtdVencidas > 0 ? Math.max(...vencidasArr.map(v => v.diasAtraso)) : 0;
+
+  // Análises cujo período (abertura até hoje) sai da lista de feriados (PA-06).
+  const hoje = new Date();
+  const qtdForaDaLista = hook.resultados.filter(
+    (r) => foraDaFaixaDeFeriados(parseFullDate(r.dataAbertura), hoje)
+  ).length;
 
   const SortIcon = ({ columnKey }: { columnKey: keyof AnaliseProcessada }) => {
     if (hook.sortConfig.key !== columnKey) return <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-40 transition-opacity ml-1" />;
@@ -175,6 +182,13 @@ function ControleAnalisesConteudo() {
           {/* SESSÃO DE RESULTADOS */}
           {hook.resultados.length > 0 && (
             <>
+              {qtdForaDaLista > 0 && (
+                <Alert tone="warning">
+                  {qtdForaDaLista === 1 ? "1 análise tem" : `${qtdForaDaLista} análises têm`} período fora da lista de feriados.{" "}
+                  {avisoForaDaFaixaDeFeriados()}
+                </Alert>
+              )}
+
               {/* ─── DASHBOARD DE KPIs ─── */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slideUp">
                 

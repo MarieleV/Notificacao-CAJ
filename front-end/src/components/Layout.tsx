@@ -12,8 +12,10 @@ import {
   LogOut,
   Users,
   KeyRound,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from "lucide-react";
+import { avisoFimDaListaDeFeriados } from "../utils/dates";
 import { ElementType } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { AlterarSenhaModal } from "./AlterarSenhaModal";
@@ -72,6 +74,8 @@ export function Layout() {
   const { user, logout, isAdmin } = useAuth();
   const [senhaModalAberto, setSenhaModalAberto] = useState(false);
   const [geminiModalAberto, setGeminiModalAberto] = useState(false);
+  // Aparece nos últimos meses da lista de feriados e depois que ela acaba (PA-06).
+  const avisoFeriados = avisoFimDaListaDeFeriados();
 
   return (
     <div className="flex h-screen bg-navy overflow-hidden">
@@ -231,6 +235,12 @@ export function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto bg-canvas relative z-10">
+        {avisoFeriados && (
+          <div role="status" className="flex items-start gap-2 px-6 py-2.5 bg-warning-soft border-b border-warning-line text-warning text-sm leading-snug">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-px" />
+            <span>{avisoFeriados}</span>
+          </div>
+        )}
         <Outlet />
       </main>
 

@@ -1,7 +1,8 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { Calculator, Check, Copy, X } from "lucide-react";
 import { DatePicker } from "./DatePicker";
-import { Button, buttonClass, inputClass, labelClass } from "./ui";
+import { Alert, Button, buttonClass, inputClass, labelClass } from "./ui";
+import { avisoForaDaFaixaDeFeriados, foraDaFaixaDeFeriados, parseFullDate } from "../../utils/dates";
 
 interface CalculadoraDiasUteisProps {
   open: boolean;
@@ -28,6 +29,10 @@ export function CalculadoraDiasUteis({
   customPrazo, setCustomPrazo, dataFinal, containerRef,
 }: CalculadoraDiasUteisProps) {
   const [copiado, setCopiado] = useState(false);
+
+  // Avisa quando o período calculado sai da lista de feriados (PA-06).
+  const foraDaLista = Boolean(dataFinal) &&
+    foraDaFaixaDeFeriados(parseFullDate(dataInicial), parseFullDate(dataFinal));
 
   const handleCopiar = () => {
     if (!dataFinal) return;
@@ -120,6 +125,10 @@ export function CalculadoraDiasUteis({
                 <span className="text-base font-semibold text-gray-300">--/--/----</span>
               )}
             </div>
+
+            {foraDaLista && (
+              <Alert tone="warning" className="text-xs">{avisoForaDaFaixaDeFeriados()}</Alert>
+            )}
           </div>
 
           <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
