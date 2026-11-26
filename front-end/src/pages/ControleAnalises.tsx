@@ -51,7 +51,9 @@ function ControleAnalisesConteudo() {
   
   const vencidasArr = data.filter(r => r.situacao === "Vencida");
   const qtdVencidas = vencidasArr.length;
-  const noPrazo = total - qtdVencidas;
+  const noPrazo = data.filter(r => r.situacao === "No Prazo").length;
+  // Datas de abertura ilegíveis: o prazo não foi calculado (PA-05).
+  const qtdDataInvalida = hook.resultados.filter(r => r.situacao === "Data inválida").length;
 
   const padronizadas = data.filter(r => r.isPadronizado).length;
   const naoPadronizadas = total - padronizadas;
@@ -182,6 +184,15 @@ function ControleAnalisesConteudo() {
           {/* SESSÃO DE RESULTADOS */}
           {hook.resultados.length > 0 && (
             <>
+              {qtdDataInvalida > 0 && (
+                <Alert tone="warning">
+                  {qtdDataInvalida === 1
+                    ? "1 análise tem data de abertura ilegível e ficou sem cálculo de prazo."
+                    : `${qtdDataInvalida} análises têm data de abertura ilegível e ficaram sem cálculo de prazo.`}{" "}
+                  Elas aparecem como “Data inválida”. Confira a coluna de data na planilha (formato DD/MM/AAAA).
+                </Alert>
+              )}
+
               {qtdForaDaLista > 0 && (
                 <Alert tone="warning">
                   {qtdForaDaLista === 1 ? "1 análise tem" : `${qtdForaDaLista} análises têm`} período fora da lista de feriados.{" "}
@@ -342,6 +353,7 @@ function ControleAnalisesConteudo() {
                       <option value="Todas">Situação</option>
                       <option value="Vencida">Vencida</option>
                       <option value="No Prazo">No Prazo</option>
+                      <option value="Data inválida">Data inválida</option>
                     </select>
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -443,7 +455,13 @@ function ControleAnalisesConteudo() {
                             )}
                           </td>
                           
-                          <td className="px-2 py-3 text-right text-xs text-ink-body whitespace-nowrap"><span>{row.diasTranscorridos}</span> <span>dias</span></td>
+                          <td className="px-2 py-3 text-right text-xs text-ink-body whitespace-nowrap">
+                            {row.situacao === "Data inválida" ? (
+                              <span className="text-gray-300">—</span>
+                            ) : (
+                              <><span>{row.diasTranscorridos}</span> <span>dias</span></>
+                            )}
+                          </td>
                           
                           <td className="px-2 py-3 text-right text-xs whitespace-nowrap">
                             {row.diasAtraso > 0 ? (
@@ -456,6 +474,10 @@ function ControleAnalisesConteudo() {
                           <td className="px-2 py-3 text-center">
                             {row.situacao === "Vencida" ? (
                               <Badge tone="danger" icon={AlertTriangle}>Vencida</Badge>
+                            ) : row.situacao === "Data inválida" ? (
+                              <span title="A data de abertura não pôde ser lida; o prazo não foi calculado.">
+                                <Badge tone="warning" icon={AlertCircle}>Data inválida</Badge>
+                              </span>
                             ) : (
                               <Badge tone="success">No prazo</Badge>
                             )}
