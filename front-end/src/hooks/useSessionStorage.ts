@@ -1,5 +1,6 @@
 // Salva os dados no navegador do usuário enquanto a aba estiver aberta.
 import { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
+import { avisarFalhaAoSalvar } from "../utils/dadosLocais";
 
 function readValue<T>(key: string, initialValue: T): T {
   try {
@@ -34,7 +35,8 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, Dispatch
     try {
       window.sessionStorage.setItem(state.key, JSON.stringify(state.value));
     } catch (error) {
-      console.warn("Erro ao salvar no sessionStorage", error);
+      // Em geral, espaço cheio: avisa na tela, não só no console (PA-12).
+      avisarFalhaAoSalvar("os dados desta tela", error);
     }
   }, [state]);
 

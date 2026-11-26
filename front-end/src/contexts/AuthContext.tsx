@@ -8,13 +8,30 @@ import {
   loginApi,
   Usuario,
 } from "../services/auth";
+import { kvClear } from "../utils/kvStorage";
+import { CONTROLE_ANALISES_KEY } from "../utils/controleAnalises";
+
+/** Apaga o Controle de Análises, a base de clientes e os formulários e lotes das telas. */
+async function apagarDadosDeTrabalho(): Promise<void> {
+  try {
+    localStorage.removeItem(CONTROLE_ANALISES_KEY);
+  } catch { /* ignora */ }
+  try {
+    sessionStorage.clear();
+  } catch { /* ignora */ }
+  try {
+    await kvClear();
+  } catch (error) {
+    console.warn("Não foi possível apagar a base de clientes do navegador:", error);
+  }
+}
 
 interface AuthContextValue {
   user: Usuario | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (usuario: string, senha: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -52,7 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.usuario);
   }, []);
 
-  const logout = useCallback(() => clearSession(), []);
+  // "Sair" apaga também os dados de trabalho guardados no navegador, que têm dados
+  // pessoais (PA-12), e recarrega a página para zerar o que ficou na memória.
+  // A expiração automática do token (8h) não apaga nada: só pede login de novo.
+  const logout = useCallback(async () => {
+    await apagarDadosDeTrabalho();
+    clearSession();
+    window.location.reload();
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, isAdmin: user?.perfil === "admin", login, logout }}>

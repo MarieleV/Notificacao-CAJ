@@ -6,6 +6,7 @@ import { useFuncionarios } from "./useFuncionarios";
 import { INFRACTION_CODES } from "../services/notificacoes";
 import { gerarNotificacaoApi, exportarWordApi, exportarPdfApi } from "../services/api";
 import { kvGet, kvSet } from "../utils/kvStorage";
+import { avisarFalhaAoSalvar } from "../utils/dadosLocais";
 import { lerCasosDoControleAnalises } from "../utils/controleAnalises";
 import { GEMINI_CHAVE_EVENT, obterStatusChaveGemini } from "../services/usuarios";
 
@@ -67,7 +68,7 @@ export function useRedatorNotificacao() {
     baseClienteCache = data;
     setExcelDataState(data);
     kvSet(BASE_CLIENTE_KEY, data).catch((e) =>
-      console.warn("Não foi possível persistir a base de clientes:", e)
+      avisarFalhaAoSalvar("a base de clientes", e)
     );
   };
 

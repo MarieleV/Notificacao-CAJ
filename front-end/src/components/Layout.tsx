@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, NavLink } from "react-router";
 import { 
   MessageSquareReply, 
@@ -13,9 +13,11 @@ import {
   Users,
   KeyRound,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { avisoFimDaListaDeFeriados } from "../utils/dates";
+import { FALHA_AO_SALVAR_EVENT } from "../utils/dadosLocais";
 import { ElementType } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { AlterarSenhaModal } from "./AlterarSenhaModal";
@@ -76,6 +78,17 @@ export function Layout() {
   const [geminiModalAberto, setGeminiModalAberto] = useState(false);
   // Aparece nos últimos meses da lista de feriados e depois que ela acaba (PA-06).
   const avisoFeriados = avisoFimDaListaDeFeriados();
+
+  // Aviso quando o navegador recusa gravar dados de trabalho, em geral por falta de espaço (PA-12).
+  // Depois de fechado, só volta a aparecer quando a página for recarregada.
+  const [falhaAoSalvar, setFalhaAoSalvar] = useState<string | null>(null);
+  const [falhaDispensada, setFalhaDispensada] = useState(false);
+  useEffect(() => {
+    if (falhaDispensada) return;
+    const onFalha = (e: Event) => setFalhaAoSalvar((e as CustomEvent<string>).detail || "os dados");
+    window.addEventListener(FALHA_AO_SALVAR_EVENT, onFalha);
+    return () => window.removeEventListener(FALHA_AO_SALVAR_EVENT, onFalha);
+  }, [falhaDispensada]);
 
   return (
     <div className="flex h-screen bg-navy overflow-hidden">
@@ -239,6 +252,24 @@ export function Layout() {
           <div role="status" className="flex items-start gap-2 px-6 py-2.5 bg-warning-soft border-b border-warning-line text-warning text-sm leading-snug">
             <AlertTriangle size={16} className="flex-shrink-0 mt-px" />
             <span>{avisoFeriados}</span>
+          </div>
+        )}
+        {falhaAoSalvar && (
+          <div role="alert" className="flex items-start gap-2 px-6 py-2.5 bg-danger-soft border-b border-danger-line text-danger text-sm leading-snug">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-px" />
+            <span className="flex-1">
+              Não foi possível salvar {falhaAoSalvar} no navegador (o espaço pode ter acabado). O trabalho continua na tela,
+              mas pode se perder se a página for recarregada. Use “Limpar tela” nas telas que não estiver usando.
+            </span>
+            <button
+              type="button"
+              onClick={() => { setFalhaAoSalvar(null); setFalhaDispensada(true); }}
+              aria-label="Fechar aviso"
+              title="Fechar aviso"
+              className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-danger/10 flex-shrink-0"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
         <Outlet />
