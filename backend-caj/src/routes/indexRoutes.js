@@ -3,7 +3,6 @@ const router = express.Router();
 
 // Importação dos Controllers
 const aiController = require("../controllers/aiController");
-const calculatorController = require("../controllers/calculatorController");
 const documentController = require("../controllers/documentController");
 const authController = require("../controllers/authController");
 const userController = require("../controllers/userController");
@@ -36,9 +35,6 @@ router.get("/funcionarios", funcionarioController.list);
 
 // Rotas da IA
 router.post("/gerar", aiController.generateNotification);
-
-// Rotas da Calculadora
-router.post("/calcular_multa", calculatorController.calculate);
 
 // Rotas de Documentos
 router.post("/exportar_parecer_word", documentController.exportParecerWord);

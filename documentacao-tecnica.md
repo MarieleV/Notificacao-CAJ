@@ -24,7 +24,7 @@ O sistema:
 | Ouvidoria e Recursos | `/ouvidoria` | Árvore de decisão que gera o parecer de recurso, com guia de tratativas no Sansys |
 | Usuários (só administradores) | `/usuarios` | Cadastro de usuários, perfis, ativação e redefinição de senha |
 
-Todas as telas exigem login (`/login`). Usuário e senha ficam no banco do back-end (seção 5.7).
+Todas as telas exigem login (`/login`). Usuário e senha ficam no banco do back-end (seção 5.6).
 
 ### 1.2. Ambientes e licença
 
@@ -111,11 +111,11 @@ Notificacao-CAJ
 │  │  ├─ index.js                      entrada do Express
 │  │  ├─ routes/indexRoutes.js         rotas /api/*
 │  │  ├─ middlewares/authMiddleware.js requireAuth e requireAdmin
-│  │  ├─ controllers/                  ai, auth, calculator, document, funcionario, user
-│  │  ├─ services/                     ai, auth, calculator, document, user
+│  │  ├─ controllers/                  ai, auth, document, funcionario, user
+│  │  ├─ services/                     ai, auth, document, user
 │  │  ├─ db/                           pool.js (conexão) e schema.sql (tabela usuarios)
 │  │  ├─ data/funcionarios.js          lista de funcionários (entregue só a usuários logados)
-│  │  └─ utils/                      formatters.js e crypto.js (cifra a chave do Gemini)
+│  │  └─ utils/                      crypto.js (cifra a chave do Gemini)
 │  ├─ .env.example · vercel.json · package.json
 └─ front-end
    ├─ index.html · vite.config.ts · package.json · .env.example
@@ -127,7 +127,7 @@ Notificacao-CAJ
       ├─ pages/                        5 telas de trabalho + Login, GerenciarUsuarios e Pagina404
       ├─ hooks/                        8 hooks (um por tela + useFiltroMatriculaLote, useFuncionarios e useSessionStorage)
       ├─ components/                   Layout, ProtectedRoute, AdminRoute, AlterarSenhaModal, ChaveGeminiModal, shared/, ouvidoria/
-      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria, tarifas
+      ├─ services/                     api, auth, http, usuarios, funcionarios, notificacoes, defesas, categorias, ouvidoria
       ├─ utils/                        dates, masks, kvStorage, dadosLocais, controleAnalises, baseCliente
       └─ styles/                       index.css, tailwind.css, theme.css
 ```
@@ -138,7 +138,7 @@ Notificacao-CAJ
 
 `src/index.js` carrega o `.env` (`dotenv`), cria o app Express, ativa o CORS só para as origens permitidas (`CORS_ORIGINS`, URLs separadas por vírgula; se vazia, o front-end publicado `https://notificacao-caj-7ncb.vercel.app` e o ambiente local `http://localhost:5173`), habilita JSON no corpo e monta as rotas sob `/api`. O servidor só escuta uma porta (padrão 3000) quando o arquivo é executado diretamente; na Vercel o app é exportado como função.
 
-Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.7).
+Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`, e as de usuários também por `requireAdmin` (seção 5.6).
 
 | Método e rota | Controller | Usada por |
 | --- | --- | --- |
@@ -155,7 +155,6 @@ Só `POST /api/auth/login` é pública. As demais rotas passam por `requireAuth`
 | `POST /api/exportar_pdf` | `exportInfracaoPdf` | Redator de Notificação |
 | `POST /api/exportar_parecer_word` | `exportParecerWord` | Ouvidoria e Retorno de Defesa |
 | `POST /api/exportar_parecer_pdf` | `exportParecerPdf` | Ouvidoria e Retorno de Defesa |
-| `POST /api/calcular_multa` | `calculatorController.calculate` | **Nenhuma tela** (legado, PA-02) |
 
 ### 5.2. Controllers
 
@@ -211,21 +210,13 @@ Campos de cliente não informados saem como marcadores (`{NOME_CLIENTE_MORADOR}`
 - `[EDIÇÃO PECULIAR]` e `<adicionar fato novo ao processo>` são marcadores de revisão e saem em vermelho (`#FF0000`) no Word, no PDF e na pré-visualização da Ouvidoria. A lista fica em `RED_MARKERS`, repetida no `documentService.js` e no `useProcessoOuvidoria`; as duas precisam ser mantidas iguais.
 - O logo é lido de `public/logo-docx-vale.jpg`; se o arquivo não for encontrado, o documento é gerado sem ele. Na Vercel, a pasta `public` entra no pacote da função pelo `includeFiles` do `vercel.json` (PA-16).
 
-### 5.5. Calculadora no back-end (`calculatorService.js`) – legado
-
-Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas de água e de esgoto e o fator K1. Para cada mês calcula o valor da água faixa a faixa, soma a tarifa de serviço e compara com o valor cobrado. O esgoto é 80% do valor correto da água multiplicado pelo fator K1. Devolve linhas, totais e dois textos de laudo. **Nenhuma tela chama essa rota hoje**; a tela de multas calcula tudo no navegador (seção 12.3). Ver PA-02.
-
-### 5.6. Utilitários (`formatters.js` e `crypto.js`)
+### 5.5. Utilitário de criptografia (`crypto.js`)
 
 | Função | O que faz |
 | --- | --- |
-| `parseBRL` | Converte texto em formato brasileiro (`1.234,56`, com ou sem `R$`) em número; devolve 0 se inválido |
-| `parseMonthYear` | Converte `MM/AAAA` em um inteiro (ano × 12 + mês) para comparação |
-| `isWithinRange` | Verifica se um mês está dentro de um intervalo; fim vazio significa vigência em aberto |
-| `formatBRL` | Formata número como `R$ 1.234,56` |
-| `cifrar` / `decifrar` (`crypto.js`) | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
+| `cifrar` / `decifrar` | Cifram e decifram texto com AES-256-GCM usando a `ENCRYPTION_KEY` (64 caracteres hexadecimais). O resultado tem o formato `v1:<iv>:<tag>:<conteúdo>`; um valor alterado ou uma chave mestra diferente faz `decifrar` falhar. Sem `ENCRYPTION_KEY` válida, as duas funções lançam erro |
 
-### 5.7. Autenticação e usuários
+### 5.6. Autenticação e usuários
 
 - **Banco.** `db/pool.js` abre um pool de conexões (`pg`, no máximo 3) com o Postgres indicado em `DATABASE_URL`, com SSL fora do ambiente local. Para a Vercel, recomenda-se o *Transaction pooler* do Supabase (porta 6543). `db/schema.sql` cria a tabela `usuarios` (`id`, `usuario` único, `nome`, `senha_hash`, `perfil` `admin` ou `usuario`, `ativo`, `criado_em`, `atualizado_em`) e ativa o RLS sem políticas, o que bloqueia o acesso pela API pública do Supabase.
 - **Login (`authService`).** Compara a senha com o hash (bcrypt). Quando o usuário não existe, compara com um hash fictício, para que o tempo de resposta não revele quais logins existem. Usuários inativos não entram. O token é um JWT (HS256) assinado com `JWT_SECRET` (mínimo de 32 caracteres; sem ele, ninguém autentica) e vale por `JWT_EXPIRES_IN` (padrão `8h`).
@@ -235,7 +226,7 @@ Recebe tarifas de serviço por vigência, faixas de consumo (`m3Tiers`), linhas 
 - **Chave do Gemini por usuário.** Fica na coluna `gemini_api_key_enc`, cifrada com AES-256-GCM (`utils/crypto.js`) pela chave mestra `ENCRYPTION_KEY` (64 caracteres hexadecimais) do servidor. O formato é `v1:<iv>:<tag>:<conteúdo>`, e o GCM detecta qualquer alteração do valor. A API só informa se a chave existe e os 4 últimos caracteres; nunca devolve a chave. Ao salvar, exige de 20 a 200 caracteres, sem espaços. Se a `ENCRYPTION_KEY` for trocada, as chaves salvas deixam de ser lidas: a tela mostra “Não cadastrada” e o usuário precisa cadastrar de novo.
 - **Primeiro administrador.** `npm run criar-admin -- <usuario> "<Nome>" "<senha>"` executa o `schema.sql` e cria o admin. Se o login já existir, ele é promovido a admin, reativado e recebe a nova senha.
 
-### 5.8. Deploy
+### 5.7. Deploy
 
 O `vercel.json` usa `@vercel/node` com `src/index.js` como entrada, roteia todas as requisições para ele e inclui a pasta `public` no pacote. O CORS é aplicado só pelo Express. O back-end lê as variáveis `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ENCRYPTION_KEY`, `GEMINI_MODEL` e `GEMINI_MODEL_RESERVA` (opcionais), `CORS_ORIGINS` e `PORT` (modelo em `.env.example`). Na Vercel, elas são cadastradas em *Settings → Environment Variables*. O `.env` local está no `.gitignore`.
 
@@ -272,7 +263,7 @@ Biblioteca de **24 códigos de infração** (`INFRACTION_CODES`), cada um com `c
 
 Contém **21 templates** de resposta (`DEFESAS_TEMPLATES`: os códigos `20400` a `20419`, exceto `20402 HD`, mais um modelo genérico de código `Prazo` para prorrogação). A exportação do parecer usa as funções de `api.ts` (seção 6.1).
 
-Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os dados divergem em alguns pontos da biblioteca do Redator (PA-10).
+Cada template começa por `Defesa A.I. nº {DEFESA_AI}`, cita o inciso do Art. 144 aplicável, traz o marcador `[descrever aqui o fundamento específico para a decisão]` e lista as penalidades mantidas com valores `R$ XXX,XX` a preencher. A hook substitui `{DEFESA_AI}` e o fundamento; o restante é revisado pelo operador. Os valores das multas, inclusive a de padronização, e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo. O inciso do 20418 diverge da biblioteca do Redator (PA-10).
 
 ### 6.4. `categorias.ts`
 
@@ -285,10 +276,6 @@ Só tipos que regem o fluxo da Ouvidoria:
 - `DecisaoType`: `deferir`, `indeferir`, `parcial` ou `null`.
 - `TipoCasoType`: `leitura`, `servico`, `corte_cavalete`, `hd`, `bypass`, `clandestina`, `la_padronizada`, `la_cadastral`, `prorrogacao`.
 - `DefesaType`: `com_defesa` ou `sem_defesa`.
-
-### 6.6. `tarifas.ts` – sem uso
-
-O próprio arquivo avisa: *não está em uso, mas mantido para referência*. Guarda tarifas de água por vigência (de 01/03/2023 em diante), com tarifa de serviço e faixas de consumo para Residencial (e suas variantes sociais), Comercial, Entidade Beneficente, Industrial e Pública, além da tabela de fator K1 (esgoto) com 32 atividades, de 1,00 (casas) a 1,68 (indústria da construção e aterro sanitário). Alimentava a calculadora antiga (PA-02).
 
 ## 7. Utilitários do front-end (`src/utils`)
 
@@ -587,7 +574,7 @@ O painel recolhível **Tratativas de Resposta – Guia Sansys** orienta o pós-d
 
 ### 12.6. Usuários (`GerenciarUsuarios`, só administradores)
 
-Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.7).
+Tabela com nome, login, perfil (etiqueta **Admin** ou **Usuário**) e status (**Ativo** ou **Inativo**), com botão para atualizar a lista e **Novo usuário**. Cada linha tem as ações **Editar** (nome e perfil), **Redefinir senha**, **Desativar/Reativar** e **Excluir**, que abrem formulários no `Modal`. As ações de desativar e excluir ficam bloqueadas na linha do próprio administrador. As regras de validação são as do back-end (seção 5.6).
 
 ## 13. Fluxo de decisão da Ouvidoria
 
@@ -647,7 +634,6 @@ Todos os prazos são em **dias úteis** (sem sábados, domingos, feriados e emen
 Observações:
 
 - Os textos dizem que a prorrogação conta “a partir da data desta decisão”, mas o código conta 60 dias a partir de **hoje**. Os dois coincidem se o parecer for gerado no dia da decisão (PA-23).
-- Esgoto (calculadora legada): 80% do valor correto da água, multiplicado pelo fator K1 da atividade.
 
 ## 15. Segurança e privacidade
 
@@ -691,25 +677,24 @@ O Vite define o alias `@` para `src`.
 - Por padrão, o front-end chama a API de produção. Para testar o back-end local, defina `VITE_API_URL=http://localhost:3000/api` no `.env` do front-end (veja `.env.example`).
 - Sem `ENCRYPTION_KEY`, ninguém consegue salvar a chave do Gemini. Em bancos criados antes desta versão, rode no SQL Editor do Supabase: `ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT;`
 - Sem `DATABASE_URL` e `JWT_SECRET`, ninguém consegue fazer login.
-- Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.8.
+- Publicação: dois projetos na Vercel, um para cada pasta. O back-end usa o `vercel.json` existente e precisa das variáveis de ambiente da seção 5.7.
 
 ## 17. Pontos de atenção e dívida técnica
 
 Lista de problemas e riscos encontrados na leitura do código, em três faixas de prioridade. Os itens marcados como *a confirmar* dependem de teste ou de verificação no ambiente real.
 
-**Situação em novembro/2026:** 18 itens resolvidos (PA-01, 03, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 15, 16, 19, 21, 22 e 24) e 5 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Todos os que faltam dependem de decisão ou de teste: PA-10 (valores e incisos), PA-23 (data da decisão), PA-02 (remover ou manter o legado) e testes de PA-18 e PA-20.
+**Situação em novembro/2026:** 19 itens resolvidos (PA-01, 02, 03, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 15, 16, 19, 21, 22 e 24) e 4 abertos. Dos abertos, 1 já foi resolvido em parte (PA-10; seção 17.5). Todos os que faltam dependem de decisão ou de teste: PA-10 (inciso do 20418), PA-23 (data da decisão) e testes de PA-18 e PA-20.
 
 ### 17.1. Prioridade alta (podem gerar documento ou cálculo errado)
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-10 | `notificacoes.ts`, `defesas.ts` | Dados divergentes: inciso do código 20418 (XIV numa lista, XV na outra); multa de padronização R$ 480,40 (20400) e R$ 480,80 (20419); 24 códigos numa biblioteca e 21 na outra; títulos diferentes para o 20419; o código `Prazo` ainda tem o marcador `$$$$$$$$$$$` no lugar do inciso | Conferir com a resolução vigente; manter uma fonte única de dados |
+| PA-10 | `notificacoes.ts`, `defesas.ts` | O código 20418 cita o inciso XIV do Art. 144 nas notificações e o inciso XV nas defesas | Conferir com a resolução vigente e corrigir a biblioteca errada |
 
 ### 17.2. Prioridade média
 
 | ID | Onde | Problema | Sugestão |
 | --- | --- | --- | --- |
-| PA-02 | Back-end e `tarifas.ts` | Rota `/calcular_multa`, controller, service e `tarifas.ts` não são usados por nenhuma tela. O serviço espera campos que a tela atual não envia e calcula a primeira faixa com `max − min + 1` (a faixa que começa em 0 comporta 11 m³ em vez de 10) | Remover ou documentar como legado; corrigir antes de reutilizar |
 | PA-18 | `aiService` | O prompt força o formato “fato gerador / dispositivo / penalidade”, mas os códigos 20013 e 20419 têm textos em outro formato (notificação cadastral) | Testar a saída desses códigos; usar prompt próprio |
 | PA-20 | `buildInfracaoPdf` | O PDF é desenhado por coordenadas absolutas; com texto longo (várias infrações) a quebra de página pode desalinhar bordas e o quadro do AR (*a confirmar*) | Testar com 4 ou 5 códigos; tratar quebra de página |
 | PA-23 | `get60BusinessDaysFromToday` | Os pareceres dizem “a contar da data desta decisão”, mas o prazo de 60 dias úteis conta a partir de hoje | Permitir informar a data da decisão |
@@ -723,6 +708,7 @@ Nenhum item aberto.
 | ID | Resolução |
 | --- | --- |
 | PA-01 | `useCalculadoraMulta`: o contador de ids começa depois do maior id salvo no `sessionStorage` (`syncUid`), e o laudo usa o primeiro e o último mês válidos em ordem cronológica (`getPeriodBounds`) |
+| PA-02 | A calculadora legada do back-end, que nenhuma tela usava, foi removida: a rota `POST /api/calcular_multa`, o `calculatorController`, o `calculatorService`, o `formatters.js` (usado só por ela) e o `tarifas.ts` do front-end. A Tabela de Multas continua calculando tudo no navegador (seção 12.3) |
 | PA-03 | A opção **Violação de Corte** foi retirada de “Não é recurso”, que não tinha template e gerava só o marcador `[COLE AQUI A VERSÃO PARA VIOLAÇÃO DE CORTE QUANDO NÃO FOR RECURSO]`. Uma sessão antiga com essa combinação volta para leitura. Se a CAJ criar o texto para esse caso, basta devolver a opção e incluir o template |
 | PA-04 | Textos dos templates da Ouvidoria corrigidos: “bem civil da” → “bem como da”, “proferida Pelo Prestador” → “proferida pelo Prestador” e “regularly” → “regularmente” |
 | PA-05 | Datas de abertura ilegíveis não viram mais 0 dia útil “No Prazo”: a análise fica como **Data inválida**, sem cálculo de prazo, com aviso na tela, filtro próprio e ordenação no fim da lista (seção 12.4). O “+1” no atraso foi confirmado pela CAJ como regra de negócio |
@@ -747,7 +733,7 @@ Continuam abertos nas seções 17.1 a 17.3 pelo que falta.
 
 | ID | O que já foi feito | O que falta |
 | --- | --- | --- |
-| PA-10 | A categoria “Acesso” passou a ser `acesso` | Conferir com a resolução vigente o inciso do 20418, a multa de padronização e o marcador do código `Prazo`; unificar as duas bibliotecas |
+| PA-10 | A categoria “Acesso” passou a ser `acesso`. A CAJ confirmou que o valor da multa de padronização e o inciso do modelo `Prazo` (marcador `$$$$$$$$$$$`) são preenchidos pelo funcionário que faz o cálculo; por isso o 20400 deixou de trazer R$ 480,40 fixo e passou a usar `R$ XXX,XX`, como os demais templates. O R$ 480,80 do 20419 é outra multa (recusa de atualização cadastral), não a de padronização. As diferenças entre as bibliotecas são esperadas: as defesas não têm os códigos de acesso (20011 a 20013) nem o 20402 HD e têm o modelo `Prazo`; os títulos diferem só na redação | Conferir com a resolução vigente o inciso do 20418 (XIV nas notificações, XV nas defesas) |
 
 ## 18. Glossário
 
